@@ -1,0 +1,44 @@
+{
+  "name": "soniox-sdk-js",
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Official Soniox JS SDK monorepo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/soniox/soniox-sdk-js.git"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "clean": "npm run clean --workspaces --if-present",
+    "lint": "eslint \"packages/*/src/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"packages/*/src/**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"packages/*/src/**/*.ts\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.ts\"",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.0.8",
+    "@typescript-eslint/eslint-plugin": "^8.19.1",
+    "@typescript-eslint/parser": "^8.19.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.31.0",
+    "jest": "^30.2.0",
+    "prettier": "^3.4.2",
+    "ts-jest": "^29.2.5",
+    "tsdown": "^0.19.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

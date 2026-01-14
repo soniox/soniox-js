@@ -1,0 +1,56 @@
+{
+  "name": "@soniox/web",
+  "version": "1.0.0",
+  "description": "Official Soniox SDK for Web browsers - Speech-to-Text API",
+  "keywords": [
+    "soniox",
+    "speech-to-text",
+    "stt",
+    "transcription",
+    "speech-recognition",
+    "realtime",
+    "websocket",
+    "browser",
+    "sdk"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/soniox/soniox-sdk-node.git",
+    "directory": "packages/web"
+  },
+  "license": "MIT",
+  "author": "Soniox <support@soniox.com>",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "clean": "rm -rf dist",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@soniox/core": "*"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
