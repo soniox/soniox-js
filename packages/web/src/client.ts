@@ -1,17 +1,13 @@
-/**
- * Soniox Web Client
- *
- * Browser-specific client for Soniox API
- */
+export interface SonioxWebOptions {}
 
-/**
- * Soniox client for web browsers
- *
- * @example
- * ```typescript
- * const soniox = new SonioxWebClient();
- * ```
- */
 export class SonioxWebClient {
-  constructor() {}
+  private readonly options: SonioxWebOptions;
+
+  constructor(options: SonioxWebOptions = {}) {
+    this.options = options;
+  }
+
+  initialize(): SonioxWebOptions {
+    return this.options;
+  }
 }

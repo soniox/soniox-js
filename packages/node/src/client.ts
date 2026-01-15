@@ -1,21 +1,13 @@
-/**
- * Main Soniox client for Node.js
- */
+export interface SonioxNodeOptions {}
 
-import type { SonioxClientConfig } from '@soniox/core';
+export class SonioxNodeClient {
+  private readonly options: SonioxNodeOptions;
 
-export interface SonioxClientOptions extends Partial<SonioxClientConfig> {
-  apiKey: string;
-}
+  constructor(options: SonioxNodeOptions = {}) {
+    this.options = options;
+  }
 
-/**
- * Soniox API client
- *
- * @example
- * ```typescript
- * const soniox = new SonioxClient();
- * ```
- */
-export class SonioxClient {
-  constructor(_options: SonioxClientOptions) {}
+  initialize(): SonioxNodeOptions {
+    return this.options;
+  }
 }

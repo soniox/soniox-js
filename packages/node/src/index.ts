@@ -8,5 +8,5 @@
 export * from '@soniox/core';
 
 // Client
-export { SonioxClient } from './client.js';
-export type { SonioxClientOptions } from './client.js';
+export { SonioxNodeClient } from './client.js';
+export type { SonioxNodeOptions } from './client.js';

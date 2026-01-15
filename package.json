@@ -8,7 +8,8 @@
     "url": "https://github.com/soniox/soniox-sdk-js.git"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "examples/**"
   ],
   "scripts": {
     "build": "npm run build --workspaces",
