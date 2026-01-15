@@ -22,6 +22,7 @@ export default [
   prettierConfig,
   {
     files: ['packages/*/src/**/*.ts', 'packages/*/src/**/*.tsx', 'examples/**/*.ts'],
+    ignores: ['**/*.test.ts', '**/*.spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -57,7 +58,7 @@ export default [
       ],
       'import/no-duplicates': 'error',
       'import/no-unresolved': 'off',
-      'no-console': 'warn',
+      'no-console': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
     },

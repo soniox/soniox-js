@@ -2,7 +2,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/packages'],
+  roots: ['<rootDir>/packages', '<rootDir>/examples'],
   testMatch: ['**/*.spec.ts', '**/*.test.ts'],
   collectCoverageFrom: [
     'packages/*/src/**/*.ts',
@@ -26,6 +26,11 @@ module.exports = {
     '^@soniox/node/(.*)$': '<rootDir>/packages/node/src/$1',
     '^@soniox/web$': '<rootDir>/packages/web/src',
     '^@soniox/web/(.*)$': '<rootDir>/packages/web/src/$1',
+    '^@soniox/react$': '<rootDir>/packages/react/src',
+    '^@soniox/react/(.*)$': '<rootDir>/packages/react/src/$1',
+    '^@soniox/react-native$': '<rootDir>/packages/react-native/src',
+    '^@soniox/react-native/(.*)$': '<rootDir>/packages/react-native/src/$1',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   transform: {
     '^.+\\.tsx?$': [

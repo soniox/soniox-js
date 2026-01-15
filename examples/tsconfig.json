@@ -5,7 +5,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "declaration": false,
-    "declarationMap": false
+    "declarationMap": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]
