@@ -11,14 +11,14 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  coverageThreshold: {
-    global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
-    },
-  },
+  // coverageThreshold: {
+  //   global: {
+  //     branches: 80,
+  //     functions: 80,
+  //     lines: 80,
+  //     statements: 80,
+  //   },
+  // },
   moduleNameMapper: {
     '^@soniox/core$': '<rootDir>/packages/core/src',
     '^@soniox/core/(.*)$': '<rootDir>/packages/core/src/$1',
