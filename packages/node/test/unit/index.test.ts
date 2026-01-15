@@ -1,4 +1,4 @@
-import {SonioxClient} from '../../src/client';
+import {SonioxNodeClient} from '../../src/client';
 
 jest.mock('../../src/client');
 
@@ -10,6 +10,6 @@ describe('SonioxClient', () => {
 
 
   it('should be defined', () => {
-    expect(SonioxClient).toBeDefined();
+    expect(SonioxNodeClient).toBeDefined();
   });
 });
