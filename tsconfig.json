@@ -1,0 +1,10 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/node" },
+    { "path": "./packages/web" },
+    { "path": "./packages/react" },
+    { "path": "./packages/react-native" }
+  ]
+}

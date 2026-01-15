@@ -1,5 +1,6 @@
+import type { SonioxNodeOptions } from '@soniox/node';
+import { SonioxNodeClient } from '@soniox/node';
 import express from 'express'
-import { SonioxNodeClient, SonioxNodeOptions } from '@soniox/node';
 
 const app = express()
 const port = 3000

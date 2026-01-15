@@ -12,15 +12,15 @@
     "examples/**"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
-    "clean": "npm run clean --workspaces --if-present",
-    "lint": "eslint \"packages/*/src/**/*.{ts,tsx}\"",
-    "lint:fix": "eslint \"packages/*/src/**/*.{ts,tsx}\" --fix",
+    "build": "tsc -b && npm run build --workspaces --if-present",
+    "clean": "tsc -b --clean && npm run clean --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write \"packages/*/src/**/*.ts\"",
     "format:check": "prettier --check \"packages/*/src/**/*.ts\"",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "tsc -b",
     "prepare": "npm run build"
   },
   "devDependencies": {

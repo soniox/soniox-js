@@ -26,6 +26,10 @@ npm-debug.log*
 
 # Test
 *.lcov
+**/test/**/*.js
+**/test/**/*.d.ts
+**/test/**/*.js.map
+**/test/**/*.d.ts.map
 
 # OS
 Thumbs.db
