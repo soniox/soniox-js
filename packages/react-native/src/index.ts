@@ -1,13 +1,13 @@
-export interface SonioxReactNativeOptions {}
+export interface SonioxRNOptions {}
 
-export class SonioxReactNativeClient {
-  private readonly options: SonioxReactNativeOptions;
+export class SonioxRNClient {
+  private readonly options: SonioxRNOptions;
 
-  constructor(options: SonioxReactNativeOptions = {}) {
+  constructor(options: SonioxRNOptions = {}) {
     this.options = options;
   }
 
-  initialize(): SonioxReactNativeOptions {
+  initialize(): SonioxRNOptions {
     return this.options;
   }
 }
