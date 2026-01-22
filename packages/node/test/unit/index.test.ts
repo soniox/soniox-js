@@ -1,6 +1,6 @@
 import {SonioxNodeClient} from '../../src/client';
 
-jest.mock('../../src/client');
+// jest.mock('../../src/client');
 
 describe('SonioxClient', () => {
 
