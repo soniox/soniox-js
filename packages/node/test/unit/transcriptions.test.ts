@@ -1188,6 +1188,236 @@ describe('SonioxTranscriptionsAPI', () => {
             });
         });
 
+        describe('webhook auth header validation', () => {
+            it('should throw when only webhook_auth_header_name is provided', async () => {
+                const requestMock = jest.fn();
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await expect(api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_url: 'https://example.com/webhook',
+                    webhook_auth_header_name: 'X-Webhook-Secret',
+                })).rejects.toThrow('webhook_auth_header_name and webhook_auth_header_value must be provided together');
+            });
+
+            it('should throw when only webhook_auth_header_value is provided', async () => {
+                const requestMock = jest.fn();
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await expect(api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_url: 'https://example.com/webhook',
+                    webhook_auth_header_value: 'secret-token',
+                })).rejects.toThrow('webhook_auth_header_name and webhook_auth_header_value must be provided together');
+            });
+
+            it('should accept when both webhook auth headers are provided', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_url: 'https://example.com/webhook',
+                    webhook_auth_header_name: 'X-Webhook-Secret',
+                    webhook_auth_header_value: 'secret-token',
+                });
+
+                expect(requestMock).toHaveBeenCalled();
+            });
+
+            it('should accept when neither webhook auth header is provided', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_url: 'https://example.com/webhook',
+                });
+
+                expect(requestMock).toHaveBeenCalled();
+            });
+        });
+
+        describe('webhook_query option', () => {
+            it('should append query params from Record to webhook_url', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_url: 'https://example.com/webhook',
+                    webhook_query: { transcription_id: 'abc123', user_id: '456' },
+                });
+
+                expect(requestMock).toHaveBeenCalledWith({
+                    method: 'POST',
+                    path: '/v1/transcriptions',
+                    body: expect.objectContaining({
+                        webhook_url: 'https://example.com/webhook?transcription_id=abc123&user_id=456',
+                    }),
+                });
+            });
+
+            it('should append query params from string to webhook_url', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_url: 'https://example.com/webhook',
+                    webhook_query: 'key=value&other=data',
+                });
+
+                expect(requestMock).toHaveBeenCalledWith({
+                    method: 'POST',
+                    path: '/v1/transcriptions',
+                    body: expect.objectContaining({
+                        webhook_url: 'https://example.com/webhook?key=value&other=data',
+                    }),
+                });
+            });
+
+            it('should append query params from URLSearchParams to webhook_url', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const params = new URLSearchParams();
+                params.append('id', '123');
+                params.append('type', 'test');
+
+                await api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_url: 'https://example.com/webhook',
+                    webhook_query: params,
+                });
+
+                expect(requestMock).toHaveBeenCalledWith({
+                    method: 'POST',
+                    path: '/v1/transcriptions',
+                    body: expect.objectContaining({
+                        webhook_url: 'https://example.com/webhook?id=123&type=test',
+                    }),
+                });
+            });
+
+            it('should preserve existing query params in webhook_url', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_url: 'https://example.com/webhook?existing=param',
+                    webhook_query: { new: 'value' },
+                });
+
+                expect(requestMock).toHaveBeenCalledWith({
+                    method: 'POST',
+                    path: '/v1/transcriptions',
+                    body: expect.objectContaining({
+                        webhook_url: 'https://example.com/webhook?existing=param&new=value',
+                    }),
+                });
+            });
+
+            it('should not modify webhook_url when webhook_query is not provided', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_url: 'https://example.com/webhook',
+                });
+
+                expect(requestMock).toHaveBeenCalledWith({
+                    method: 'POST',
+                    path: '/v1/transcriptions',
+                    body: expect.objectContaining({
+                        webhook_url: 'https://example.com/webhook',
+                    }),
+                });
+            });
+
+            it('should ignore webhook_query when webhook_url is not provided', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await api.transcribe({
+                    model: 'soniox-precision',
+                    audio_url: 'https://example.com/audio.mp3',
+                    webhook_query: { ignored: 'value' },
+                });
+
+                expect(requestMock).toHaveBeenCalledWith({
+                    method: 'POST',
+                    path: '/v1/transcriptions',
+                    body: expect.objectContaining({
+                        webhook_url: undefined,
+                    }),
+                });
+            });
+        });
+
         describe('audio_url validation', () => {
             it('should throw when audio_url is not a valid HTTP/HTTPS URL', async () => {
                 const mockHttp = createMockHttpClient();

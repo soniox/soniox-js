@@ -55,6 +55,20 @@ export type {
     WaitOptions,
 } from './transcriptions.js';
 
+// Import and re-export Webhooks types
+export type {
+    ExpressLikeRequest,
+    FastifyLikeRequest,
+    HandleWebhookOptions,
+    HonoLikeContext,
+    NestJSLikeRequest,
+    WebhookAuthConfig,
+    WebhookEvent,
+    WebhookEventStatus,
+    WebhookHandlerResult,
+    WebhookHeaders,
+} from './webhooks.js';
+
 export type TemporaryApiKeyUsageType = 'transcribe_websocket';
 
 export type TemporaryApiKeyRequest = {

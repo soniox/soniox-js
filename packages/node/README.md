@@ -231,6 +231,191 @@ try {
 }
 ```
 
+## Webhooks
+
+Configure webhooks to receive notifications when transcriptions complete:
+
+```typescript
+const transcription = await client.transcriptions.transcribe({
+    model: 'soniox-precision',
+    audio_url: 'https://example.com/audio.mp3',
+    webhook_url: 'https://your-server.com/webhook',
+    // Both auth headers must be provided together (or neither)
+    webhook_auth_header_name: 'X-Webhook-Secret',
+    webhook_auth_header_value: 'your-secret-token',
+    // Optionally append metadata as query params
+    webhook_query: { transcription_id: transcription.id },
+});
+```
+
+### Handling Webhooks
+
+The SDK provides framework-agnostic utilities for handling incoming webhook requests via the `webhooks` namespace.
+
+#### Fetch API (Bun/Deno/Node 18+)
+
+```typescript
+import { webhooks } from '@soniox/node';
+
+Bun.serve({
+    async fetch(req) {
+        if (new URL(req.url).pathname === '/webhook') {
+            const result = await webhooks.handleWebhookRequest(req, {
+                name: 'X-Webhook-Secret',
+                value: process.env.WEBHOOK_SECRET!,
+            });
+
+            if (result.ok) {
+                // Process completed transcription
+                console.log('Transcription completed:', result.event.id);
+            }
+
+            return new Response(
+                JSON.stringify(result.ok ? { received: true } : { error: result.error }),
+                { status: result.status, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
+        return new Response('Not found', { status: 404 });
+    },
+});
+```
+
+#### Express
+
+```typescript
+import express from 'express';
+import { webhooks } from '@soniox/node';
+
+const app = express();
+app.use(express.json());
+
+app.post('/webhook', (req, res) => {
+    const result = webhooks.handleWebhookExpress(req, {
+        name: 'X-Webhook-Secret',
+        value: process.env.WEBHOOK_SECRET!,
+    });
+
+    if (result.ok) {
+        console.log('Transcription:', result.event.id, result.event.status);
+    }
+
+    res.status(result.status).json(
+        result.ok ? { received: true } : { error: result.error }
+    );
+});
+```
+
+#### Fastify
+
+```typescript
+import Fastify from 'fastify';
+import { webhooks } from '@soniox/node';
+
+const fastify = Fastify();
+
+fastify.post('/webhook', async (req, reply) => {
+    const result = webhooks.handleWebhookFastify(req, {
+        name: 'X-Webhook-Secret',
+        value: process.env.WEBHOOK_SECRET!,
+    });
+
+    if (result.ok) {
+        console.log('Transcription:', result.event.id, result.event.status);
+    }
+
+    return reply.status(result.status).send(
+        result.ok ? { received: true } : { error: result.error }
+    );
+});
+```
+
+#### NestJS
+
+```typescript
+import { Controller, Post, Req, Res } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { webhooks } from '@soniox/node';
+
+@Controller('webhook')
+export class WebhookController {
+    @Post()
+    handleWebhook(@Req() req: Request, @Res() res: Response) {
+        const result = webhooks.handleWebhookNestJS(req, {
+            name: 'X-Webhook-Secret',
+            value: process.env.WEBHOOK_SECRET!,
+        });
+
+        if (result.ok) {
+            console.log('Transcription:', result.event.id, result.event.status);
+        }
+
+        return res.status(result.status).json(
+            result.ok ? { received: true } : { error: result.error }
+        );
+    }
+}
+```
+
+#### Hono
+
+```typescript
+import { Hono } from 'hono';
+import { webhooks } from '@soniox/node';
+
+const app = new Hono();
+
+app.post('/webhook', async (c) => {
+    const result = await webhooks.handleWebhookHono(c, {
+        name: 'X-Webhook-Secret',
+        value: process.env.WEBHOOK_SECRET!,
+    });
+
+    if (result.ok) {
+        console.log('Transcription:', result.event.id, result.event.status);
+    }
+
+    return c.json(
+        result.ok ? { received: true } : { error: result.error },
+        result.status
+    );
+});
+```
+
+### Low-Level Utilities
+
+For custom integrations, use the core utilities directly:
+
+```typescript
+import { webhooks } from '@soniox/node';
+
+// Type guard
+if (webhooks.isWebhookEvent(payload)) {
+    console.log(payload.id, payload.status);
+}
+
+// Parse with validation
+try {
+    const event = webhooks.parseWebhookEvent(req.body);
+    console.log(event.id, event.status);
+} catch (error) {
+    console.error('Invalid payload:', error.message);
+}
+
+// Verify auth header
+const isValid = webhooks.verifyWebhookAuth(req.headers, {
+    name: 'X-Webhook-Secret',
+    value: process.env.WEBHOOK_SECRET!,
+});
+
+// Full handler
+const result = webhooks.handleWebhook({
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+    auth: { name: 'X-Webhook-Secret', value: process.env.WEBHOOK_SECRET! },
+});
+```
+
 ## Models API
 
 List available speech recognition models:

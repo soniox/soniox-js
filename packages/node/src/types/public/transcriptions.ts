@@ -329,6 +329,7 @@ export type TranscribeOptions = CreateTranscriptionOptions & {
 
     /**
      * When true, waits for transcription to complete before returning.
+     * @default false
      */
     wait?: boolean | undefined;
 
@@ -336,6 +337,13 @@ export type TranscribeOptions = CreateTranscriptionOptions & {
      * Options for waiting (only used when wait=true).
      */
     wait_options?: WaitOptions | undefined;
+
+    /**
+     * Query parameters to append to the webhook URL.
+     * Useful for encoding metadata like transcription ID in the webhook callback.
+     * Can be a string, URLSearchParams, or Record<string, string>.
+     */
+    webhook_query?: string | URLSearchParams | Record<string, string> | undefined;
 }
 
 /**

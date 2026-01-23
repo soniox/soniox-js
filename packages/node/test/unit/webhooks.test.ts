@@ -1,0 +1,767 @@
+import {
+    isWebhookEvent,
+    parseWebhookEvent,
+    verifyWebhookAuth,
+    handleWebhook,
+    handleWebhookRequest,
+    handleWebhookExpress,
+    handleWebhookFastify,
+    handleWebhookNestJS,
+    handleWebhookHono,
+    type WebhookEvent,
+    type WebhookAuthConfig,
+} from '../../src/async/webhooks';
+
+describe('isWebhookEvent', () => {
+    it('should return true for valid completed event', () => {
+        const event = { id: '550e8400-e29b-41d4-a716-446655440000', status: 'completed' };
+        expect(isWebhookEvent(event)).toBe(true);
+    });
+
+    it('should return true for valid error event', () => {
+        const event = { id: '550e8400-e29b-41d4-a716-446655440000', status: 'error' };
+        expect(isWebhookEvent(event)).toBe(true);
+    });
+
+    it('should return false for null', () => {
+        expect(isWebhookEvent(null)).toBe(false);
+    });
+
+    it('should return false for undefined', () => {
+        expect(isWebhookEvent(undefined)).toBe(false);
+    });
+
+    it('should return false for non-object', () => {
+        expect(isWebhookEvent('string')).toBe(false);
+        expect(isWebhookEvent(123)).toBe(false);
+        expect(isWebhookEvent(true)).toBe(false);
+    });
+
+    it('should return false for missing id', () => {
+        expect(isWebhookEvent({ status: 'completed' })).toBe(false);
+    });
+
+    it('should return false for empty id', () => {
+        expect(isWebhookEvent({ id: '', status: 'completed' })).toBe(false);
+    });
+
+    it('should return false for non-string id', () => {
+        expect(isWebhookEvent({ id: 123, status: 'completed' })).toBe(false);
+    });
+
+    it('should return false for missing status', () => {
+        expect(isWebhookEvent({ id: '123' })).toBe(false);
+    });
+
+    it('should return false for invalid status', () => {
+        expect(isWebhookEvent({ id: '123', status: 'pending' })).toBe(false);
+        expect(isWebhookEvent({ id: '123', status: 'processing' })).toBe(false);
+        expect(isWebhookEvent({ id: '123', status: '' })).toBe(false);
+    });
+
+    it('should return true for event with extra properties', () => {
+        const event = { id: '123', status: 'completed', extra: 'data' };
+        expect(isWebhookEvent(event)).toBe(true);
+    });
+});
+
+describe('parseWebhookEvent', () => {
+    it('should parse valid completed event', () => {
+        const event = parseWebhookEvent({ id: 'test-id', status: 'completed' });
+        expect(event).toEqual({ id: 'test-id', status: 'completed' });
+    });
+
+    it('should parse valid error event', () => {
+        const event = parseWebhookEvent({ id: 'test-id', status: 'error' });
+        expect(event).toEqual({ id: 'test-id', status: 'error' });
+    });
+
+    it('should parse JSON string', () => {
+        const json = JSON.stringify({ id: 'test-id', status: 'completed' });
+        const event = parseWebhookEvent(json);
+        expect(event).toEqual({ id: 'test-id', status: 'completed' });
+    });
+
+    it('should throw for invalid JSON string', () => {
+        expect(() => parseWebhookEvent('not valid json'))
+            .toThrow('Invalid webhook payload: not valid JSON');
+    });
+
+    it('should throw for non-object', () => {
+        expect(() => parseWebhookEvent(null))
+            .toThrow('Invalid webhook payload: expected an object');
+        expect(() => parseWebhookEvent(123))
+            .toThrow('Invalid webhook payload: expected an object');
+    });
+
+    it('should throw for missing id', () => {
+        expect(() => parseWebhookEvent({ status: 'completed' }))
+            .toThrow('Invalid webhook payload: missing or invalid "id" field');
+    });
+
+    it('should throw for non-string id', () => {
+        expect(() => parseWebhookEvent({ id: 123, status: 'completed' }))
+            .toThrow('Invalid webhook payload: missing or invalid "id" field');
+    });
+
+    it('should throw for empty id', () => {
+        expect(() => parseWebhookEvent({ id: '', status: 'completed' }))
+            .toThrow('Invalid webhook payload: "id" field cannot be empty');
+    });
+
+    it('should throw for invalid status with descriptive message', () => {
+        expect(() => parseWebhookEvent({ id: '123', status: 'pending' }))
+            .toThrow('Invalid webhook payload: "status" must be "completed" or "error", got "pending"');
+    });
+
+    it('should throw for missing status', () => {
+        expect(() => parseWebhookEvent({ id: '123' }))
+            .toThrow('Invalid webhook payload: "status" must be "completed" or "error"');
+    });
+
+    it('should strip extra properties from result', () => {
+        const event = parseWebhookEvent({ id: 'test-id', status: 'completed', extra: 'data' });
+        expect(event).toEqual({ id: 'test-id', status: 'completed' });
+        expect((event as Record<string, unknown>).extra).toBeUndefined();
+    });
+});
+
+describe('verifyWebhookAuth', () => {
+    const auth: WebhookAuthConfig = {
+        name: 'X-Webhook-Secret',
+        value: 'secret-token',
+    };
+
+    it('should return true for matching header (exact case)', () => {
+        const headers = { 'X-Webhook-Secret': 'secret-token' };
+        expect(verifyWebhookAuth(headers, auth)).toBe(true);
+    });
+
+    it('should return true for matching header (case-insensitive name)', () => {
+        const headers = { 'x-webhook-secret': 'secret-token' };
+        expect(verifyWebhookAuth(headers, auth)).toBe(true);
+    });
+
+    it('should return true for matching header (uppercase)', () => {
+        const headers = { 'X-WEBHOOK-SECRET': 'secret-token' };
+        expect(verifyWebhookAuth(headers, auth)).toBe(true);
+    });
+
+    it('should return false for wrong value', () => {
+        const headers = { 'X-Webhook-Secret': 'wrong-token' };
+        expect(verifyWebhookAuth(headers, auth)).toBe(false);
+    });
+
+    it('should return false for missing header', () => {
+        const headers = { 'Other-Header': 'value' };
+        expect(verifyWebhookAuth(headers, auth)).toBe(false);
+    });
+
+    it('should return false for empty headers', () => {
+        expect(verifyWebhookAuth({}, auth)).toBe(false);
+    });
+
+    it('should work with Headers object', () => {
+        const headers = new Headers({ 'X-Webhook-Secret': 'secret-token' });
+        expect(verifyWebhookAuth(headers, auth)).toBe(true);
+    });
+
+    it('should work with Headers object (case-insensitive)', () => {
+        const headers = new Headers({ 'x-webhook-secret': 'secret-token' });
+        expect(verifyWebhookAuth(headers, auth)).toBe(true);
+    });
+
+    it('should work with array header values (takes first)', () => {
+        const headers = { 'X-Webhook-Secret': ['secret-token', 'other'] as string[] };
+        expect(verifyWebhookAuth(headers, auth)).toBe(true);
+    });
+
+    it('should return false for array with wrong first value', () => {
+        const headers = { 'X-Webhook-Secret': ['wrong', 'secret-token'] as string[] };
+        expect(verifyWebhookAuth(headers, auth)).toBe(false);
+    });
+
+    it('should handle undefined header value', () => {
+        const headers = { 'X-Webhook-Secret': undefined };
+        expect(verifyWebhookAuth(headers, auth)).toBe(false);
+    });
+});
+
+describe('handleWebhook', () => {
+    const validPayload: WebhookEvent = { id: 'test-id', status: 'completed' };
+
+    describe('method validation', () => {
+        it('should return 405 for GET method', () => {
+            const result = handleWebhook({
+                method: 'GET',
+                headers: {},
+                body: validPayload,
+            });
+            expect(result).toEqual({
+                ok: false,
+                status: 405,
+                error: 'Method not allowed',
+            });
+        });
+
+        it('should return 405 for PUT method', () => {
+            const result = handleWebhook({
+                method: 'PUT',
+                headers: {},
+                body: validPayload,
+            });
+            expect(result).toEqual({
+                ok: false,
+                status: 405,
+                error: 'Method not allowed',
+            });
+        });
+
+        it('should accept POST method', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: {},
+                body: validPayload,
+            });
+            expect(result.ok).toBe(true);
+            expect(result.status).toBe(200);
+        });
+
+        it('should accept post method (case-insensitive)', () => {
+            const result = handleWebhook({
+                method: 'post',
+                headers: {},
+                body: validPayload,
+            });
+            expect(result.ok).toBe(true);
+        });
+    });
+
+    describe('authentication', () => {
+        const auth: WebhookAuthConfig = {
+            name: 'X-Webhook-Secret',
+            value: 'secret-token',
+        };
+
+        it('should return 401 when auth required but header missing', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: {},
+                body: validPayload,
+                auth,
+            });
+            expect(result).toEqual({
+                ok: false,
+                status: 401,
+                error: 'Unauthorized',
+            });
+        });
+
+        it('should return 401 when auth required but header wrong', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: { 'X-Webhook-Secret': 'wrong-token' },
+                body: validPayload,
+                auth,
+            });
+            expect(result).toEqual({
+                ok: false,
+                status: 401,
+                error: 'Unauthorized',
+            });
+        });
+
+        it('should succeed when auth header matches', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: { 'X-Webhook-Secret': 'secret-token' },
+                body: validPayload,
+                auth,
+            });
+            expect(result.ok).toBe(true);
+            expect(result.status).toBe(200);
+        });
+
+        it('should succeed when auth header matches (case-insensitive)', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: { 'x-webhook-secret': 'secret-token' },
+                body: validPayload,
+                auth,
+            });
+            expect(result.ok).toBe(true);
+        });
+
+        it('should succeed when no auth required', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: {},
+                body: validPayload,
+            });
+            expect(result.ok).toBe(true);
+        });
+    });
+
+    describe('payload validation', () => {
+        it('should return 400 for invalid payload', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: {},
+                body: { invalid: 'data' },
+            });
+            expect(result.ok).toBe(false);
+            expect(result.status).toBe(400);
+            expect(result.error).toContain('Invalid webhook payload');
+        });
+
+        it('should return 400 for null body', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: {},
+                body: null,
+            });
+            expect(result.ok).toBe(false);
+            expect(result.status).toBe(400);
+        });
+
+        it('should return event for valid payload', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: {},
+                body: validPayload,
+            });
+            expect(result).toEqual({
+                ok: true,
+                status: 200,
+                event: validPayload,
+            });
+        });
+
+        it('should parse JSON string body', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: {},
+                body: JSON.stringify(validPayload),
+            });
+            expect(result.ok).toBe(true);
+            expect(result.event).toEqual(validPayload);
+        });
+    });
+
+    describe('complete flow', () => {
+        it('should handle valid authenticated request', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: { 'X-Webhook-Secret': 'my-secret' },
+                body: { id: 'trans-123', status: 'completed' },
+                auth: { name: 'X-Webhook-Secret', value: 'my-secret' },
+            });
+            expect(result).toEqual({
+                ok: true,
+                status: 200,
+                event: { id: 'trans-123', status: 'completed' },
+            });
+        });
+
+        it('should handle error status event', () => {
+            const result = handleWebhook({
+                method: 'POST',
+                headers: {},
+                body: { id: 'trans-123', status: 'error' },
+            });
+            expect(result).toEqual({
+                ok: true,
+                status: 200,
+                event: { id: 'trans-123', status: 'error' },
+            });
+        });
+    });
+});
+
+describe('handleWebhookRequest', () => {
+    const createMockRequest = (options: {
+        method?: string;
+        headers?: Record<string, string>;
+        body?: unknown;
+    }): Request => {
+        const { method = 'POST', headers = {}, body } = options;
+        return new Request('http://localhost/webhook', {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                ...headers,
+            },
+            body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
+    };
+
+    it('should handle valid POST request', async () => {
+        const request = createMockRequest({
+            body: { id: 'test-id', status: 'completed' },
+        });
+
+        const result = await handleWebhookRequest(request);
+
+        expect(result).toEqual({
+            ok: true,
+            status: 200,
+            event: { id: 'test-id', status: 'completed' },
+        });
+    });
+
+    it('should reject non-POST request', async () => {
+        const request = createMockRequest({
+            method: 'GET',
+            body: { id: 'test-id', status: 'completed' },
+        });
+
+        const result = await handleWebhookRequest(request);
+
+        expect(result).toEqual({
+            ok: false,
+            status: 405,
+            error: 'Method not allowed',
+        });
+    });
+
+    it('should verify authentication', async () => {
+        const request = createMockRequest({
+            headers: { 'X-Webhook-Secret': 'correct-token' },
+            body: { id: 'test-id', status: 'completed' },
+        });
+
+        const result = await handleWebhookRequest(request, {
+            name: 'X-Webhook-Secret',
+            value: 'correct-token',
+        });
+
+        expect(result.ok).toBe(true);
+    });
+
+    it('should reject invalid authentication', async () => {
+        const request = createMockRequest({
+            headers: { 'X-Webhook-Secret': 'wrong-token' },
+            body: { id: 'test-id', status: 'completed' },
+        });
+
+        const result = await handleWebhookRequest(request, {
+            name: 'X-Webhook-Secret',
+            value: 'correct-token',
+        });
+
+        expect(result).toEqual({
+            ok: false,
+            status: 401,
+            error: 'Unauthorized',
+        });
+    });
+
+    it('should return 400 for invalid JSON', async () => {
+        const request = new Request('http://localhost/webhook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: 'not valid json',
+        });
+
+        const result = await handleWebhookRequest(request);
+
+        expect(result).toEqual({
+            ok: false,
+            status: 400,
+            error: 'Invalid webhook payload: not valid JSON',
+        });
+    });
+
+    it('should return 400 for invalid payload structure', async () => {
+        const request = createMockRequest({
+            body: { wrong: 'structure' },
+        });
+
+        const result = await handleWebhookRequest(request);
+
+        expect(result.ok).toBe(false);
+        expect(result.status).toBe(400);
+    });
+});
+
+describe('handleWebhookExpress', () => {
+    it('should handle Express-style request with parsed body', () => {
+        const req = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: { id: 'test-id', status: 'completed' },
+        };
+
+        const result = handleWebhookExpress(req);
+
+        expect(result).toEqual({
+            ok: true,
+            status: 200,
+            event: { id: 'test-id', status: 'completed' },
+        });
+    });
+
+    it('should verify authentication with Express headers', () => {
+        const req = {
+            method: 'POST',
+            headers: { 'x-webhook-secret': 'my-secret' },
+            body: { id: 'test-id', status: 'completed' },
+        };
+
+        const result = handleWebhookExpress(req, {
+            name: 'X-Webhook-Secret',
+            value: 'my-secret',
+        });
+
+        expect(result.ok).toBe(true);
+    });
+
+    it('should reject wrong method', () => {
+        const req = {
+            method: 'GET',
+            headers: {},
+            body: { id: 'test-id', status: 'completed' },
+        };
+
+        const result = handleWebhookExpress(req);
+
+        expect(result.status).toBe(405);
+    });
+});
+
+describe('handleWebhookFastify', () => {
+    it('should handle Fastify-style request', () => {
+        const req = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: { id: 'test-id', status: 'error' },
+        };
+
+        const result = handleWebhookFastify(req);
+
+        expect(result).toEqual({
+            ok: true,
+            status: 200,
+            event: { id: 'test-id', status: 'error' },
+        });
+    });
+
+    it('should verify authentication with Fastify headers', () => {
+        const req = {
+            method: 'POST',
+            headers: { 'X-Auth-Token': 'secret123' },
+            body: { id: 'test-id', status: 'completed' },
+        };
+
+        const result = handleWebhookFastify(req, {
+            name: 'X-Auth-Token',
+            value: 'secret123',
+        });
+
+        expect(result.ok).toBe(true);
+    });
+});
+
+describe('handleWebhookNestJS', () => {
+    it('should handle NestJS-style request with parsed body', () => {
+        const req = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: { id: 'test-id', status: 'completed' },
+        };
+
+        const result = handleWebhookNestJS(req);
+
+        expect(result).toEqual({
+            ok: true,
+            status: 200,
+            event: { id: 'test-id', status: 'completed' },
+        });
+    });
+
+    it('should verify authentication with NestJS headers', () => {
+        const req = {
+            method: 'POST',
+            headers: { 'x-webhook-secret': 'my-secret' },
+            body: { id: 'test-id', status: 'completed' },
+        };
+
+        const result = handleWebhookNestJS(req, {
+            name: 'X-Webhook-Secret',
+            value: 'my-secret',
+        });
+
+        expect(result.ok).toBe(true);
+    });
+
+    it('should reject wrong method', () => {
+        const req = {
+            method: 'GET',
+            headers: {},
+            body: { id: 'test-id', status: 'completed' },
+        };
+
+        const result = handleWebhookNestJS(req);
+
+        expect(result.status).toBe(405);
+    });
+
+    it('should reject invalid payload', () => {
+        const req = {
+            method: 'POST',
+            headers: {},
+            body: { invalid: 'data' },
+        };
+
+        const result = handleWebhookNestJS(req);
+
+        expect(result.ok).toBe(false);
+        expect(result.status).toBe(400);
+    });
+});
+
+describe('handleWebhookHono', () => {
+    const createMockHonoContext = (options: {
+        method?: string;
+        headers?: Record<string, string>;
+        body?: unknown;
+        jsonError?: boolean;
+    }) => {
+        const { method = 'POST', headers = {}, body, jsonError = false } = options;
+        return {
+            req: {
+                method,
+                header(name: string): string | undefined {
+                    // Case-insensitive header lookup
+                    const lowerName = name.toLowerCase();
+                    for (const [key, value] of Object.entries(headers)) {
+                        if (key.toLowerCase() === lowerName) {
+                            return value;
+                        }
+                    }
+                    return undefined;
+                },
+                async json(): Promise<unknown> {
+                    if (jsonError) {
+                        throw new Error('Invalid JSON');
+                    }
+                    return body;
+                },
+            },
+        };
+    };
+
+    it('should handle Hono context with valid payload', async () => {
+        const ctx = createMockHonoContext({
+            body: { id: 'test-id', status: 'completed' },
+        });
+
+        const result = await handleWebhookHono(ctx);
+
+        expect(result).toEqual({
+            ok: true,
+            status: 200,
+            event: { id: 'test-id', status: 'completed' },
+        });
+    });
+
+    it('should verify authentication with Hono headers', async () => {
+        const ctx = createMockHonoContext({
+            headers: { 'X-Webhook-Secret': 'my-secret' },
+            body: { id: 'test-id', status: 'completed' },
+        });
+
+        const result = await handleWebhookHono(ctx, {
+            name: 'X-Webhook-Secret',
+            value: 'my-secret',
+        });
+
+        expect(result.ok).toBe(true);
+    });
+
+    it('should verify authentication case-insensitively', async () => {
+        const ctx = createMockHonoContext({
+            headers: { 'x-webhook-secret': 'my-secret' },
+            body: { id: 'test-id', status: 'completed' },
+        });
+
+        const result = await handleWebhookHono(ctx, {
+            name: 'X-Webhook-Secret',
+            value: 'my-secret',
+        });
+
+        expect(result.ok).toBe(true);
+    });
+
+    it('should reject invalid authentication', async () => {
+        const ctx = createMockHonoContext({
+            headers: { 'X-Webhook-Secret': 'wrong-secret' },
+            body: { id: 'test-id', status: 'completed' },
+        });
+
+        const result = await handleWebhookHono(ctx, {
+            name: 'X-Webhook-Secret',
+            value: 'correct-secret',
+        });
+
+        expect(result).toEqual({
+            ok: false,
+            status: 401,
+            error: 'Unauthorized',
+        });
+    });
+
+    it('should reject wrong HTTP method', async () => {
+        const ctx = createMockHonoContext({
+            method: 'GET',
+            body: { id: 'test-id', status: 'completed' },
+        });
+
+        const result = await handleWebhookHono(ctx);
+
+        expect(result).toEqual({
+            ok: false,
+            status: 405,
+            error: 'Method not allowed',
+        });
+    });
+
+    it('should return 400 for invalid JSON', async () => {
+        const ctx = createMockHonoContext({
+            jsonError: true,
+        });
+
+        const result = await handleWebhookHono(ctx);
+
+        expect(result).toEqual({
+            ok: false,
+            status: 400,
+            error: 'Invalid webhook payload: not valid JSON',
+        });
+    });
+
+    it('should return 400 for invalid payload structure', async () => {
+        const ctx = createMockHonoContext({
+            body: { wrong: 'structure' },
+        });
+
+        const result = await handleWebhookHono(ctx);
+
+        expect(result.ok).toBe(false);
+        expect(result.status).toBe(400);
+    });
+
+    it('should handle error status event', async () => {
+        const ctx = createMockHonoContext({
+            body: { id: 'test-id', status: 'error' },
+        });
+
+        const result = await handleWebhookHono(ctx);
+
+        expect(result).toEqual({
+            ok: true,
+            status: 200,
+            event: { id: 'test-id', status: 'error' },
+        });
+    });
+});

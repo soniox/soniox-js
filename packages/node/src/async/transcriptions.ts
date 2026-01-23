@@ -814,6 +814,13 @@ export class SonioxTranscriptionsAPI {
             }
         }
 
+        // Validate webhook auth header - both must be provided together or neither
+        const hasHeaderName = options.webhook_auth_header_name !== undefined;
+        const hasHeaderValue = options.webhook_auth_header_value !== undefined;
+        if (hasHeaderName !== hasHeaderValue) {
+            throw new Error('webhook_auth_header_name and webhook_auth_header_value must be provided together');
+        }
+
         let file_id = options.file_id;
 
         // If file data provided, upload first
@@ -823,6 +830,22 @@ export class SonioxTranscriptionsAPI {
                 client_reference_id: options.client_reference_id,
             });
             file_id = uploaded.id;
+        }
+
+        // Process webhook_url with optional webhook_query
+        let webhook_url = options.webhook_url;
+        if (webhook_url && options.webhook_query) {
+            const url = new URL(webhook_url);
+            const params = options.webhook_query instanceof URLSearchParams
+                ? options.webhook_query
+                : typeof options.webhook_query === 'string'
+                    ? new URLSearchParams(options.webhook_query)
+                    : new URLSearchParams(options.webhook_query);
+
+            params.forEach((value, key) => {
+                url.searchParams.append(key, value);
+            });
+            webhook_url = url.toString();
         }
 
         // Build create options (exclude file-upload specific fields)
@@ -836,7 +859,7 @@ export class SonioxTranscriptionsAPI {
             enable_speaker_diarization: options.enable_speaker_diarization,
             context: options.context,
             translation: options.translation,
-            webhook_url: options.webhook_url,
+            webhook_url,
             webhook_auth_header_name: options.webhook_auth_header_name,
             webhook_auth_header_value: options.webhook_auth_header_value,
             client_reference_id: options.client_reference_id,
@@ -845,7 +868,7 @@ export class SonioxTranscriptionsAPI {
         // Create transcription
         const transcription = await this.create(createOptions);
 
-        // Wait if requested
+        // Wait if requested (defaults to false)
         if (options.wait) {
             return transcription.wait(options.wait_options);
         }
