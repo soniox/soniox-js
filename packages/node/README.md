@@ -2,6 +2,16 @@
 
 Official Soniox SDK for Node.js - Speech-to-Text API
 
+## Contents
+
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+- [Temporary API Keys](#temporary-api-keys)
+- [Files API](#files-api)
+- [Transcriptions API](#transcriptions-api)
+- [Webhooks](#webhooks)
+- [Models API](#models-api)
+
 ## Installation
 
 ```bash
