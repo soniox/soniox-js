@@ -17,79 +17,23 @@ export type {
     QueryParams,
 } from './http.js';
 
-/**
- * Transcription mode of the model.
- */
-export type SonioxTranscriptionMode = 'real_time' | 'async';
+// Import and re-export Files API types
+export type {
+    FileIdentifier,
+    ListFilesOptions,
+    ListFilesResponse,
+    SonioxFileData,
+    UploadFileInput,
+    UploadFileOptions,
+} from './files.js';
 
-export type SonioxLanguage = {
-    /**
-     * 2-letter language code.
-     */
-    code: string;
-    /**
-     * Language name.
-     */
-    name: string;
-}
-
-export type SonioxTranslationTarget = {
-    target_language: string;
-    source_languages: string[];
-    exclude_source_languages: string[];
-}
-
-export type SonioxModel = {
-    /**
-     * Unique identifier of the model.
-     */
-    id: string;
-    /**
-     * If this is an alias, the id of the aliased model.
-     */
-    aliased_model_id: string;
-    /**
-     * Name of the model.
-     */
-    name: string;
-    /**
-     * Version of context supported.
-     */
-    context_version: number;
-    /**
-     * Transcription mode of the model.
-     */
-    transcription_mode: SonioxTranscriptionMode;
-    /**
-     * List of languages supported by the model.
-     */
-    languages: SonioxLanguage[];
-
-    /**
-     * TODO: Add documentation
-     */
-    supports_language_hints_strict: boolean;
-
-    /**
-     * List of supported one-way translation targets. If list is empty, check for one_way_translation field
-     */
-    translation_targets: SonioxTranslationTarget[];
-
-    /**
-     * List of supported two-way translation pairs. If list is empty, check for two_way_translation field
-     */
-    two_way_translation_pairs: string[];
-
-    /**
-     * When contains string 'all_languages', any laguage from languages can be used
-     */
-    one_way_translation: string;
-
-    /**
-     * When contains string 'all_languages',' any laguage pair from languages can be used
-     */
-    two_way_translation: string;
-}
+// Import and re-export Models API types
+export type {
+    SonioxLanguage,
+    SonioxModel,
+    SonioxTranscriptionMode,
+    SonioxTranslationTarget,
+} from './models.js';
 
 export type TemporaryApiKeyUsageType = 'transcribe_websocket';
 
@@ -124,113 +68,6 @@ export type TemporaryApiKeyResponse = {
      * @format date-time
      */
     expires_at: string;
-}
-
-/**
- * Raw file metadata from the API.
- */
-export type SonioxFileData = {
-    /**
-     * Unique identifier of the file.
-     * @format uuid
-     */
-    id: string;
-
-    /**
-     * Name of the file.
-     */
-    filename: string;
-
-    /**
-     * Size of the file in bytes.
-     */
-    size: number;
-
-    /**
-     * UTC timestamp indicating when the file was uploaded.
-     * @format date-time
-     */
-    created_at: string;
-
-    /**
-     * Optional tracking identifier string.
-     */
-    client_reference_id?: string | undefined;
-}
-
-/**
- * Options for listing files.
- */
-export type ListFilesOptions = {
-    /**
-     * Maximum number of files to return.
-     * @default 1000
-     * @minimum 1
-     * @maximum 1000
-     */
-    limit?: number | undefined;
-
-    /**
-     * Pagination cursor for the next page of results.
-     */
-    cursor?: string | undefined;
-}
-
-/**
- * Response from listing files.
- */
-export type ListFilesResponse<T> = {
-    /**
-     * List of uploaded files.
-     */
-    files: T[];
-
-    /**
-     * A pagination token that references the next page of results.
-     * When null, no additional results are available.
-     */
-    next_page_cursor: string | null;
-}
-
-/**
- * File identifier - either a string ID or an object with an id property.
- */
-export type FileIdentifier = string | { readonly id: string }
-
-/**
- * Supported input types for file upload
- */
-export type UploadFileInput =
-    | Buffer
-    | Uint8Array
-    | Blob
-    | ReadableStream<Uint8Array>
-    | NodeJS.ReadableStream;
-
-/**
- * Options for uploading a file
- */
-export type UploadFileOptions = {
-    /**
-     * Custom filename for the uploaded file
-     */
-    filename?: string | undefined;
-
-    /**
-     * Optional tracking identifier string. Does not need to be unique
-     * @maxLength 256
-     */
-    client_reference_id?: string | undefined;
-
-    /**
-     * AbortSignal for cancelling the upload
-     */
-    signal?: AbortSignal | undefined;
-
-    /**
-     * Request timeout in milliseconds
-     */
-    timeout_ms?: number | undefined;
 }
 
 export type SonioxNodeClientOptions = {
