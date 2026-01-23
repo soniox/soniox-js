@@ -1,7 +1,7 @@
 import { SonioxAuthAPI } from "./async/auth.js";
 import { SonioxFilesAPI } from "./async/files.js";
 import { SonioxModelsAPI } from "./async/models.js";
-import { SonioxTranscriptionsAPI } from "./async/transcribe.js";
+import { SonioxTranscriptionsAPI } from "./async/transcriptions.js";
 import { SonioxWebhooksAPI } from "./async/webhooks.js";
 import { SONIOX_API_BASE_URL } from "./constants.js";
 import { FetchHttpClient } from "./http/fetch-adapter.js";
@@ -34,7 +34,7 @@ export class SonioxNodeClient {
     });
 
     this.files = new SonioxFilesAPI(http);
-    this.transcriptions = new SonioxTranscriptionsAPI(http);
+    this.transcriptions = new SonioxTranscriptionsAPI(http, this.files);
     this.models = new SonioxModelsAPI(http);
     this.webhooks = new SonioxWebhooksAPI();
     this.auth = new SonioxAuthAPI(http);

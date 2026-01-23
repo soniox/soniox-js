@@ -35,6 +35,26 @@ export type {
     SonioxTranslationTarget,
 } from './models.js';
 
+// Import and re-export Transcriptions API types
+export type {
+    ContextGeneralEntry,
+    ContextTranslationTerm,
+    CreateTranscriptionOptions,
+    ListTranscriptionsOptions,
+    ListTranscriptionsResponse,
+    OneWayTranslationConfig,
+    SonioxTranscriptionData,
+    TranscribeOptions,
+    TranscriptionContext,
+    TranscriptionIdentifier,
+    TranscriptionStatus,
+    TranscriptResponse,
+    TranscriptToken,
+    TranslationConfig,
+    TwoWayTranslationConfig,
+    WaitOptions,
+} from './transcriptions.js';
+
 export type TemporaryApiKeyUsageType = 'transcribe_websocket';
 
 export type TemporaryApiKeyRequest = {
