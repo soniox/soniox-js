@@ -126,6 +126,77 @@ export type TemporaryApiKeyResponse = {
     expires_at: string;
 }
 
+/**
+ * Raw file metadata from the API.
+ */
+export type SonioxFileData = {
+    /**
+     * Unique identifier of the file.
+     * @format uuid
+     */
+    id: string;
+
+    /**
+     * Name of the file.
+     */
+    filename: string;
+
+    /**
+     * Size of the file in bytes.
+     */
+    size: number;
+
+    /**
+     * UTC timestamp indicating when the file was uploaded.
+     * @format date-time
+     */
+    created_at: string;
+
+    /**
+     * Optional tracking identifier string.
+     */
+    client_reference_id?: string | undefined;
+}
+
+/**
+ * Options for listing files.
+ */
+export type ListFilesOptions = {
+    /**
+     * Maximum number of files to return.
+     * @default 1000
+     * @minimum 1
+     * @maximum 1000
+     */
+    limit?: number | undefined;
+
+    /**
+     * Pagination cursor for the next page of results.
+     */
+    cursor?: string | undefined;
+}
+
+/**
+ * Response from listing files.
+ */
+export type ListFilesResponse<T> = {
+    /**
+     * List of uploaded files.
+     */
+    files: T[];
+
+    /**
+     * A pagination token that references the next page of results.
+     * When null, no additional results are available.
+     */
+    next_page_cursor: string | null;
+}
+
+/**
+ * File identifier - either a string ID or an object with an id property.
+ */
+export type FileIdentifier = string | { readonly id: string }
+
 export type SonioxNodeClientOptions = {
     /**
      * API key for authentication

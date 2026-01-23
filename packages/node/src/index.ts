@@ -13,5 +13,8 @@ export { SonioxNodeClient } from './client.js';
 // HTTP module
 export * from './http/index.js';
 
+// Files API
+export { FileListResult, SonioxFile } from './async/files.js';
+
 // Public types
 export * from './types/public/index.js';
