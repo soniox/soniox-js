@@ -47,9 +47,6 @@
     "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "@soniox/core": "*"
-  },
   "engines": {
     "node": ">=18.0.0"
   }

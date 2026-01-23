@@ -49,7 +49,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@soniox/core": "*",
     "ws": "^8.18.0"
   },
   "devDependencies": {
