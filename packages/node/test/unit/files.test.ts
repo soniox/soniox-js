@@ -384,4 +384,234 @@ describe('SonioxFilesAPI', () => {
             });
         });
     });
+
+    describe('upload()', () => {
+        const mockUploadResponse: SonioxFileData = {
+            id: 'uploaded-file-id',
+            filename: 'audio.mp3',
+            size: 12345,
+            created_at: '2024-11-26T00:00:00Z',
+            client_reference_id: undefined,
+        };
+
+        it('should upload a Buffer and return SonioxFile', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: mockUploadResponse,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const buffer = Buffer.from('test audio data');
+            const file = await api.upload(buffer);
+
+            expect(file).toBeInstanceOf(SonioxFile);
+            expect(file.id).toBe('uploaded-file-id');
+            expect(file.filename).toBe('audio.mp3');
+            expect(requestMock).toHaveBeenCalledTimes(1);
+
+            const callArgs = requestMock.mock.calls[0]?.[0];
+            expect(callArgs?.method).toBe('POST');
+            expect(callArgs?.path).toBe('/files');
+            expect(callArgs?.body).toBeInstanceOf(FormData);
+        });
+
+        it('should upload a Uint8Array', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: mockUploadResponse,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const uint8Array = new Uint8Array([1, 2, 3, 4, 5]);
+            const file = await api.upload(uint8Array);
+
+            expect(file).toBeInstanceOf(SonioxFile);
+            expect(requestMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('should upload a Blob', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: mockUploadResponse,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const blob = new Blob(['test data'], { type: 'audio/mpeg' });
+            const file = await api.upload(blob);
+
+            expect(file).toBeInstanceOf(SonioxFile);
+            expect(requestMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('should use custom filename when provided', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: { ...mockUploadResponse, filename: 'custom-name.mp3' },
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const buffer = Buffer.from('test audio data');
+            await api.upload(buffer, { filename: 'custom-name.mp3' });
+
+            const callArgs = requestMock.mock.calls[0]?.[0];
+            const formData = callArgs?.body as FormData;
+            const fileField = formData.get('file') as File;
+            expect(fileField.name).toBe('custom-name.mp3');
+        });
+
+        it('should use default filename for Buffer when not provided', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: mockUploadResponse,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const buffer = Buffer.from('test audio data');
+            await api.upload(buffer);
+
+            const callArgs = requestMock.mock.calls[0]?.[0];
+            const formData = callArgs?.body as FormData;
+            const fileField = formData.get('file') as File;
+            expect(fileField.name).toBe('file');
+        });
+
+        it('should include client_reference_id in FormData when provided', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: { ...mockUploadResponse, client_reference_id: 'my-ref-123' },
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const buffer = Buffer.from('test audio data');
+            await api.upload(buffer, { client_reference_id: 'my-ref-123' });
+
+            const callArgs = requestMock.mock.calls[0]?.[0];
+            const formData = callArgs?.body as FormData;
+            expect(formData.get('client_reference_id')).toBe('my-ref-123');
+        });
+
+        it('should not include client_reference_id when not provided', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: mockUploadResponse,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const buffer = Buffer.from('test audio data');
+            await api.upload(buffer);
+
+            const callArgs = requestMock.mock.calls[0]?.[0];
+            const formData = callArgs?.body as FormData;
+            expect(formData.get('client_reference_id')).toBeNull();
+        });
+
+        it('should throw error when client_reference_id exceeds 256 characters', async () => {
+            const requestMock = jest.fn();
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const buffer = Buffer.from('test audio data');
+            const longRefId = 'a'.repeat(257);
+
+            await expect(
+                api.upload(buffer, { client_reference_id: longRefId })
+            ).rejects.toThrow('client_reference_id exceeds maximum length of 256 characters');
+
+            expect(requestMock).not.toHaveBeenCalled();
+        });
+
+        it('should accept client_reference_id of exactly 256 characters', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: mockUploadResponse,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const buffer = Buffer.from('test audio data');
+            const maxRefId = 'a'.repeat(256);
+
+            await api.upload(buffer, { client_reference_id: maxRefId });
+
+            expect(requestMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('should pass signal option to request', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: mockUploadResponse,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const controller = new AbortController();
+            const buffer = Buffer.from('test audio data');
+            await api.upload(buffer, { signal: controller.signal });
+
+            const callArgs = requestMock.mock.calls[0]?.[0];
+            expect(callArgs?.signal).toBe(controller.signal);
+        });
+
+        it('should pass timeout_ms option to request as timeoutMs', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: mockUploadResponse,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const buffer = Buffer.from('test audio data');
+            await api.upload(buffer, { timeout_ms: 60000 });
+
+            const callArgs = requestMock.mock.calls[0]?.[0];
+            expect(callArgs?.timeoutMs).toBe(60000);
+        });
+
+        it('should not include signal and timeoutMs when not provided', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: mockUploadResponse,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const buffer = Buffer.from('test audio data');
+            await api.upload(buffer);
+
+            const callArgs = requestMock.mock.calls[0]?.[0];
+            expect(callArgs?.signal).toBeUndefined();
+            expect(callArgs?.timeoutMs).toBeUndefined();
+        });
+
+        it('should throw error for invalid input type', async () => {
+            const requestMock = jest.fn();
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            // @ts-expect-error - Testing invalid input type
+            await expect(api.upload(12345)).rejects.toThrow(
+                'Invalid file input. Expected Buffer, Uint8Array, Blob, or ReadableStream.'
+            );
+
+            expect(requestMock).not.toHaveBeenCalled();
+        });
+    });
 });
