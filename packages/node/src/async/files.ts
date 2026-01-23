@@ -42,7 +42,7 @@ export class SonioxFile {
     async delete(): Promise<void> {
         await this._http.request<null>({
             method: 'DELETE',
-            path: `/files/${this.id}`,
+            path: `/v1/files/${this.id}`,
         });
     }
 }
@@ -92,7 +92,7 @@ export class FileListResult implements AsyncIterable<SonioxFile> {
         while (cursor !== null) {
             const response = await this._http.request<ListFilesResponse<SonioxFileData>>({
                 method: 'GET',
-                path: '/files',
+                path: '/v1/files',
                 query: {
                     limit: this._limit,
                     cursor,
@@ -362,7 +362,7 @@ export class SonioxFilesAPI {
         // Build request options
         const requestOptions: Parameters<HttpClient['request']>[0] = {
             method: 'POST',
-            path: '/files',
+            path: '/v1/files',
             body: formData,
         };
 
@@ -418,7 +418,7 @@ export class SonioxFilesAPI {
     async list(options: ListFilesOptions = {}): Promise<FileListResult> {
         const response = await this.http.request<ListFilesResponse<SonioxFileData>>({
             method: 'GET',
-            path: '/files',
+            path: '/v1/files',
             query: {
                 limit: options.limit,
                 cursor: options.cursor,
@@ -445,7 +445,7 @@ export class SonioxFilesAPI {
         const file_id = getFileId(file);
         const response = await this.http.request<SonioxFileData>({
             method: 'GET',
-            path: `/files/${file_id}`,
+            path: `/v1/files/${file_id}`,
         });
         return new SonioxFile(response.data, this.http);
     }
@@ -473,7 +473,7 @@ export class SonioxFilesAPI {
         const file_id = getFileId(file);
         await this.http.request<null>({
             method: 'DELETE',
-            path: `/files/${file_id}`,
+            path: `/v1/files/${file_id}`,
         });
     }
 }

@@ -57,7 +57,7 @@ describe('SonioxFile', () => {
 
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'DELETE',
-                path: '/files/550e8400-e29b-41d4-a716-446655440000',
+                path: '/v1/files/550e8400-e29b-41d4-a716-446655440000',
             });
         });
     });
@@ -173,12 +173,12 @@ describe('FileListResult', () => {
             expect(requestMock).toHaveBeenCalledTimes(2);
             expect(requestMock).toHaveBeenNthCalledWith(1, {
                 method: 'GET',
-                path: '/files',
+                path: '/v1/files',
                 query: { limit: 10, cursor: 'cursor-page-2' },
             });
             expect(requestMock).toHaveBeenNthCalledWith(2, {
                 method: 'GET',
-                path: '/files',
+                path: '/v1/files',
                 query: { limit: 10, cursor: 'cursor-page-3' },
             });
         });
@@ -222,7 +222,7 @@ describe('SonioxFilesAPI', () => {
 
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'GET',
-                path: '/files',
+                path: '/v1/files',
                 query: { limit: undefined, cursor: undefined },
             });
         });
@@ -240,7 +240,7 @@ describe('SonioxFilesAPI', () => {
 
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'GET',
-                path: '/files',
+                path: '/v1/files',
                 query: { limit: 50, cursor: 'my-cursor' },
             });
         });
@@ -280,7 +280,7 @@ describe('SonioxFilesAPI', () => {
 
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'GET',
-                path: '/files/test-file-id',
+                path: '/v1/files/test-file-id',
             });
         });
 
@@ -302,7 +302,7 @@ describe('SonioxFilesAPI', () => {
 
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'GET',
-                path: '/files/existing-file-id',
+                path: '/v1/files/existing-file-id',
             });
         });
 
@@ -341,7 +341,7 @@ describe('SonioxFilesAPI', () => {
 
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'DELETE',
-                path: '/files/file-to-delete',
+                path: '/v1/files/file-to-delete',
             });
         });
 
@@ -363,7 +363,7 @@ describe('SonioxFilesAPI', () => {
 
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'DELETE',
-                path: '/files/file-instance-id',
+                path: '/v1/files/file-instance-id',
             });
         });
 
@@ -380,7 +380,7 @@ describe('SonioxFilesAPI', () => {
 
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'DELETE',
-                path: '/files/plain-object-id',
+                path: '/v1/files/plain-object-id',
             });
         });
     });
@@ -413,7 +413,7 @@ describe('SonioxFilesAPI', () => {
 
             const callArgs = requestMock.mock.calls[0]?.[0];
             expect(callArgs?.method).toBe('POST');
-            expect(callArgs?.path).toBe('/files');
+            expect(callArgs?.path).toBe('/v1/files');
             expect(callArgs?.body).toBeInstanceOf(FormData);
         });
 
