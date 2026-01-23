@@ -7,6 +7,12 @@
 // Re-export core types and errors
 export * from '@soniox/core';
 
+// Constants
+export * from './constants.js';
+
 // Client
 export { SonioxNodeClient } from './client.js';
-export type { SonioxNodeOptions } from './client.js';
+
+// Types
+export * from './http/client.js';
+export * from './types/public/index.js';
