@@ -197,6 +197,42 @@ export type ListFilesResponse<T> = {
  */
 export type FileIdentifier = string | { readonly id: string }
 
+/**
+ * Supported input types for file upload
+ */
+export type UploadFileInput =
+    | Buffer
+    | Uint8Array
+    | Blob
+    | ReadableStream<Uint8Array>
+    | NodeJS.ReadableStream;
+
+/**
+ * Options for uploading a file
+ */
+export type UploadFileOptions = {
+    /**
+     * Custom filename for the uploaded file
+     */
+    filename?: string | undefined;
+
+    /**
+     * Optional tracking identifier string. Does not need to be unique
+     * @maxLength 256
+     */
+    client_reference_id?: string | undefined;
+
+    /**
+     * AbortSignal for cancelling the upload
+     */
+    signal?: AbortSignal | undefined;
+
+    /**
+     * Request timeout in milliseconds
+     */
+    timeout_ms?: number | undefined;
+}
+
 export type SonioxNodeClientOptions = {
     /**
      * API key for authentication

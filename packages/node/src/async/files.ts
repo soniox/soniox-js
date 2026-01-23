@@ -4,6 +4,8 @@ import type {
     ListFilesOptions,
     ListFilesResponse,
     SonioxFileData,
+    UploadFileInput,
+    UploadFileOptions,
 } from "../types/public/index.js";
 
 /**
@@ -113,13 +115,258 @@ function getFileId(file: FileIdentifier): string {
     return typeof file === 'string' ? file : file.id;
 }
 
+/**
+ * Maximum file size allowed by the API (1 GB)
+ */
+const MAX_FILE_SIZE = 1073741824;
+
+/**
+ * Default filename when none can be inferred
+ */
+const DEFAULT_FILENAME = 'file';
+
+/**
+ * Checks if the input is a Node.js readable stream
+ */
+function isNodeReadableStream(input: unknown): input is NodeJS.ReadableStream {
+    return (
+        typeof input === 'object' &&
+        input !== null &&
+        'pipe' in input &&
+        typeof (input as NodeJS.ReadableStream).pipe === 'function'
+    );
+}
+
+/**
+ * Checks if the input is a Web ReadableStream
+ */
+function isWebReadableStream(input: unknown): input is ReadableStream<Uint8Array> {
+    return (
+        typeof input === 'object' &&
+        input !== null &&
+        'getReader' in input &&
+        typeof (input as ReadableStream).getReader === 'function'
+    );
+}
+
+/**
+ * Collects all chunks from a Node.js readable stream into a Buffer
+ */
+async function collectNodeStream(stream: NodeJS.ReadableStream): Promise<Buffer> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream as AsyncIterable<Buffer | Uint8Array | string>) {
+        if (Buffer.isBuffer(chunk)) {
+            chunks.push(chunk);
+        } else if (typeof chunk === 'string') {
+            chunks.push(Buffer.from(chunk, 'utf-8'));
+        } else {
+            // Uint8Array or other buffer-like
+            chunks.push(Buffer.from(chunk));
+        }
+    }
+    return Buffer.concat(chunks);
+}
+
+/**
+ * Collects all chunks from a Web ReadableStream into a Uint8Array
+ */
+async function collectWebStream(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalLength = 0;
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        totalLength += value.length;
+    }
+
+    const result = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+        result.set(chunk, offset);
+        offset += chunk.length;
+    }
+    return result;
+}
+
+/**
+ * Resolves the file input to a Blob and filename
+ */
+async function resolveFileInput(
+    input: UploadFileInput,
+    filenameOverride?: string,
+): Promise<{ blob: Blob; filename: string }> {
+    // Blob (includes File which has a name property)
+    if (input instanceof Blob) {
+        if (input.size > MAX_FILE_SIZE) {
+            throw new Error(
+                `File size (${input.size} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
+            );
+        }
+
+        const filename = filenameOverride ??
+            ('name' in input && typeof input.name === 'string' ? input.name : DEFAULT_FILENAME);
+
+        return {
+            blob: input,
+            filename,
+        };
+    }
+
+    // Buffer
+    if (Buffer.isBuffer(input)) {
+        if (input.length > MAX_FILE_SIZE) {
+            throw new Error(
+                `File size (${input.length} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
+            );
+        }
+
+        return {
+            blob: new Blob([input]),
+            filename: filenameOverride ?? DEFAULT_FILENAME,
+        };
+    }
+
+    // Uint8Array (but not Buffer)
+    if (input instanceof Uint8Array) {
+        if (input.length > MAX_FILE_SIZE) {
+            throw new Error(
+                `File size (${input.length} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
+            );
+        }
+
+        return {
+            blob: new Blob([input]),
+            filename: filenameOverride ?? DEFAULT_FILENAME,
+        };
+    }
+
+    // Web ReadableStream
+    if (isWebReadableStream(input)) {
+        const data = await collectWebStream(input);
+
+        if (data.length > MAX_FILE_SIZE) {
+            throw new Error(
+                `File size (${data.length} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
+            );
+        }
+
+        return {
+            blob: new Blob([data]),
+            filename: filenameOverride ?? DEFAULT_FILENAME,
+        };
+    }
+
+    // Node.js ReadableStream
+    if (isNodeReadableStream(input)) {
+        const buffer = await collectNodeStream(input);
+
+        if (buffer.length > MAX_FILE_SIZE) {
+            throw new Error(
+                `File size (${buffer.length} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
+            );
+        }
+
+        return {
+            blob: new Blob([buffer]),
+            filename: filenameOverride ?? DEFAULT_FILENAME,
+        };
+    }
+
+    throw new Error(
+        'Invalid file input. Expected Buffer, Uint8Array, Blob, or ReadableStream.'
+    );
+}
+
 export class SonioxFilesAPI {
     constructor(private http: HttpClient) {}
 
-    async upload(): Promise<void> {
-        // TODO: Implement file upload
-        void this.http;
-        throw new Error('Not implemented');
+    /**
+     * Uploads a file to Soniox for transcription
+     *
+     * @param file - Buffer, Uint8Array, Blob, or ReadableStream
+     * @param options - Upload options
+     * @returns The uploaded file metadata
+     * @throws {SonioxHttpError} On API errors
+     * @throws {Error} On validation errors (file too large, invalid input)
+     *
+     * @example Upload from file path (Node.js)
+     * ```typescript
+     * import * as fs from 'node:fs';
+     *
+     * const buffer = await fs.promises.readFile('/path/to/audio.mp3');
+     * const file = await client.files.upload(buffer, { filename: 'audio.mp3' });
+     * ```
+     *
+     * @example Upload from file path (Bun)
+     * ```typescript
+     * const file = await client.files.upload(Bun.file('/path/to/audio.mp3'));
+     * ```
+     *
+     * @example Upload with tracking ID
+     * ```typescript
+     * const file = await client.files.upload(buffer, {
+     *     filename: 'audio.mp3',
+     *     client_reference_id: 'order-12345',
+     * });
+     * ```
+     *
+     * @example Upload with cancellation
+     * ```typescript
+     * const controller = new AbortController();
+     * setTimeout(() => controller.abort(), 30000);
+     *
+     * const file = await client.files.upload(buffer, {
+     *     filename: 'audio.mp3',
+     *     signal: controller.signal,
+     * });
+     * ```
+     */
+    async upload(
+        file: UploadFileInput,
+        options: UploadFileOptions = {},
+    ): Promise<SonioxFile> {
+        const { filename, client_reference_id, signal, timeout_ms } = options;
+
+        // Validate client_reference_id length
+        if (client_reference_id !== undefined && client_reference_id.length > 256) {
+            throw new Error(
+                `client_reference_id exceeds maximum length of 256 characters (got ${client_reference_id.length})`
+            );
+        }
+
+        // Resolve the file input to a Blob and filename
+        const { blob, filename: resolvedFilename } = await resolveFileInput(file, filename);
+
+        // Build the FormData
+        const formData = new FormData();
+        formData.append('file', blob, resolvedFilename);
+
+        if (client_reference_id !== undefined) {
+            formData.append('client_reference_id', client_reference_id);
+        }
+
+        // Build request options
+        const requestOptions: Parameters<HttpClient['request']>[0] = {
+            method: 'POST',
+            path: '/files',
+            body: formData,
+        };
+
+        if (signal !== undefined) {
+            requestOptions.signal = signal;
+        }
+
+        if (timeout_ms !== undefined) {
+            requestOptions.timeoutMs = timeout_ms;
+        }
+
+        // Make the request
+        const response = await this.http.request<SonioxFileData>(requestOptions);
+
+        return new SonioxFile(response.data, this.http);
     }
 
     /**
