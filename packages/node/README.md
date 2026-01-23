@@ -54,3 +54,14 @@ await client.files.delete('file-id');
 // or
 await file.delete();
 ```
+
+## Models API
+
+List available speech recognition models:
+
+```typescript
+const models = await client.models.list();
+for (const model of models) {
+    console.log(model.id, model.name);
+}
+```
