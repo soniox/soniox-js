@@ -613,5 +613,188 @@ describe('SonioxFilesAPI', () => {
 
             expect(requestMock).not.toHaveBeenCalled();
         });
+
+        describe('stream uploads', () => {
+            it('should upload a Web ReadableStream', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: mockUploadResponse,
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const api = new SonioxFilesAPI(mockHttp);
+
+                const chunks = [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5, 6])];
+                const stream = new ReadableStream<Uint8Array>({
+                    start(controller) {
+                        for (const chunk of chunks) {
+                            controller.enqueue(chunk);
+                        }
+                        controller.close();
+                    },
+                });
+
+                const file = await api.upload(stream);
+
+                expect(file).toBeInstanceOf(SonioxFile);
+                expect(requestMock).toHaveBeenCalledTimes(1);
+            });
+
+            it('should upload a Node.js-style async iterable stream', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: mockUploadResponse,
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const api = new SonioxFilesAPI(mockHttp);
+
+                // Create a mock Node.js-style stream with pipe and async iterator
+                const chunks = [Buffer.from([1, 2, 3]), Buffer.from([4, 5, 6])];
+                const mockNodeStream = {
+                    pipe: jest.fn(),
+                    [Symbol.asyncIterator]: async function* () {
+                        for (const chunk of chunks) {
+                            yield chunk;
+                        }
+                    },
+                };
+
+                const file = await api.upload(mockNodeStream as unknown as NodeJS.ReadableStream);
+
+                expect(file).toBeInstanceOf(SonioxFile);
+                expect(requestMock).toHaveBeenCalledTimes(1);
+            });
+
+            it('should reject streams with string chunks', async () => {
+                const requestMock = jest.fn();
+                const mockHttp = createMockHttpClient(requestMock);
+                const api = new SonioxFilesAPI(mockHttp);
+
+                // Create a mock stream that yields string chunks
+                const mockNodeStream = {
+                    pipe: jest.fn(),
+                    [Symbol.asyncIterator]: async function* () {
+                        yield 'string chunk';
+                    },
+                };
+
+                await expect(
+                    api.upload(mockNodeStream as unknown as NodeJS.ReadableStream)
+                ).rejects.toThrow(
+                    'Stream returned string chunks. Use a binary stream'
+                );
+
+                expect(requestMock).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('size limit enforcement', () => {
+            it('should reject Blob exceeding MAX_FILE_SIZE', async () => {
+                const requestMock = jest.fn();
+                const mockHttp = createMockHttpClient(requestMock);
+                const api = new SonioxFilesAPI(mockHttp);
+
+                // Create a small Blob but override its size property
+                const oversizedBlob = new Blob([new ArrayBuffer(8)]);
+                Object.defineProperty(oversizedBlob, 'size', {
+                    value: 1073741825, // 1 byte over 1GB
+                });
+
+                await expect(api.upload(oversizedBlob)).rejects.toThrow(
+                    'File size (1073741825 bytes) exceeds maximum allowed size (1073741824 bytes)'
+                );
+
+                expect(requestMock).not.toHaveBeenCalled();
+            });
+
+            it('should reject Uint8Array exceeding MAX_FILE_SIZE', async () => {
+                const requestMock = jest.fn();
+                const mockHttp = createMockHttpClient(requestMock);
+                const api = new SonioxFilesAPI(mockHttp);
+
+                // Create a small Uint8Array but override its length property
+                const smallArray = new Uint8Array(8);
+                const oversizedArray = Object.create(smallArray, {
+                    length: { value: 1073741825 },
+                });
+
+                await expect(api.upload(oversizedArray)).rejects.toThrow(
+                    'File size (1073741825 bytes) exceeds maximum allowed size (1073741824 bytes)'
+                );
+
+                expect(requestMock).not.toHaveBeenCalled();
+            });
+
+            it('should abort Node.js stream early when size exceeds limit', async () => {
+                const requestMock = jest.fn();
+                const mockHttp = createMockHttpClient(requestMock);
+                const api = new SonioxFilesAPI(mockHttp);
+
+                // Track how many chunks were consumed
+                let chunksConsumed = 0;
+
+                // Use small actual buffers but mock length to simulate large chunks
+                const createLargeChunk = () => {
+                    const buf = Buffer.alloc(8);
+                    Object.defineProperty(buf, 'length', { value: 500 * 1024 * 1024 }); // 500MB
+                    return buf;
+                };
+
+                const mockNodeStream = {
+                    pipe: jest.fn(),
+                    [Symbol.asyncIterator]: async function* () {
+                        while (chunksConsumed < 10) {
+                            chunksConsumed++;
+                            yield createLargeChunk();
+                        }
+                    },
+                };
+
+                await expect(
+                    api.upload(mockNodeStream as unknown as NodeJS.ReadableStream)
+                ).rejects.toThrow(
+                    'File size exceeds maximum allowed size (1073741824 bytes)'
+                );
+
+                // Should abort after 3 chunks (3 * 500MB = 1.5GB > 1GB limit)
+                expect(chunksConsumed).toBe(3);
+                expect(requestMock).not.toHaveBeenCalled();
+            });
+
+            it('should abort Web ReadableStream early when size exceeds limit', async () => {
+                const requestMock = jest.fn();
+                const mockHttp = createMockHttpClient(requestMock);
+                const api = new SonioxFilesAPI(mockHttp);
+
+                // Use small actual arrays but mock length to simulate large chunks
+                const createLargeChunk = () => {
+                    const arr = new Uint8Array(8);
+                    Object.defineProperty(arr, 'length', { value: 500 * 1024 * 1024 }); // 500MB
+                    return arr;
+                };
+
+                let chunksRead = 0;
+                const stream = new ReadableStream<Uint8Array>({
+                    pull(controller) {
+                        chunksRead++;
+                        if (chunksRead <= 10) {
+                            controller.enqueue(createLargeChunk());
+                        } else {
+                            controller.close();
+                        }
+                    },
+                });
+
+                await expect(api.upload(stream)).rejects.toThrow(
+                    'File size exceeds maximum allowed size (1073741824 bytes)'
+                );
+
+                // Should abort early, not read all 10 chunks
+                // (pull-based streams may buffer 1 chunk ahead, so 3-4 is expected)
+                expect(chunksRead).toBeLessThanOrEqual(4);
+                expect(requestMock).not.toHaveBeenCalled();
+            });
+        });
     });
 });

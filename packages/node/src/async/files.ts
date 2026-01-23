@@ -126,14 +126,15 @@ const MAX_FILE_SIZE = 1073741824;
 const DEFAULT_FILENAME = 'file';
 
 /**
- * Checks if the input is a Node.js readable stream
+ * Checks if the input is an async-iterable Node.js readable stream
  */
 function isNodeReadableStream(input: unknown): input is NodeJS.ReadableStream {
     return (
         typeof input === 'object' &&
         input !== null &&
         'pipe' in input &&
-        typeof (input as NodeJS.ReadableStream).pipe === 'function'
+        typeof (input as NodeJS.ReadableStream).pipe === 'function' &&
+        Symbol.asyncIterator in input
     );
 }
 
@@ -150,36 +151,60 @@ function isWebReadableStream(input: unknown): input is ReadableStream<Uint8Array
 }
 
 /**
- * Collects all chunks from a Node.js readable stream into a Buffer
+ * Collects chunks from a Node.js readable stream into a Buffer
+ * Aborts early if size exceeds MAX_FILE_SIZE to prevent OOM
  */
 async function collectNodeStream(stream: NodeJS.ReadableStream): Promise<Buffer> {
     const chunks: Buffer[] = [];
+    let totalLength = 0;
+
     for await (const chunk of stream as AsyncIterable<Buffer | Uint8Array | string>) {
-        if (Buffer.isBuffer(chunk)) {
-            chunks.push(chunk);
-        } else if (typeof chunk === 'string') {
-            chunks.push(Buffer.from(chunk, 'utf-8'));
-        } else {
-            // Uint8Array or other buffer-like
-            chunks.push(Buffer.from(chunk));
+        if (typeof chunk === 'string') {
+            throw new Error(
+                'Stream returned string chunks. Use a binary stream (e.g., fs.createReadStream without encoding option).'
+            );
         }
+
+        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+
+        totalLength += buf.length;
+        if (totalLength > MAX_FILE_SIZE) {
+            throw new Error(
+                `File size exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
+            );
+        }
+
+        chunks.push(buf);
     }
+
     return Buffer.concat(chunks);
 }
 
 /**
- * Collects all chunks from a Web ReadableStream into a Uint8Array
+ * Collects chunks from a Web ReadableStream into a Uint8Array
+ * Aborts early if size exceeds MAX_FILE_SIZE to prevent OOM
  */
 async function collectWebStream(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
     const reader = stream.getReader();
     const chunks: Uint8Array[] = [];
     let totalLength = 0;
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        totalLength += value.length;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            totalLength += value.length;
+            if (totalLength > MAX_FILE_SIZE) {
+                throw new Error(
+                    `File size exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
+                );
+            }
+
+            chunks.push(value);
+        }
+    } finally {
+        reader.releaseLock();
     }
 
     const result = new Uint8Array(totalLength);
@@ -246,13 +271,6 @@ async function resolveFileInput(
     // Web ReadableStream
     if (isWebReadableStream(input)) {
         const data = await collectWebStream(input);
-
-        if (data.length > MAX_FILE_SIZE) {
-            throw new Error(
-                `File size (${data.length} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
-            );
-        }
-
         return {
             blob: new Blob([data]),
             filename: filenameOverride ?? DEFAULT_FILENAME,
@@ -262,13 +280,6 @@ async function resolveFileInput(
     // Node.js ReadableStream
     if (isNodeReadableStream(input)) {
         const buffer = await collectNodeStream(input);
-
-        if (buffer.length > MAX_FILE_SIZE) {
-            throw new Error(
-                `File size (${buffer.length} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`
-            );
-        }
-
         return {
             blob: new Blob([buffer]),
             filename: filenameOverride ?? DEFAULT_FILENAME,
