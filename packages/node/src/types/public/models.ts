@@ -26,9 +26,9 @@ export type SonioxModel = {
      */
     id: string;
     /**
-     * If this is an alias, the id of the aliased model.
+     * If this is an alias, the id of the aliased model. Null for non-alias models.
      */
-    aliased_model_id: string;
+    aliased_model_id: string | null;
     /**
      * Name of the model.
      */
