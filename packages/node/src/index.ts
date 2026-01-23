@@ -10,6 +10,8 @@ export * from './constants.js';
 // Client
 export { SonioxNodeClient } from './client.js';
 
-// Types
-export * from './http/client.js';
+// HTTP module
+export * from './http/index.js';
+
+// Public types
 export * from './types/public/index.js';

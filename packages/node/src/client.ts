@@ -1,18 +1,11 @@
-import { SonioxAuthAPI } from "./async/auth";
-import { SonioxFilesAPI } from "./async/files";
-import { SonioxTranscribeAPI } from "./async/transcribe";
-import { SonioxWebhooksAPI } from "./async/webhooks";
-import { SONIOX_API_BASE_URL } from "./constants";
-import type { HttpClient } from "./http/client";
-import { FetchHttpClient } from "./http/fetch-adapter";
-import { SonioxRealtimeAPI } from "./realtime";
-
-export interface SonioxNodeClientOptions {
-  apiKey: string;
-
-  baseURL?: string;
-  httpClient?: HttpClient;
-}
+import { SonioxAuthAPI } from "./async/auth.js";
+import { SonioxFilesAPI } from "./async/files.js";
+import { SonioxTranscribeAPI } from "./async/transcribe.js";
+import { SonioxWebhooksAPI } from "./async/webhooks.js";
+import { SONIOX_API_BASE_URL } from "./constants.js";
+import { FetchHttpClient } from "./http/fetch-adapter.js";
+import { SonioxRealtimeAPI } from "./realtime/index.js";
+import type { SonioxNodeClientOptions } from "./types/public/index.js";
 
 export class SonioxNodeClient {
   readonly files: SonioxFilesAPI;
@@ -21,11 +14,21 @@ export class SonioxNodeClient {
   readonly auth: SonioxAuthAPI;
   readonly realtime: SonioxRealtimeAPI;
 
-  constructor(options: SonioxNodeClientOptions) {
-    const baseURL = options.baseURL ?? SONIOX_API_BASE_URL;
+  constructor(options: SonioxNodeClientOptions = {}) {
+    const apiKey = options.apiKey ?? process.env['SONIOX_API_KEY'];
+    if (!apiKey) {
+      throw new Error(
+        'Missing API key. Provide it via options.apiKey or set the SONIOX_API_KEY environment variable.'
+      );
+    }
+
+    const baseURL = options.baseURL ?? process.env['SONIOX_API_BASE_URL'] ?? SONIOX_API_BASE_URL;
     const http = options.httpClient ?? new FetchHttpClient({
-      'Authorization': `Bearer ${options.apiKey}`,
-      'Content-Type': 'application/json',
+      baseUrl: baseURL,
+      defaultHeaders: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
     });
 
     this.files = new SonioxFilesAPI(http);

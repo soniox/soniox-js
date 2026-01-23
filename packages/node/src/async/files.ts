@@ -1,17 +1,26 @@
-import type { HttpClient } from "src/http/client";
+import type { HttpClient } from "../http/client.js";
 
 export class SonioxFilesAPI {
-    constructor(private http: HttpClient) {
+    constructor(private http: HttpClient) {}
 
+    async upload(): Promise<void> {
+        // TODO: Implement file upload
+        void this.http;
+        throw new Error('Not implemented');
     }
 
-    async upload() {}
+    async list(): Promise<void> {
+        // TODO: Implement file listing
+        throw new Error('Not implemented');
+    }
 
-    async list() {}
+    async get(): Promise<void> {
+        // TODO: Implement file retrieval
+        throw new Error('Not implemented');
+    }
 
-    async get() {}
-
-    async delete() {}
-
-    private async prepareFormData() {}
+    async delete(): Promise<void> {
+        // TODO: Implement file deletion
+        throw new Error('Not implemented');
+    }
 }

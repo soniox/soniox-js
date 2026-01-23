@@ -1,4 +1,21 @@
-import type { HttpClient } from "src/http/client";
+// Import and re-export HTTP types
+import type { HttpClient } from './http.js';
+
+export type {
+    HttpClient,
+    HttpClientOptions,
+    HttpErrorCode,
+    HttpErrorDetails,
+    HttpMethod,
+    HttpObservabilityHooks,
+    HttpRequest,
+    HttpRequestBody,
+    HttpRequestMeta,
+    HttpResponse,
+    HttpResponseMeta,
+    HttpResponseType,
+    QueryParams,
+} from './http.js';
 
 /**
  * Transcription mode of the model.
@@ -52,7 +69,7 @@ export type SonioxModel = {
      * TODO: Add documentation
      */
     supports_language_hints_strict: boolean;
-    
+
     /**
      * List of supported one-way translation targets. If list is empty, check for one_way_translation field
      */
@@ -83,17 +100,17 @@ export type TemporaryApiKeyRequest = {
     usage_type: TemporaryApiKeyUsageType;
 
     /**
-     * Duration in seconds until the temporary API key expires.
+     * Duration in seconds until the temporary API key expires
      * @minimum 1
      * @maximum 3600
      */
     expires_in_seconds: number;
 
     /**
-     * Optional tracking identifier string. Does not need to be unique.
+     * Optional tracking identifier string. Does not need to be unique
      * @maxLength 255
      */
-    client_reference_id: string;
+    client_reference_id?: string;
 }
 
 export type TemporaryApiKeyResponse = {
@@ -103,15 +120,28 @@ export type TemporaryApiKeyResponse = {
     api_key: string;
 
     /**
-     * UTC timestamp indicating when generated temporary API key will expire.
+     * UTC timestamp indicating when generated temporary API key will expire
      * @format date-time
      */
     expires_at: string;
 }
 
 export type SonioxNodeClientOptions = {
-    apiKey: string;
-  
+    /**
+     * API key for authentication
+     * Falls back to SONIOX_API_KEY environment variable if not provided
+     */
+    apiKey?: string;
+
+    /**
+     * Base URL for the API
+     * Falls back to SONIOX_API_BASE_URL environment variable,
+     * then to 'https://api.soniox.com'.
+     */
     baseURL?: string;
+
+    /**
+     * Custom HTTP client implementation
+     */
     httpClient?: HttpClient;
-  }
+}
