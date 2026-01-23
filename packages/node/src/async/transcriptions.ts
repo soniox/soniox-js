@@ -1,4 +1,5 @@
 import type { HttpClient } from "../http/client.js";
+import { isSonioxHttpError } from "../http/errors.js";
 import type {
     CreateTranscriptionOptions,
     ListTranscriptionsOptions,
@@ -12,6 +13,13 @@ import type {
 } from "../types/public/index.js";
 
 import type { SonioxFilesAPI } from "./files.js";
+
+/**
+ * Checks if an error is a 404 Not Found error
+ */
+function isNotFoundError(error: unknown): boolean {
+    return isSonioxHttpError(error) && error.status === 404;
+}
 
 /**
  * Minimum polling interval in ms
@@ -212,7 +220,9 @@ export class SonioxTranscription {
 
     /**
      * Permanently deletes this transcription.
-     * @throws {SonioxHttpError}
+     * This operation is idempotent - succeeds even if the transcription doesn't exist.
+     *
+     * @throws {SonioxHttpError} On API errors (except 404)
      *
      * @example
      * ```typescript
@@ -221,35 +231,86 @@ export class SonioxTranscription {
      * ```
      */
     async delete(): Promise<void> {
-        await this._http.request<null>({
-            method: 'DELETE',
-            path: `/v1/transcriptions/${this.id}`,
-        });
+        try {
+            await this._http.request<null>({
+                method: 'DELETE',
+                path: `/v1/transcriptions/${this.id}`,
+            });
+        } catch (error) {
+            if (!isNotFoundError(error)) {
+                throw error;
+            }
+        }
+    }
+
+    /**
+     * Permanently deletes this transcription and its associated file (if any).
+     * This operation is idempotent - succeeds even if resources don't exist.
+     *
+     * @throws {SonioxHttpError} On API errors (except 404)
+     *
+     * @example
+     * ```typescript
+     * // Clean up both transcription and uploaded file
+     * const transcription = await client.transcriptions.transcribe({
+     *     model: 'soniox-precision',
+     *     file: buffer,
+     *     wait: true,
+     * });
+     * // ... use transcription ...
+     * await transcription.destroy(); // Deletes both transcription and file
+     * ```
+     */
+    async destroy(): Promise<void> {
+        // Delete the transcription first
+        await this.delete();
+
+        // Delete the associated file if present
+        if (this.file_id) {
+            try {
+                await this._http.request<null>({
+                    method: 'DELETE',
+                    path: `/v1/files/${this.file_id}`,
+                });
+            } catch (error) {
+                if (!isNotFoundError(error)) {
+                    throw error;
+                }
+            }
+        }
     }
 
     /**
      * Retrieves the full transcript text and tokens for this transcription.
      * Only available for successfully completed transcriptions.
      *
-     * @returns The transcript with text and detailed tokens.
-     * @throws {SonioxHttpError} On API errors (including if transcription is not completed).
+     * @returns The transcript with text and detailed tokens, or null if not found.
+     * @throws {SonioxHttpError} On API errors (except 404).
      *
      * @example
      * ```typescript
      * const transcription = await client.transcriptions.get('550e8400-e29b-41d4-a716-446655440000');
-     * const transcript = await transcription.getTranscript();
-     * console.log(transcript.text);
-     * for (const token of transcript.tokens) {
-     *     console.log(token.text, token.start_ms, token.end_ms, token.confidence);
+     * if (transcription) {
+     *     const transcript = await transcription.getTranscript();
+     *     if (transcript) {
+     *         console.log(transcript.text);
+     *     }
      * }
      * ```
      */
-    async getTranscript(): Promise<TranscriptResponse> {
-        const response = await this._http.request<TranscriptResponse>({
-            method: 'GET',
-            path: `/v1/transcriptions/${this.id}/transcript`,
-        });
-        return response.data;
+    async getTranscript(): Promise<TranscriptResponse | null> {
+        try {
+            const response = await this._http.request<TranscriptResponse>({
+                method: 'GET',
+                path: `/v1/transcriptions/${this.id}/transcript`,
+            });
+            return response.data;
+        } catch (error) {
+            if (isNotFoundError(error)) {
+                return null;
+            }
+            throw error;
+        }
     }
 
     /**
@@ -520,29 +581,39 @@ export class SonioxTranscriptionsAPI {
      * Retrieves a transcription by ID
      *
      * @param id - The UUID of the transcription or a SonioxTranscription instance.
-     * @returns The transcription.
-     * @throws {SonioxHttpError} On API errors.
+     * @returns The transcription, or null if not found.
+     * @throws {SonioxHttpError} On API errors (except 404).
      *
      * @example
      * ```typescript
      * const transcription = await client.transcriptions.get('550e8400-e29b-41d4-a716-446655440000');
-     * console.log(transcription.status, transcription.model);
+     * if (transcription) {
+     *     console.log(transcription.status, transcription.model);
+     * }
      * ```
      */
-    async get(id: TranscriptionIdentifier): Promise<SonioxTranscription> {
+    async get(id: TranscriptionIdentifier): Promise<SonioxTranscription | null> {
         const transcription_id = getTranscriptionId(id);
-        const response = await this.http.request<SonioxTranscriptionData>({
-            method: 'GET',
-            path: `/v1/transcriptions/${transcription_id}`,
-        });
-        return new SonioxTranscription(response.data, this.http);
+        try {
+            const response = await this.http.request<SonioxTranscriptionData>({
+                method: 'GET',
+                path: `/v1/transcriptions/${transcription_id}`,
+            });
+            return new SonioxTranscription(response.data, this.http);
+        } catch (error) {
+            if (isNotFoundError(error)) {
+                return null;
+            }
+            throw error;
+        }
     }
 
     /**
-     * Permanently deletes a transcription
+     * Permanently deletes a transcription.
+     * This operation is idempotent - succeeds even if the transcription doesn't exist.
      *
      * @param id - The UUID of the transcription or a SonioxTranscription instance
-     * @throws {SonioxHttpError} On API errors
+     * @throws {SonioxHttpError} On API errors (except 404)
      *
      * @example
      * ```typescript
@@ -551,45 +622,104 @@ export class SonioxTranscriptionsAPI {
      *
      * // Or delete a transcription instance
      * const transcription = await client.transcriptions.get('550e8400-e29b-41d4-a716-446655440000');
-     * await client.transcriptions.delete(transcription);
-     *
-     * // Or just use the instance method
-     * await transcription.delete();
+     * if (transcription) {
+     *     await client.transcriptions.delete(transcription);
+     * }
      * ```
      */
     async delete(id: TranscriptionIdentifier): Promise<void> {
         const transcription_id = getTranscriptionId(id);
-        await this.http.request<null>({
-            method: 'DELETE',
-            path: `/v1/transcriptions/${transcription_id}`,
-        });
+        try {
+            await this.http.request<null>({
+                method: 'DELETE',
+                path: `/v1/transcriptions/${transcription_id}`,
+            });
+        } catch (error) {
+            if (!isNotFoundError(error)) {
+                throw error;
+            }
+        }
     }
 
     /**
-     * Retrieves the full transcript text and tokens for a completed transcription
-     * Only available for successfully completed transcriptions
+     * Permanently deletes a transcription and its associated file (if any).
+     * This operation is idempotent - succeeds even if resources don't exist.
      *
      * @param id - The UUID of the transcription or a SonioxTranscription instance
-     * @returns The transcript with text and detailed tokens
-     * @throws {SonioxHttpError} On API errors (including if transcription is not completed)
+     * @throws {SonioxHttpError} On API errors (except 404)
+     *
+     * @example
+     * ```typescript
+     * // Clean up both transcription and uploaded file
+     * const transcription = await client.transcriptions.transcribe({
+     *     model: 'soniox-precision',
+     *     file: buffer,
+     *     wait: true,
+     * });
+     * // ... use transcription ...
+     * await client.transcriptions.destroy(transcription); // Deletes both
+     *
+     * // Or by ID
+     * await client.transcriptions.destroy('550e8400-e29b-41d4-a716-446655440000');
+     * ```
+     */
+    async destroy(id: TranscriptionIdentifier): Promise<void> {
+        // Get the full transcription to access file_id
+        const transcription = await this.get(id);
+
+        // If transcription doesn't exist, nothing to do
+        if (!transcription) {
+            return;
+        }
+
+        // Delete transcription first
+        await this.delete(transcription);
+
+        // Delete the associated file if present (ignore 404)
+        if (transcription.file_id) {
+            try {
+                await this.filesApi.delete(transcription.file_id);
+            } catch (error) {
+                if (!isNotFoundError(error)) {
+                    throw error;
+                }
+            }
+        }
+    }
+
+    /**
+     * Retrieves the full transcript text and tokens for a completed transcription.
+     * Only available for successfully completed transcriptions.
+     *
+     * @param id - The UUID of the transcription or a SonioxTranscription instance
+     * @returns The transcript with text and detailed tokens, or null if not found
+     * @throws {SonioxHttpError} On API errors (except 404)
      *
      * @example
      * ```typescript
      * const transcript = await client.transcriptions.getTranscript('550e8400-e29b-41d4-a716-446655440000');
-     * console.log(transcript.text);
-     *
-     * for (const token of transcript.tokens) {
-     *     console.log(token.text, token.start_ms, token.end_ms, token.confidence);
+     * if (transcript) {
+     *     console.log(transcript.text);
+     *     for (const token of transcript.tokens) {
+     *         console.log(token.text, token.start_ms, token.end_ms, token.confidence);
+     *     }
      * }
      * ```
      */
-    async getTranscript(id: TranscriptionIdentifier): Promise<TranscriptResponse> {
+    async getTranscript(id: TranscriptionIdentifier): Promise<TranscriptResponse | null> {
         const transcription_id = getTranscriptionId(id);
-        const response = await this.http.request<TranscriptResponse>({
-            method: 'GET',
-            path: `/v1/transcriptions/${transcription_id}/transcript`,
-        });
-        return response.data;
+        try {
+            const response = await this.http.request<TranscriptResponse>({
+                method: 'GET',
+                path: `/v1/transcriptions/${transcription_id}/transcript`,
+            });
+            return response.data;
+        } catch (error) {
+            if (isNotFoundError(error)) {
+                return null;
+            }
+            throw error;
+        }
     }
 
     /**
@@ -614,6 +744,9 @@ export class SonioxTranscriptionsAPI {
      */
     async wait(id: TranscriptionIdentifier, options?: WaitOptions): Promise<SonioxTranscription> {
         const transcription = await this.get(id);
+        if (!transcription) {
+            throw new Error(`Transcription not found: ${getTranscriptionId(id)}`);
+        }
         return transcription.wait(options);
     }
 

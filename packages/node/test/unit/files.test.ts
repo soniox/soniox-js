@@ -1,6 +1,18 @@
 import { FileListResult, SonioxFile, SonioxFilesAPI } from '../../src/async/files';
+import { SonioxHttpError } from '../../src/http/errors';
 import type { HttpClient, HttpRequest, HttpResponse } from '../../src/http';
 import type { ListFilesResponse, SonioxFileData } from '../../src/types/public';
+
+// Helper to create a mock 404 error
+const createMock404Error = () => new SonioxHttpError({
+    code: 'http_error',
+    message: 'HTTP 404',
+    url: 'https://api.soniox.com/v1/files/test',
+    method: 'GET',
+    status: 404,
+    headers: {},
+    bodyText: 'Not found',
+});
 
 // Helper to create mock file data
 const createMockFileData = (overrides: Partial<SonioxFileData> = {}): SonioxFileData => ({
@@ -59,6 +71,14 @@ describe('SonioxFile', () => {
                 method: 'DELETE',
                 path: '/v1/files/550e8400-e29b-41d4-a716-446655440000',
             });
+        });
+
+        it('should succeed silently on 404 (idempotent)', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const file = new SonioxFile(createMockFileData(), mockHttp);
+
+            await expect(file.delete()).resolves.toBeUndefined();
         });
     });
 });
@@ -322,8 +342,18 @@ describe('SonioxFilesAPI', () => {
             const file = await api.get('returned-id');
 
             expect(file).toBeInstanceOf(SonioxFile);
-            expect(file.id).toBe('returned-id');
-            expect(file.filename).toBe('returned-file.mp3');
+            expect(file?.id).toBe('returned-id');
+            expect(file?.filename).toBe('returned-file.mp3');
+        });
+
+        it('should return null on 404', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            const file = await api.get('non-existent-id');
+
+            expect(file).toBeNull();
         });
     });
 
@@ -382,6 +412,14 @@ describe('SonioxFilesAPI', () => {
                 method: 'DELETE',
                 path: '/v1/files/plain-object-id',
             });
+        });
+
+        it('should succeed silently on 404 (idempotent)', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const api = new SonioxFilesAPI(mockHttp);
+
+            await expect(api.delete('non-existent-id')).resolves.toBeUndefined();
         });
     });
 

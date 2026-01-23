@@ -1,4 +1,5 @@
 import type { HttpClient } from "../http/client.js";
+import { isSonioxHttpError } from "../http/errors.js";
 import type {
     FileIdentifier,
     ListFilesOptions,
@@ -7,6 +8,13 @@ import type {
     UploadFileInput,
     UploadFileOptions,
 } from "../types/public/index.js";
+
+/**
+ * Checks if an error is a 404 Not Found error
+ */
+function isNotFoundError(error: unknown): boolean {
+    return isSonioxHttpError(error) && error.status === 404;
+}
 
 /**
  * Uploaded file
@@ -30,20 +38,30 @@ export class SonioxFile {
     }
 
     /**
-     * Permanently deletes this file
-     * @throws {SonioxHttpError}
+     * Permanently deletes this file.
+     * This operation is idempotent - succeeds even if the file doesn't exist.
+     *
+     * @throws {SonioxHttpError} On API errors (except 404)
      *
      * @example
      * ```typescript
      * const file = await client.files.get('550e8400-e29b-41d4-a716-446655440000');
-     * await file.delete();
+     * if (file) {
+     *     await file.delete();
+     * }
      * ```
      */
     async delete(): Promise<void> {
-        await this._http.request<null>({
-            method: 'DELETE',
-            path: `/v1/files/${this.id}`,
-        });
+        try {
+            await this._http.request<null>({
+                method: 'DELETE',
+                path: `/v1/files/${this.id}`,
+            });
+        } catch (error) {
+            if (!isNotFoundError(error)) {
+                throw error;
+            }
+        }
     }
 }
 
@@ -432,29 +450,39 @@ export class SonioxFilesAPI {
      * Retrieve metadata for an uploaded file.
      *
      * @param file - The UUID of the file or a SonioxFile instance
-     * @returns The file instance
-     * @throws {SonioxHttpError}
+     * @returns The file instance, or null if not found
+     * @throws {SonioxHttpError} On API errors (except 404)
      *
      * @example
      * ```typescript
      * const file = await client.files.get('550e8400-e29b-41d4-a716-446655440000');
-     * console.log(file.filename, file.size);
+     * if (file) {
+     *     console.log(file.filename, file.size);
+     * }
      * ```
      */
-    async get(file: FileIdentifier): Promise<SonioxFile> {
+    async get(file: FileIdentifier): Promise<SonioxFile | null> {
         const file_id = getFileId(file);
-        const response = await this.http.request<SonioxFileData>({
-            method: 'GET',
-            path: `/v1/files/${file_id}`,
-        });
-        return new SonioxFile(response.data, this.http);
+        try {
+            const response = await this.http.request<SonioxFileData>({
+                method: 'GET',
+                path: `/v1/files/${file_id}`,
+            });
+            return new SonioxFile(response.data, this.http);
+        } catch (error) {
+            if (isNotFoundError(error)) {
+                return null;
+            }
+            throw error;
+        }
     }
 
     /**
-     * Permanently deletes a file
+     * Permanently deletes a file.
+     * This operation is idempotent - succeeds even if the file doesn't exist.
      *
      * @param file - The UUID of the file or a SonioxFile instance
-     * @throws {SonioxHttpError}
+     * @throws {SonioxHttpError} On API errors (except 404)
      *
      * @example
      * ```typescript
@@ -463,7 +491,9 @@ export class SonioxFilesAPI {
      *
      * // Or delete a file instance
      * const file = await client.files.get('550e8400-e29b-41d4-a716-446655440000');
-     * await client.files.delete(file);
+     * if (file) {
+     *     await client.files.delete(file);
+     * }
      *
      * // Or just use the instance method
      * await file.delete();
@@ -471,9 +501,15 @@ export class SonioxFilesAPI {
      */
     async delete(file: FileIdentifier): Promise<void> {
         const file_id = getFileId(file);
-        await this.http.request<null>({
-            method: 'DELETE',
-            path: `/v1/files/${file_id}`,
-        });
+        try {
+            await this.http.request<null>({
+                method: 'DELETE',
+                path: `/v1/files/${file_id}`,
+            });
+        } catch (error) {
+            if (!isNotFoundError(error)) {
+                throw error;
+            }
+        }
     }
 }

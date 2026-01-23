@@ -4,12 +4,24 @@ import {
     TranscriptionListResult,
 } from '../../src/async/transcriptions';
 import { SonioxFile, SonioxFilesAPI } from '../../src/async/files';
+import { SonioxHttpError } from '../../src/http/errors';
 import type { HttpClient } from '../../src/http';
 import type {
     ListTranscriptionsResponse,
     SonioxTranscriptionData,
     SonioxFileData,
 } from '../../src/types/public';
+
+// Helper to create a mock 404 error
+const createMock404Error = () => new SonioxHttpError({
+    code: 'http_error',
+    message: 'HTTP 404',
+    url: 'https://api.soniox.com/v1/transcriptions/test',
+    method: 'GET',
+    status: 404,
+    headers: {},
+    bodyText: 'Not found',
+});
 
 // Helper to create mock transcription data
 const createMockTranscriptionData = (
@@ -95,6 +107,88 @@ describe('SonioxTranscription', () => {
                 path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000',
             });
         });
+
+        it('should succeed silently on 404 (idempotent)', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(createMockTranscriptionData(), mockHttp);
+
+            await expect(transcription.delete()).resolves.toBeUndefined();
+        });
+    });
+
+    describe('destroy()', () => {
+        it('should delete transcription and file when file_id exists', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 204,
+                headers: {},
+                data: null,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(
+                createMockTranscriptionData({ file_id: 'file-123' }),
+                mockHttp
+            );
+
+            await transcription.destroy();
+
+            expect(requestMock).toHaveBeenCalledTimes(2);
+            expect(requestMock).toHaveBeenNthCalledWith(1, {
+                method: 'DELETE',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000',
+            });
+            expect(requestMock).toHaveBeenNthCalledWith(2, {
+                method: 'DELETE',
+                path: '/v1/files/file-123',
+            });
+        });
+
+        it('should only delete transcription when no file_id', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 204,
+                headers: {},
+                data: null,
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(
+                createMockTranscriptionData({ audio_url: 'https://example.com/audio.mp3' }),
+                mockHttp
+            );
+
+            await transcription.destroy();
+
+            expect(requestMock).toHaveBeenCalledTimes(1);
+            expect(requestMock).toHaveBeenCalledWith({
+                method: 'DELETE',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000',
+            });
+        });
+
+        it('should succeed when transcription returns 404 (idempotent)', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(
+                createMockTranscriptionData({ file_id: 'file-123' }),
+                mockHttp
+            );
+
+            // Should not throw, and should still try to delete file
+            await expect(transcription.destroy()).resolves.toBeUndefined();
+            expect(requestMock).toHaveBeenCalledTimes(2);
+        });
+
+        it('should succeed when file returns 404 (idempotent)', async () => {
+            const requestMock = jest.fn()
+                .mockResolvedValueOnce({ status: 204, headers: {}, data: null })
+                .mockRejectedValueOnce(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(
+                createMockTranscriptionData({ file_id: 'file-123' }),
+                mockHttp
+            );
+
+            await expect(transcription.destroy()).resolves.toBeUndefined();
+        });
     });
 
     describe('refresh()', () => {
@@ -119,6 +213,36 @@ describe('SonioxTranscription', () => {
             expect(refreshed).toBeInstanceOf(SonioxTranscription);
             expect(refreshed.status).toBe('completed');
             expect(refreshed).not.toBe(transcription);
+        });
+    });
+
+    describe('getTranscript()', () => {
+        it('should fetch transcript from correct endpoint', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 200,
+                headers: {},
+                data: { id: 'trans-id', text: 'Hello world', tokens: [] },
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(createMockTranscriptionData(), mockHttp);
+
+            const transcript = await transcription.getTranscript();
+
+            expect(requestMock).toHaveBeenCalledWith({
+                method: 'GET',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000/transcript',
+            });
+            expect(transcript?.text).toBe('Hello world');
+        });
+
+        it('should return null on 404', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(createMockTranscriptionData(), mockHttp);
+
+            const transcript = await transcription.getTranscript();
+
+            expect(transcript).toBeNull();
         });
     });
 
@@ -617,8 +741,19 @@ describe('SonioxTranscriptionsAPI', () => {
             const transcription = await api.get('returned-id');
 
             expect(transcription).toBeInstanceOf(SonioxTranscription);
-            expect(transcription.id).toBe('returned-id');
-            expect(transcription.status).toBe('completed');
+            expect(transcription?.id).toBe('returned-id');
+            expect(transcription?.status).toBe('completed');
+        });
+
+        it('should return null on 404', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            const transcription = await api.get('non-existent-id');
+
+            expect(transcription).toBeNull();
         });
     });
 
@@ -662,6 +797,152 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'DELETE',
                 path: '/v1/transcriptions/transcription-instance-id',
             });
+        });
+
+        it('should succeed silently on 404 (idempotent)', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            await expect(api.delete('non-existent-id')).resolves.toBeUndefined();
+        });
+    });
+
+    describe('destroy()', () => {
+        it('should delete transcription and file when file_id exists', async () => {
+            const requestMock = jest.fn()
+                .mockResolvedValueOnce({
+                    status: 200,
+                    headers: {},
+                    data: createMockTranscriptionData({ file_id: 'file-456' }),
+                })
+                .mockResolvedValueOnce({
+                    status: 204,
+                    headers: {},
+                    data: null,
+                });
+            const mockHttp = createMockHttpClient(requestMock);
+            const deleteMock = jest.fn().mockResolvedValue(undefined);
+            const mockFilesApi = createMockFilesAPI();
+            mockFilesApi.delete = deleteMock;
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            await api.destroy('transcription-to-destroy');
+
+            // Should fetch transcription first
+            expect(requestMock).toHaveBeenNthCalledWith(1, {
+                method: 'GET',
+                path: '/v1/transcriptions/transcription-to-destroy',
+            });
+            // Should delete transcription
+            expect(requestMock).toHaveBeenNthCalledWith(2, {
+                method: 'DELETE',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000',
+            });
+            // Should delete file via files API
+            expect(deleteMock).toHaveBeenCalledWith('file-456');
+        });
+
+        it('should only delete transcription when no file_id', async () => {
+            const requestMock = jest.fn()
+                .mockResolvedValueOnce({
+                    status: 200,
+                    headers: {},
+                    data: createMockTranscriptionData({ audio_url: 'https://example.com/audio.mp3' }),
+                })
+                .mockResolvedValueOnce({
+                    status: 204,
+                    headers: {},
+                    data: null,
+                });
+            const mockHttp = createMockHttpClient(requestMock);
+            const deleteMock = jest.fn();
+            const mockFilesApi = createMockFilesAPI();
+            mockFilesApi.delete = deleteMock;
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            await api.destroy('transcription-to-destroy');
+
+            // Should fetch transcription
+            expect(requestMock).toHaveBeenNthCalledWith(1, {
+                method: 'GET',
+                path: '/v1/transcriptions/transcription-to-destroy',
+            });
+            // Should delete transcription
+            expect(requestMock).toHaveBeenNthCalledWith(2, {
+                method: 'DELETE',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000',
+            });
+            // Should NOT delete file
+            expect(deleteMock).not.toHaveBeenCalled();
+        });
+
+        it('should succeed when transcription not found (idempotent)', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            // Should not throw - transcription already gone
+            await expect(api.destroy('non-existent-id')).resolves.toBeUndefined();
+            
+            // Should only have called get (which returned null)
+            expect(requestMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('should succeed when file not found (idempotent)', async () => {
+            const requestMock = jest.fn()
+                .mockResolvedValueOnce({
+                    status: 200,
+                    headers: {},
+                    data: createMockTranscriptionData({ file_id: 'file-456' }),
+                })
+                .mockResolvedValueOnce({
+                    status: 204,
+                    headers: {},
+                    data: null,
+                });
+            const mockHttp = createMockHttpClient(requestMock);
+            const deleteMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockFilesApi = createMockFilesAPI();
+            mockFilesApi.delete = deleteMock;
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            // Should not throw - file already gone
+            await expect(api.destroy('transcription-id')).resolves.toBeUndefined();
+        });
+    });
+
+    describe('getTranscript()', () => {
+        it('should fetch transcript from correct endpoint', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 200,
+                headers: {},
+                data: { id: 'trans-id', text: 'Hello world', tokens: [] },
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            const transcript = await api.getTranscript('transcription-id');
+
+            expect(requestMock).toHaveBeenCalledWith({
+                method: 'GET',
+                path: '/v1/transcriptions/transcription-id/transcript',
+            });
+            expect(transcript?.text).toBe('Hello world');
+        });
+
+        it('should return null on 404', async () => {
+            const requestMock = jest.fn().mockRejectedValue(createMock404Error());
+            const mockHttp = createMockHttpClient(requestMock);
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            const transcript = await api.getTranscript('non-existent-id');
+
+            expect(transcript).toBeNull();
         });
     });
 

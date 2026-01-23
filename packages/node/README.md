@@ -46,10 +46,13 @@ for await (const file of result) {
     console.log(file.filename, file.size);
 }
 
-// Get file by ID
+// Get file by ID (returns null if not found)
 const file = await client.files.get('file-id');
+if (file) {
+    console.log(file.filename, file.size);
+}
 
-// Delete a file
+// Delete a file (idempotent - succeeds even if file doesn't exist)
 await client.files.delete('file-id');
 // or
 await file.delete();
@@ -166,29 +169,49 @@ for (const transcription of result.transcriptions) {
 
 ### Get Transcription by ID
 
+Returns `null` if the transcription doesn't exist:
+
 ```typescript
 const transcription = await client.transcriptions.get('transcription-id');
-console.log(transcription.status);
+if (transcription) {
+    console.log(transcription.status);
+}
 ```
 
 ### Get Transcript
 
+Returns `null` if the transcription or transcript doesn't exist:
+
 ```typescript
 const transcript = await client.transcriptions.getTranscript('transcription-id');
-console.log(transcript.text);
+if (transcript) {
+    console.log(transcript.text);
 
-// Access detailed tokens with timing
-for (const token of transcript.tokens) {
-    console.log(token.text, token.start_ms, token.end_ms, token.confidence);
+    // Access detailed tokens with timing
+    for (const token of transcript.tokens) {
+        console.log(token.text, token.start_ms, token.end_ms, token.confidence);
+    }
 }
 ```
 
 ### Delete Transcription
 
+Deletion is idempotent - succeeds even if the transcription doesn't exist:
+
 ```typescript
 await client.transcriptions.delete('transcription-id');
 // or
 await transcription.delete();
+```
+
+### Destroy Transcription and File
+
+Deletes both transcription and its associated uploaded file. Idempotent - succeeds even if resources don't exist:
+
+```typescript
+await transcription.destroy();
+// or
+await client.transcriptions.destroy('transcription-id');
 ```
 
 ### Wait with AbortController
