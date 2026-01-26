@@ -1,4 +1,5 @@
 import {
+    SonioxTranscript,
     SonioxTranscription,
     SonioxTranscriptionsAPI,
     TranscriptionListResult,
@@ -218,7 +219,7 @@ describe('SonioxTranscription', () => {
     });
 
     describe('getTranscript()', () => {
-        it('should fetch transcript from correct endpoint', async () => {
+        it('should fetch transcript from correct endpoint and return SonioxTranscript', async () => {
             const requestMock = jest.fn().mockResolvedValue({
                 status: 200,
                 headers: {},
@@ -233,6 +234,7 @@ describe('SonioxTranscription', () => {
                 method: 'GET',
                 path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000/transcript',
             });
+            expect(transcript).toBeInstanceOf(SonioxTranscript);
             expect(transcript?.text).toBe('Hello world');
         });
 
@@ -916,7 +918,7 @@ describe('SonioxTranscriptionsAPI', () => {
     });
 
     describe('getTranscript()', () => {
-        it('should fetch transcript from correct endpoint', async () => {
+        it('should fetch transcript from correct endpoint and return SonioxTranscript', async () => {
             const requestMock = jest.fn().mockResolvedValue({
                 status: 200,
                 headers: {},
@@ -932,6 +934,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'GET',
                 path: '/v1/transcriptions/transcription-id/transcript',
             });
+            expect(transcript).toBeInstanceOf(SonioxTranscript);
             expect(transcript?.text).toBe('Hello world');
         });
 

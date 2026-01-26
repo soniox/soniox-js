@@ -12,6 +12,7 @@ import type {
     TranscriptionIdentifier,
     TranscriptionStatus,
     TranscriptResponse,
+    TranscriptToken,
     UploadFileInput,
     WaitOptions,
 } from "../types/public/index.js";
@@ -136,6 +137,32 @@ function createTimeoutSignal(
             timeoutController.signal.removeEventListener('abort', onTimeout);
         }
     };
+}
+
+/**
+ * A Transcript result containing the transcribed text and tokens.
+ */
+export class SonioxTranscript {
+    /**
+     * Unique identifier of the transcription this transcript belongs to.
+     */
+    readonly id: string;
+
+    /**
+     * Complete transcribed text content.
+     */
+    readonly text: string;
+
+    /**
+     * List of detailed token information with timestamps and metadata.
+     */
+    readonly tokens: TranscriptToken[];
+
+    constructor(data: TranscriptResponse) {
+        this.id = data.id;
+        this.text = data.text;
+        this.tokens = data.tokens;
+    }
 }
 
 /**
@@ -369,13 +396,13 @@ export class SonioxTranscription {
      * }
      * ```
      */
-    async getTranscript(): Promise<TranscriptResponse | null> {
+    async getTranscript(): Promise<SonioxTranscript | null> {
         try {
             const response = await this._http.request<TranscriptResponse>({
                 method: 'GET',
                 path: `/v1/transcriptions/${this.id}/transcript`,
             });
-            return response.data;
+            return new SonioxTranscript(response.data);
         } catch (error) {
             if (isNotFoundError(error)) {
                 return null;
@@ -778,14 +805,14 @@ export class SonioxTranscriptionsAPI {
      * }
      * ```
      */
-    async getTranscript(id: TranscriptionIdentifier): Promise<TranscriptResponse | null> {
+    async getTranscript(id: TranscriptionIdentifier): Promise<SonioxTranscript | null> {
         const transcription_id = getTranscriptionId(id);
         try {
             const response = await this.http.request<TranscriptResponse>({
                 method: 'GET',
                 path: `/v1/transcriptions/${transcription_id}/transcript`,
             });
-            return response.data;
+            return new SonioxTranscript(response.data);
         } catch (error) {
             if (isNotFoundError(error)) {
                 return null;
