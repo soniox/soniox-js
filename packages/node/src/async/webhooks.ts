@@ -312,19 +312,13 @@ export function handleWebhook(options: HandleWebhookOptions): WebhookHandlerResu
 /**
  * Handle a webhook from a Fetch API Request (Bun/Deno/Node 18+)
  *
- * Authentication is resolved in this order:
- * 1. Explicit `auth` parameter if provided
- * 2. Environment variables `SONIOX_API_WEBHOOK_HEADER` and `SONIOX_API_WEBHOOK_SECRET`
- * 3. No authentication if neither is configured
- *
  * @param request - Fetch API Request object
- * @param auth - Optional authentication configuration (overrides env vars)
+ * @param auth - Optional authentication configuration
  * @returns Result with ok status, HTTP status code, and either event or error
  *
  * @example
  * ```typescript
- * // Bun.serve handler with env var auth (simplest)
- * // Set SONIOX_API_WEBHOOK_HEADER and SONIOX_API_WEBHOOK_SECRET env vars
+ * // Bun.serve handler
  * Bun.serve({
  *     async fetch(req) {
  *         if (new URL(req.url).pathname === '/webhook') {
@@ -381,15 +375,8 @@ export async function handleWebhookRequest(
 /**
  * Handle a webhook from an Express-like request
  *
- * Note: Requires body-parser or express.json() middleware to parse JSON body.
- *
- * Authentication is resolved in this order:
- * 1. Explicit `auth` parameter if provided
- * 2. Environment variables `SONIOX_API_WEBHOOK_HEADER` and `SONIOX_API_WEBHOOK_SECRET`
- * 3. No authentication if neither is configured
- *
  * @param req - Express request object
- * @param auth - Optional authentication configuration (overrides env vars)
+ * @param auth - Optional authentication configuration
  * @returns Result with ok status, HTTP status code, and either event or error
  *
  * @example
@@ -400,7 +387,6 @@ export async function handleWebhookRequest(
  * const app = express();
  * app.use(express.json());
  *
- * // Simplest: Set SONIOX_API_WEBHOOK_HEADER and SONIOX_API_WEBHOOK_SECRET env vars
  * app.post('/webhook', (req, res) => {
  *     const result = handleWebhookExpress(req);
  *
@@ -432,13 +418,8 @@ export function handleWebhookExpress(
 /**
  * Handle a webhook from a Fastify request
  *
- * Authentication is resolved in this order:
- * 1. Explicit `auth` parameter if provided
- * 2. Environment variables `SONIOX_API_WEBHOOK_HEADER` and `SONIOX_API_WEBHOOK_SECRET`
- * 3. No authentication if neither is configured
- *
  * @param req - Fastify request object
- * @param auth - Optional authentication configuration (overrides env vars)
+ * @param auth - Optional authentication configuration
  * @returns Result with ok status, HTTP status code, and either event or error
  *
  * @example
@@ -448,7 +429,6 @@ export function handleWebhookExpress(
  *
  * const fastify = Fastify();
  *
- * // Simplest: Set SONIOX_API_WEBHOOK_HEADER and SONIOX_API_WEBHOOK_SECRET env vars
  * fastify.post('/webhook', async (req, reply) => {
  *     const result = handleWebhookFastify(req);
  *
@@ -482,11 +462,6 @@ export function handleWebhookFastify(
  *
  * Works with NestJS using either Express or Fastify adapter.
  *
- * Authentication is resolved in this order:
- * 1. Explicit `auth` parameter if provided
- * 2. Environment variables `SONIOX_API_WEBHOOK_HEADER` and `SONIOX_API_WEBHOOK_SECRET`
- * 3. No authentication if neither is configured
- *
  * @param req - NestJS request object (injected via @Req() decorator)
  * @param auth - Optional authentication configuration (overrides env vars)
  * @returns Result with ok status, HTTP status code, and either event or error
@@ -497,7 +472,6 @@ export function handleWebhookFastify(
  * import { Request, Response } from 'express';
  * import { handleWebhookNestJS } from '@soniox/node';
  *
- * // Simplest: Set SONIOX_API_WEBHOOK_HEADER and SONIOX_API_WEBHOOK_SECRET env vars
  * @Controller('webhook')
  * export class WebhookController {
  *     @Post()
@@ -533,13 +507,8 @@ export function handleWebhookNestJS(
 /**
  * Handle a webhook from a Hono context
  *
- * Authentication is resolved in this order:
- * 1. Explicit `auth` parameter if provided
- * 2. Environment variables `SONIOX_API_WEBHOOK_HEADER` and `SONIOX_API_WEBHOOK_SECRET`
- * 3. No authentication if neither is configured
- *
  * @param c - Hono context object
- * @param auth - Optional authentication configuration (overrides env vars)
+ * @param auth - Optional authentication configuration
  * @returns Result with ok status, HTTP status code, and either event or error
  *
  * @example
@@ -549,7 +518,6 @@ export function handleWebhookNestJS(
  *
  * const app = new Hono();
  *
- * // Simplest: Set SONIOX_API_WEBHOOK_HEADER and SONIOX_API_WEBHOOK_SECRET env vars
  * app.post('/webhook', async (c) => {
  *     const result = await handleWebhookHono(c);
  *
