@@ -4,6 +4,8 @@ import type {
     CreateTranscriptionOptions,
     ListTranscriptionsOptions,
     ListTranscriptionsResponse,
+    SegmentGroupKey,
+    SegmentTranscriptOptions,
     SonioxTranscriptionData,
     TranscribeFromFileIdOptions,
     TranscribeFromFileOptions,
@@ -12,6 +14,7 @@ import type {
     TranscriptionIdentifier,
     TranscriptionStatus,
     TranscriptResponse,
+    TranscriptSegment,
     TranscriptToken,
     UploadFileInput,
     WaitOptions,
@@ -140,6 +143,105 @@ function createTimeoutSignal(
 }
 
 /**
+ * Default grouping keys for segmentation
+ */
+const DEFAULT_GROUP_BY: SegmentGroupKey[] = ['speaker', 'language'];
+
+/**
+ * Groups contiguous tokens into segments based on specified grouping keys.
+ *
+ * A new segment starts when any of the `groupBy` fields changes.
+ * Tokens are concatenated with a single space between them.
+ *
+ * @param tokens - Array of transcript tokens to segment
+ * @param options - Segmentation options
+ * @param options.groupBy - Fields to group by (default: ['speaker', 'language'])
+ * @returns Array of segments with combined text and timing
+ *
+ * @example
+ * ```typescript
+ * const transcript = await transcription.getTranscript();
+ *
+ * // Group by both speaker and language (default)
+ * const segments = segmentTranscript(transcript.tokens);
+ *
+ * // Group by speaker only
+ * const bySpeaker = segmentTranscript(transcript.tokens, { groupBy: ['speaker'] });
+ *
+ * // Group by language only
+ * const byLanguage = segmentTranscript(transcript.tokens, { groupBy: ['language'] });
+ *
+ * for (const seg of segments) {
+ *     console.log(`[Speaker ${seg.speaker}] ${seg.text}`);
+ * }
+ * ```
+ */
+export function segmentTranscript(
+    tokens: TranscriptToken[],
+    options: SegmentTranscriptOptions = {}
+): TranscriptSegment[] {
+    if (tokens.length === 0) {
+        return [];
+    }
+
+    const groupBy = options.groupBy ?? DEFAULT_GROUP_BY;
+    const groupBySpeaker = groupBy.includes('speaker');
+    const groupByLanguage = groupBy.includes('language');
+
+    const segments: TranscriptSegment[] = [];
+    let currentTokens: TranscriptToken[] = [];
+    let currentSpeaker: string | undefined;
+    let currentLanguage: string | undefined;
+
+    for (const token of tokens) {
+        const speakerChanged = groupBySpeaker && token.speaker !== currentSpeaker;
+        const languageChanged = groupByLanguage && token.language !== currentLanguage;
+
+        if (currentTokens.length > 0 && (speakerChanged || languageChanged)) {
+            segments.push(buildSegment(currentTokens, currentSpeaker, currentLanguage));
+            currentTokens = [];
+        }
+
+        currentTokens.push(token);
+        currentSpeaker = token.speaker;
+        currentLanguage = token.language;
+    }
+
+    if (currentTokens.length > 0) {
+        segments.push(buildSegment(currentTokens, currentSpeaker, currentLanguage));
+    }
+
+    return segments;
+}
+
+/**
+ * Helper to build a segment from a list of tokens
+ */
+function buildSegment(
+    tokens: TranscriptToken[],
+    speaker: string | undefined,
+    language: string | undefined
+): TranscriptSegment {
+    const firstToken = tokens[0];
+    const lastToken = tokens[tokens.length - 1];
+
+    if (!firstToken || !lastToken) {
+        throw new Error('Cannot build segment from an empty token array');
+    }
+
+    const text = tokens.map(t => t.text).join(' ');
+
+    return {
+        text,
+        start_ms: firstToken.start_ms,
+        end_ms: lastToken.end_ms,
+        ...(speaker !== undefined && { speaker }),
+        ...(language !== undefined && { language }),
+        tokens,
+    };
+}
+
+/**
  * A Transcript result containing the transcribed text and tokens.
  */
 export class SonioxTranscript {
@@ -162,6 +264,34 @@ export class SonioxTranscript {
         this.id = data.id;
         this.text = data.text;
         this.tokens = data.tokens;
+    }
+
+    /**
+     * Groups tokens into segments based on specified grouping keys.
+     *
+     * A new segment starts when any of the `groupBy` fields changes.
+     *
+     * @param options - Segmentation options
+     * @param options.groupBy - Fields to group by (default: ['speaker', 'language'])
+     * @returns Array of segments with combined text and timing
+     *
+     * @example
+     * ```typescript
+     * const transcript = await transcription.getTranscript();
+     *
+     * // Group by both speaker and language (default)
+     * const segments = transcript.segments();
+     *
+     * // Group by speaker only
+     * const bySpeaker = transcript.segments({ groupBy: ['speaker'] });
+     *
+     * for (const s of segments) {
+     *     console.log(`[Speaker ${s.speaker}] ${s.text}`);
+     * }
+     * ```
+     */
+    segments(options?: SegmentTranscriptOptions): TranscriptSegment[] {
+        return segmentTranscript(this.tokens, options);
     }
 }
 
@@ -292,7 +422,7 @@ export class SonioxTranscription {
     /**
      * Returns the raw data for this transcription.
      */
-    private _toData(): SonioxTranscriptionData {
+    toJSON(): SonioxTranscriptionData {
         return {
             id: this.id,
             status: this.status,
@@ -498,7 +628,7 @@ export class SonioxTranscription {
         while (current.status === 'queued' || current.status === 'processing') {
             // Notify on status change
             if (current.status !== lastStatus) {
-                on_status_change?.(current.status, current._toData());
+                on_status_change?.(current.status, current.toJSON());
                 lastStatus = current.status;
             }
 
@@ -517,7 +647,7 @@ export class SonioxTranscription {
 
         // Notify on final status change
         if (current.status !== lastStatus) {
-            on_status_change?.(current.status, current._toData());
+            on_status_change?.(current.status, current.toJSON());
         }
 
         return current;
@@ -547,6 +677,16 @@ export class TranscriptionListResult implements AsyncIterable<SonioxTranscriptio
             data => new SonioxTranscription(data, _http)
         );
         this.next_page_cursor = initialResponse.next_page_cursor;
+    }
+
+    /**
+     * Returns the raw data for this list result
+     */
+    toJSON(): ListTranscriptionsResponse<SonioxTranscriptionData> {
+        return {
+            transcriptions: this.transcriptions.map(t => t.toJSON()),
+            next_page_cursor: this.next_page_cursor,
+        };
     }
 
     /**

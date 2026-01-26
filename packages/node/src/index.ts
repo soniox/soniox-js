@@ -17,7 +17,7 @@ export * from './http/index.js';
 export { FileListResult, SonioxFile } from './async/files.js';
 
 // Transcriptions API
-export { SonioxTranscript, SonioxTranscription, TranscriptionListResult } from './async/transcriptions.js';
+export { segmentTranscript, SonioxTranscript, SonioxTranscription, TranscriptionListResult } from './async/transcriptions.js';
 
 // Public types
 export * from './types/public/index.js';

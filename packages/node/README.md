@@ -52,6 +52,8 @@ const client = new SonioxNodeClient({
 - `client.transcriptions.wait(id | transcription, options?)`
 - `client.transcriptions.delete(id | transcription)`
 - `client.transcriptions.destroy(id | transcription)`
+- `transcript.segments(options?)` - group tokens by speaker/language
+- `segmentTranscript(tokens, options?)` - standalone segmentation utility
 
 **Webhooks**
 - `client.webhooks.handle(options)`
@@ -288,6 +290,51 @@ if (transcript) {
     }
 }
 ```
+
+### Segment Transcript by Speaker/Language
+
+Group tokens into segments by speaker and language changes:
+
+```typescript
+const transcript = await client.transcriptions.getTranscript('transcription-id');
+if (transcript) {
+    // Using the method on SonioxTranscript
+    const segments = transcript.segments();
+
+    for (const seg of segments) {
+        console.log(`[Speaker ${seg.speaker}][${seg.language}] ${seg.text}`);
+        console.log(`  Time: ${seg.start_ms}ms - ${seg.end_ms}ms`);
+    }
+}
+
+// Or use the standalone function
+import { segmentTranscript } from '@soniox/node';
+
+const segments = segmentTranscript(transcript.tokens);
+```
+
+Control grouping with the `groupBy` option:
+
+```typescript
+// Group by speaker only (ignore language changes)
+const bySpeaker = transcript.segments({ groupBy: ['speaker'] });
+
+// Group by language only (ignore speaker changes)
+const byLanguage = transcript.segments({ groupBy: ['language'] });
+
+// Group by both (default)
+const byBoth = transcript.segments({ groupBy: ['speaker', 'language'] });
+
+// No grouping (all tokens in one segment)
+const all = transcript.segments({ groupBy: [] });
+```
+
+Each segment contains:
+- `text` - Concatenated text of all tokens
+- `start_ms`, `end_ms` - Timing from first/last token
+- `speaker` - Speaker ID (if diarization enabled)
+- `language` - Language code (if identification enabled)
+- `tokens` - Original tokens array
 
 ### Delete Transcription
 

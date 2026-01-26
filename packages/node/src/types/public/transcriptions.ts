@@ -572,3 +572,54 @@ export type TranscriptResponse = {
      */
     tokens: TranscriptToken[];
 }
+
+/**
+ * Fields that can be used to group tokens into segments
+ */
+export type SegmentGroupKey = 'speaker' | 'language';
+
+/**
+ * Options for segmenting a transcript
+ */
+export type SegmentTranscriptOptions = {
+    /**
+     * Fields to group by. A new segment starts when any of these fields changes
+     * @default ['speaker', 'language']
+     */
+    groupBy?: SegmentGroupKey[] | undefined;
+}
+
+/**
+ * A segment of contiguous tokens grouped by speaker and language
+ */
+export type TranscriptSegment = {
+    /**
+     * Concatenated text of all tokens in this segment.
+     */
+    text: string;
+
+    /**
+     * Start time of the segment in milliseconds (from first token).
+     */
+    start_ms: number;
+
+    /**
+     * End time of the segment in milliseconds (from last token).
+     */
+    end_ms: number;
+
+    /**
+     * Speaker identifier (if speaker diarization was enabled).
+     */
+    speaker?: string | undefined;
+
+    /**
+     * Detected language code (if language identification was enabled).
+     */
+    language?: string | undefined;
+
+    /**
+     * Original tokens in this segment.
+     */
+    tokens: TranscriptToken[];
+}

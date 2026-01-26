@@ -144,7 +144,12 @@ app.get('/transcriptions/:id/transcript', async (req, res, next) => {
     try {
         const transcript = await soniox.transcriptions.getTranscript(req.params.id);
         if (!transcript) return res.status(404).json({ error: 'Transcript not found' });
-        res.json(transcript);
+        res.json({
+            id: transcript.id,
+            parsed: transcript.segments(),
+            text: transcript.text,
+            raw: transcript.tokens
+        });
     } catch (err) { next(err); }
 });
 

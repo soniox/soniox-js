@@ -1,4 +1,5 @@
 import {
+    segmentTranscript,
     SonioxTranscript,
     SonioxTranscription,
     SonioxTranscriptionsAPI,
@@ -12,6 +13,7 @@ import type {
     SonioxTranscriptionData,
     SonioxFileData,
     TranscribeOptions,
+    TranscriptToken,
 } from '../../src/types/public';
 
 // Helper to create a mock 404 error
@@ -1792,6 +1794,288 @@ describe('SonioxTranscriptionsAPI', () => {
                     expect(result.status).toBe('queued');
                 });
             });
+        });
+    });
+});
+
+describe('segmentTranscript', () => {
+    // Helper to create mock tokens
+    const createToken = (
+        text: string,
+        start_ms: number,
+        end_ms: number,
+        overrides: Partial<TranscriptToken> = {}
+    ): TranscriptToken => ({
+        text,
+        start_ms,
+        end_ms,
+        confidence: 0.95,
+        ...overrides,
+    });
+
+    it('should return empty array for empty tokens', () => {
+        const result = segmentTranscript([]);
+        expect(result).toEqual([]);
+    });
+
+    it('should return single segment when all tokens have same speaker and language', () => {
+        const tokens = [
+            createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
+            createToken('world', 500, 1000, { speaker: '1', language: 'en' }),
+        ];
+
+        const result = segmentTranscript(tokens);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]).toEqual({
+            text: 'Hello world',
+            start_ms: 0,
+            end_ms: 1000,
+            speaker: '1',
+            language: 'en',
+            tokens,
+        });
+    });
+
+    it('should create new segment when speaker changes', () => {
+        const tokens = [
+            createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
+            createToken('world', 500, 1000, { speaker: '1', language: 'en' }),
+            createToken('Hi', 1000, 1200, { speaker: '2', language: 'en' }),
+        ];
+
+        const result = segmentTranscript(tokens);
+
+        expect(result).toHaveLength(2);
+        expect(result[0]?.text).toBe('Hello world');
+        expect(result[0]?.speaker).toBe('1');
+        expect(result[1]?.text).toBe('Hi');
+        expect(result[1]?.speaker).toBe('2');
+    });
+
+    it('should create new segment when language changes', () => {
+        const tokens = [
+            createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
+            createToken('Hola', 500, 1000, { speaker: '1', language: 'es' }),
+        ];
+
+        const result = segmentTranscript(tokens);
+
+        expect(result).toHaveLength(2);
+        expect(result[0]?.text).toBe('Hello');
+        expect(result[0]?.language).toBe('en');
+        expect(result[1]?.text).toBe('Hola');
+        expect(result[1]?.language).toBe('es');
+    });
+
+    it('should handle tokens without speaker or language', () => {
+        const tokens = [
+            createToken('Hello', 0, 500),
+            createToken('world', 500, 1000),
+        ];
+
+        const result = segmentTranscript(tokens);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]?.text).toBe('Hello world');
+        expect(result[0]?.speaker).toBeUndefined();
+        expect(result[0]?.language).toBeUndefined();
+    });
+
+    it('should create new segment when speaker becomes defined', () => {
+        const tokens = [
+            createToken('Hello', 0, 500),
+            createToken('world', 500, 1000, { speaker: '1' }),
+        ];
+
+        const result = segmentTranscript(tokens);
+
+        expect(result).toHaveLength(2);
+        expect(result[0]?.speaker).toBeUndefined();
+        expect(result[1]?.speaker).toBe('1');
+    });
+
+    it('should preserve timing from first and last tokens', () => {
+        const tokens = [
+            createToken('One', 100, 200, { speaker: '1' }),
+            createToken('two', 250, 350, { speaker: '1' }),
+            createToken('three', 400, 600, { speaker: '1' }),
+        ];
+
+        const result = segmentTranscript(tokens);
+
+        expect(result).toHaveLength(1);
+        expect(result[0]?.start_ms).toBe(100);
+        expect(result[0]?.end_ms).toBe(600);
+    });
+
+    it('should include original tokens in each segment', () => {
+        const tokens = [
+            createToken('Hello', 0, 500, { speaker: '1' }),
+            createToken('Hi', 600, 800, { speaker: '2' }),
+        ];
+
+        const result = segmentTranscript(tokens);
+
+        expect(result).toHaveLength(2);
+        expect(result[0]?.tokens).toHaveLength(1);
+        expect(result[0]?.tokens[0]?.text).toBe('Hello');
+        expect(result[1]?.tokens).toHaveLength(1);
+        expect(result[1]?.tokens[0]?.text).toBe('Hi');
+    });
+
+    it('should handle multiple speaker and language changes', () => {
+        const tokens = [
+            createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
+            createToken('Hola', 500, 1000, { speaker: '1', language: 'es' }),
+            createToken('Hi', 1000, 1200, { speaker: '2', language: 'en' }),
+            createToken('there', 1200, 1500, { speaker: '2', language: 'en' }),
+        ];
+
+        const result = segmentTranscript(tokens);
+
+        expect(result).toHaveLength(3);
+        expect(result[0]).toMatchObject({ text: 'Hello', speaker: '1', language: 'en' });
+        expect(result[1]).toMatchObject({ text: 'Hola', speaker: '1', language: 'es' });
+        expect(result[2]).toMatchObject({ text: 'Hi there', speaker: '2', language: 'en' });
+    });
+
+    describe('groupBy option', () => {
+        it('should group by speaker only when groupBy is ["speaker"]', () => {
+            const tokens = [
+                createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
+                createToken('Hola', 500, 1000, { speaker: '1', language: 'es' }),
+                createToken('Hi', 1000, 1200, { speaker: '2', language: 'en' }),
+            ];
+
+            const result = segmentTranscript(tokens, { groupBy: ['speaker'] });
+
+            expect(result).toHaveLength(2);
+            expect(result[0]?.text).toBe('Hello Hola');
+            expect(result[0]?.speaker).toBe('1');
+            expect(result[1]?.text).toBe('Hi');
+            expect(result[1]?.speaker).toBe('2');
+        });
+
+        it('should group by language only when groupBy is ["language"]', () => {
+            const tokens = [
+                createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
+                createToken('Hi', 500, 1000, { speaker: '2', language: 'en' }),
+                createToken('Hola', 1000, 1200, { speaker: '2', language: 'es' }),
+            ];
+
+            const result = segmentTranscript(tokens, { groupBy: ['language'] });
+
+            expect(result).toHaveLength(2);
+            expect(result[0]?.text).toBe('Hello Hi');
+            expect(result[0]?.language).toBe('en');
+            expect(result[1]?.text).toBe('Hola');
+            expect(result[1]?.language).toBe('es');
+        });
+
+        it('should put all tokens in one segment when groupBy is empty', () => {
+            const tokens = [
+                createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
+                createToken('Hola', 500, 1000, { speaker: '2', language: 'es' }),
+                createToken('Hi', 1000, 1200, { speaker: '3', language: 'fr' }),
+            ];
+
+            const result = segmentTranscript(tokens, { groupBy: [] });
+
+            expect(result).toHaveLength(1);
+            expect(result[0]?.text).toBe('Hello Hola Hi');
+        });
+
+        it('should use default groupBy when options is undefined', () => {
+            const tokens = [
+                createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
+                createToken('Hola', 500, 1000, { speaker: '1', language: 'es' }),
+            ];
+
+            const result = segmentTranscript(tokens);
+
+            expect(result).toHaveLength(2);
+        });
+
+        it('should use default groupBy when groupBy is undefined', () => {
+            const tokens = [
+                createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
+                createToken('Hola', 500, 1000, { speaker: '1', language: 'es' }),
+            ];
+
+            const result = segmentTranscript(tokens, {});
+
+            expect(result).toHaveLength(2);
+        });
+    });
+});
+
+describe('SonioxTranscript', () => {
+    it('should create transcript with correct properties', () => {
+        const transcript = new SonioxTranscript({
+            id: 'trans-123',
+            text: 'Hello world',
+            tokens: [],
+        });
+
+        expect(transcript.id).toBe('trans-123');
+        expect(transcript.text).toBe('Hello world');
+        expect(transcript.tokens).toEqual([]);
+    });
+
+    describe('segments()', () => {
+        it('should return segments from tokens', () => {
+            const tokens: TranscriptToken[] = [
+                { text: 'Hello', start_ms: 0, end_ms: 500, confidence: 0.9, speaker: '1' },
+                { text: 'Hi', start_ms: 600, end_ms: 800, confidence: 0.95, speaker: '2' },
+            ];
+
+            const transcript = new SonioxTranscript({
+                id: 'trans-123',
+                text: 'Hello Hi',
+                tokens,
+            });
+
+            const segments = transcript.segments();
+
+            expect(segments).toHaveLength(2);
+            expect(segments[0]?.text).toBe('Hello');
+            expect(segments[0]?.speaker).toBe('1');
+            expect(segments[1]?.text).toBe('Hi');
+            expect(segments[1]?.speaker).toBe('2');
+        });
+
+        it('should return empty array for empty tokens', () => {
+            const transcript = new SonioxTranscript({
+                id: 'trans-123',
+                text: '',
+                tokens: [],
+            });
+
+            const segments = transcript.segments();
+
+            expect(segments).toEqual([]);
+        });
+
+        it('should accept groupBy option', () => {
+            const tokens: TranscriptToken[] = [
+                { text: 'Hello', start_ms: 0, end_ms: 500, confidence: 0.9, speaker: '1', language: 'en' },
+                { text: 'Hola', start_ms: 600, end_ms: 800, confidence: 0.95, speaker: '1', language: 'es' },
+            ];
+
+            const transcript = new SonioxTranscript({
+                id: 'trans-123',
+                text: 'Hello Hola',
+                tokens,
+            });
+
+            // Default behavior creates 2 segments (language changes)
+            expect(transcript.segments()).toHaveLength(2);
+
+            // With speaker-only grouping, creates 1 segment
+            const bySpeaker = transcript.segments({ groupBy: ['speaker'] });
+            expect(bySpeaker).toHaveLength(1);
+            expect(bySpeaker[0]?.text).toBe('Hello Hola');
         });
     });
 });

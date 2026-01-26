@@ -38,6 +38,19 @@ export class SonioxFile {
     }
 
     /**
+     * Returns the raw data for this file.
+     */
+    toJSON(): SonioxFileData {
+        return {
+            id: this.id,
+            filename: this.filename,
+            size: this.size,
+            created_at: this.created_at,
+            client_reference_id: this.client_reference_id,
+        };
+    }
+
+    /**
      * Permanently deletes this file.
      * This operation is idempotent - succeeds even if the file doesn't exist.
      *
@@ -86,6 +99,17 @@ export class FileListResult implements AsyncIterable<SonioxFile> {
     ) {
         this.files = initialResponse.files.map(data => new SonioxFile(data, _http));
         this.next_page_cursor = initialResponse.next_page_cursor;
+    }
+
+    /**
+     * Returns the raw data for this list result.
+     * Also used by JSON.stringify() to prevent serialization of internal HTTP client.
+     */
+    toJSON(): ListFilesResponse<SonioxFileData> {
+        return {
+            files: this.files.map(f => f.toJSON()),
+            next_page_cursor: this.next_page_cursor,
+        };
     }
 
     /**
