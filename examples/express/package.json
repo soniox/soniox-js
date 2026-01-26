@@ -1,14 +1,10 @@
 {
-  "name": "soniox-example-node-express",
+  "name": "soniox-example-express",
   "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
+  "description": "Soniox SDK Express.js example with integration tests",
+  "license": "MIT",
   "type": "commonjs",
-  "main": "server.js",
   "scripts": {
-    "build": "",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "tsx --env-file=.env server.ts"
   },
   "dependencies": {

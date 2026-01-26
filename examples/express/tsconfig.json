@@ -12,7 +12,7 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@soniox/node": ["../../../packages/node/dist/index.d.mts"]
+      "@soniox/node": ["../../packages/node/src"]
     }
   },
   "include": ["*.ts"],

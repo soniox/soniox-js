@@ -5,7 +5,16 @@
     "moduleResolution": "node",
     "types": ["jest", "node"],
     "verbatimModuleSyntax": false,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@soniox/node": ["./packages/node/src"],
+      "@soniox/node/*": ["./packages/node/src/*"],
+      "@soniox/core": ["./packages/core/src"],
+      "@soniox/core/*": ["./packages/core/src/*"],
+      "@soniox/web": ["./packages/web/src"],
+      "@soniox/web/*": ["./packages/web/src/*"]
+    }
   },
   "include": ["packages/**/*.ts", "packages/**/*.tsx", "examples/**/*.ts"],
   "exclude": ["node_modules", "dist"]
