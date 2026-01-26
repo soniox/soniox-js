@@ -223,8 +223,16 @@ export class FetchHttpClient implements HttpClient {
 
     // Prepare headers
     const contentTypeHeader = getContentTypeForBody(request.body);
+    const isFormData = typeof FormData !== 'undefined' && request.body instanceof FormData;
+    
+    const defaultHeadersWithoutContentType = isFormData
+      ? Object.fromEntries(
+          Object.entries(this.defaultHeaders).filter(([key]) => key.toLowerCase() !== 'content-type')
+        )
+      : this.defaultHeaders;
+    
     const headers = mergeHeaders(
-      this.defaultHeaders,
+      defaultHeadersWithoutContentType,
       contentTypeHeader ? { 'Content-Type': contentTypeHeader } : undefined,
       request.headers
     );
