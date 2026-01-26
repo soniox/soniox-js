@@ -6,15 +6,15 @@ describe('FetchHttpClient', () => {
       ok: true,
       status: 200,
       headers: new Headers({ 'content-type': 'application/json' }),
-      text: async () => JSON.stringify({}),
-      json: async () => ({}),
+      text: () => Promise.resolve(JSON.stringify({})),
+      json: () => Promise.resolve({}),
       ...response,
-    });
+    }) as jest.Mock & typeof fetch;
   };
 
   it('should make a GET request', async () => {
     const mockFetch = createMockFetch({
-      text: async () => JSON.stringify({ message: 'ok' }),
+      text: () => Promise.resolve(JSON.stringify({ message: 'ok' })),
     });
 
     const client = new FetchHttpClient({
@@ -37,7 +37,7 @@ describe('FetchHttpClient', () => {
 
   it('should make a POST request with JSON body', async () => {
     const mockFetch = createMockFetch({
-      text: async () => JSON.stringify({ id: 123 }),
+      text: () => Promise.resolve(JSON.stringify({ id: 123 })),
     });
 
     const client = new FetchHttpClient({
@@ -62,7 +62,7 @@ describe('FetchHttpClient', () => {
 
   it('should include query parameters in URL', async () => {
     const mockFetch = createMockFetch({
-      text: async () => '[]',
+      text: () => Promise.resolve('[]'),
     });
 
     const client = new FetchHttpClient({
@@ -84,7 +84,7 @@ describe('FetchHttpClient', () => {
 
   it('should merge default headers with request headers', async () => {
     const mockFetch = createMockFetch({
-      text: async () => '{}',
+      text: () => Promise.resolve('{}'),
     });
 
     const client = new FetchHttpClient({
@@ -114,7 +114,7 @@ describe('FetchHttpClient', () => {
     const mockFetch = createMockFetch({
       ok: false,
       status: 404,
-      text: async () => 'Not Found',
+      text: () => Promise.resolve('Not Found'),
     });
 
     const client = new FetchHttpClient({
@@ -140,7 +140,7 @@ describe('FetchHttpClient', () => {
     const mockFetch = createMockFetch({
       status: 204,
       headers: new Headers({ 'content-length': '0' }),
-      text: async () => '',
+      text: () => Promise.resolve(''),
     });
 
     const client = new FetchHttpClient({
@@ -159,7 +159,7 @@ describe('FetchHttpClient', () => {
 
   it('should return text when responseType is text', async () => {
     const mockFetch = createMockFetch({
-      text: async () => 'Hello, World!',
+      text: () => Promise.resolve('Hello, World!'),
     });
 
     const client = new FetchHttpClient({
@@ -178,7 +178,7 @@ describe('FetchHttpClient', () => {
 
   it('should call onRequest and onResponse hooks', async () => {
     const mockFetch = createMockFetch({
-      text: async () => '{}',
+      text: () => Promise.resolve('{}'),
     });
 
     const onRequest = jest.fn();
@@ -209,7 +209,7 @@ describe('FetchHttpClient', () => {
     const mockFetch = createMockFetch({
       ok: false,
       status: 500,
-      text: async () => 'Server Error',
+      text: () => Promise.resolve('Server Error'),
     });
 
     const onError = jest.fn();
@@ -231,7 +231,7 @@ describe('FetchHttpClient', () => {
 
   it('should throw parse error on invalid JSON', async () => {
     const mockFetch = createMockFetch({
-      text: async () => 'not valid json',
+      text: () => Promise.resolve('not valid json'),
     });
 
     const client = new FetchHttpClient({

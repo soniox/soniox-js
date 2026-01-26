@@ -1,6 +1,6 @@
 import { FileListResult, SonioxFile, SonioxFilesAPI } from '../../src/async/files';
 import { SonioxHttpError } from '../../src/http/errors';
-import type { HttpClient, HttpRequest, HttpResponse } from '../../src/http';
+import type { HttpClient } from '../../src/http';
 import type { ListFilesResponse, SonioxFileData } from '../../src/types/public';
 
 // Helper to create a mock 404 error

@@ -8,9 +8,14 @@ import {
     handleWebhookFastify,
     handleWebhookNestJS,
     handleWebhookHono,
+    getWebhookAuthFromEnv,
     type WebhookEvent,
     type WebhookAuthConfig,
 } from '../../src/async/webhooks';
+import {
+    SONIOX_API_WEBHOOK_HEADER_ENV,
+    SONIOX_API_WEBHOOK_SECRET_ENV,
+} from '../../src/constants';
 
 describe('isWebhookEvent', () => {
     it('should return true for valid completed event', () => {
@@ -385,14 +390,18 @@ describe('handleWebhookRequest', () => {
         body?: unknown;
     }): Request => {
         const { method = 'POST', headers = {}, body } = options;
-        return new Request('http://localhost/webhook', {
+        const normalizedMethod = method.toUpperCase();
+        const requestInit: RequestInit = {
             method,
             headers: {
                 'Content-Type': 'application/json',
                 ...headers,
             },
-            body: body !== undefined ? JSON.stringify(body) : undefined,
-        });
+        };
+        if (body !== undefined && normalizedMethod !== 'GET' && normalizedMethod !== 'HEAD') {
+            requestInit.body = JSON.stringify(body);
+        }
+        return new Request('http://localhost/webhook', requestInit);
     };
 
     it('should handle valid POST request', async () => {
@@ -645,7 +654,7 @@ describe('handleWebhookHono', () => {
                     if (jsonError) {
                         throw new Error('Invalid JSON');
                     }
-                    return body;
+                    return await Promise.resolve(body);
                 },
             },
         };
@@ -763,5 +772,161 @@ describe('handleWebhookHono', () => {
             status: 200,
             event: { id: 'test-id', status: 'error' },
         });
+    });
+});
+
+describe('getWebhookAuthFromEnv', () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+        // Reset env before each test
+        process.env = { ...originalEnv };
+        delete process.env[SONIOX_API_WEBHOOK_HEADER_ENV];
+        delete process.env[SONIOX_API_WEBHOOK_SECRET_ENV];
+    });
+
+    afterAll(() => {
+        process.env = originalEnv;
+    });
+
+    it('should return auth config when both env vars are set', () => {
+        process.env[SONIOX_API_WEBHOOK_HEADER_ENV] = 'X-Webhook-Secret';
+        process.env[SONIOX_API_WEBHOOK_SECRET_ENV] = 'my-secret-token';
+
+        const auth = getWebhookAuthFromEnv();
+
+        expect(auth).toEqual({
+            name: 'X-Webhook-Secret',
+            value: 'my-secret-token',
+        });
+    });
+
+    it('should return undefined when only header is set', () => {
+        process.env[SONIOX_API_WEBHOOK_HEADER_ENV] = 'X-Webhook-Secret';
+
+        const auth = getWebhookAuthFromEnv();
+
+        expect(auth).toBeUndefined();
+    });
+
+    it('should return undefined when only secret is set', () => {
+        process.env[SONIOX_API_WEBHOOK_SECRET_ENV] = 'my-secret-token';
+
+        const auth = getWebhookAuthFromEnv();
+
+        expect(auth).toBeUndefined();
+    });
+
+    it('should return undefined when neither env var is set', () => {
+        const auth = getWebhookAuthFromEnv();
+
+        expect(auth).toBeUndefined();
+    });
+
+    it('should return undefined when header is empty string', () => {
+        process.env[SONIOX_API_WEBHOOK_HEADER_ENV] = '';
+        process.env[SONIOX_API_WEBHOOK_SECRET_ENV] = 'my-secret-token';
+
+        const auth = getWebhookAuthFromEnv();
+
+        expect(auth).toBeUndefined();
+    });
+
+    it('should return undefined when secret is empty string', () => {
+        process.env[SONIOX_API_WEBHOOK_HEADER_ENV] = 'X-Webhook-Secret';
+        process.env[SONIOX_API_WEBHOOK_SECRET_ENV] = '';
+
+        const auth = getWebhookAuthFromEnv();
+
+        expect(auth).toBeUndefined();
+    });
+});
+
+describe('handleWebhook with environment variables', () => {
+    const originalEnv = process.env;
+    const validPayload: WebhookEvent = { id: 'test-id', status: 'completed' };
+
+    beforeEach(() => {
+        process.env = { ...originalEnv };
+        delete process.env[SONIOX_API_WEBHOOK_HEADER_ENV];
+        delete process.env[SONIOX_API_WEBHOOK_SECRET_ENV];
+    });
+
+    afterAll(() => {
+        process.env = originalEnv;
+    });
+
+    it('should use env vars for auth when no explicit auth provided', () => {
+        process.env[SONIOX_API_WEBHOOK_HEADER_ENV] = 'X-Webhook-Secret';
+        process.env[SONIOX_API_WEBHOOK_SECRET_ENV] = 'env-secret';
+
+        // Request without the expected header should fail
+        const result = handleWebhook({
+            method: 'POST',
+            headers: {},
+            body: validPayload,
+        });
+
+        expect(result).toEqual({
+            ok: false,
+            status: 401,
+            error: 'Unauthorized',
+        });
+    });
+
+    it('should succeed when request has matching env var auth header', () => {
+        process.env[SONIOX_API_WEBHOOK_HEADER_ENV] = 'X-Webhook-Secret';
+        process.env[SONIOX_API_WEBHOOK_SECRET_ENV] = 'env-secret';
+
+        const result = handleWebhook({
+            method: 'POST',
+            headers: { 'X-Webhook-Secret': 'env-secret' },
+            body: validPayload,
+        });
+
+        expect(result.ok).toBe(true);
+        expect(result.status).toBe(200);
+    });
+
+    it('should prefer explicit auth over env vars', () => {
+        process.env[SONIOX_API_WEBHOOK_HEADER_ENV] = 'X-Env-Header';
+        process.env[SONIOX_API_WEBHOOK_SECRET_ENV] = 'env-secret';
+
+        // Use explicit auth that differs from env vars
+        const result = handleWebhook({
+            method: 'POST',
+            headers: { 'X-Explicit-Header': 'explicit-secret' },
+            body: validPayload,
+            auth: { name: 'X-Explicit-Header', value: 'explicit-secret' },
+        });
+
+        expect(result.ok).toBe(true);
+        expect(result.status).toBe(200);
+    });
+
+    it('should skip auth when env vars not fully configured', () => {
+        // Only header set, no secret
+        process.env[SONIOX_API_WEBHOOK_HEADER_ENV] = 'X-Webhook-Secret';
+
+        const result = handleWebhook({
+            method: 'POST',
+            headers: {},
+            body: validPayload,
+        });
+
+        // Should succeed without auth since env vars are incomplete
+        expect(result.ok).toBe(true);
+        expect(result.status).toBe(200);
+    });
+
+    it('should skip auth when no env vars and no explicit auth', () => {
+        const result = handleWebhook({
+            method: 'POST',
+            headers: {},
+            body: validPayload,
+        });
+
+        expect(result.ok).toBe(true);
+        expect(result.status).toBe(200);
     });
 });
