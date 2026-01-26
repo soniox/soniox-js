@@ -1821,7 +1821,7 @@ describe('segmentTranscript', () => {
     it('should return single segment when all tokens have same speaker and language', () => {
         const tokens = [
             createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
-            createToken('world', 500, 1000, { speaker: '1', language: 'en' }),
+            createToken(' world', 500, 1000, { speaker: '1', language: 'en' }),
         ];
 
         const result = segmentTranscript(tokens);
@@ -1840,7 +1840,7 @@ describe('segmentTranscript', () => {
     it('should create new segment when speaker changes', () => {
         const tokens = [
             createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
-            createToken('world', 500, 1000, { speaker: '1', language: 'en' }),
+            createToken(' world', 500, 1000, { speaker: '1', language: 'en' }),
             createToken('Hi', 1000, 1200, { speaker: '2', language: 'en' }),
         ];
 
@@ -1871,7 +1871,7 @@ describe('segmentTranscript', () => {
     it('should handle tokens without speaker or language', () => {
         const tokens = [
             createToken('Hello', 0, 500),
-            createToken('world', 500, 1000),
+            createToken(' world', 500, 1000),
         ];
 
         const result = segmentTranscript(tokens);
@@ -1929,7 +1929,7 @@ describe('segmentTranscript', () => {
             createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
             createToken('Hola', 500, 1000, { speaker: '1', language: 'es' }),
             createToken('Hi', 1000, 1200, { speaker: '2', language: 'en' }),
-            createToken('there', 1200, 1500, { speaker: '2', language: 'en' }),
+            createToken(' there', 1200, 1500, { speaker: '2', language: 'en' }),
         ];
 
         const result = segmentTranscript(tokens);
@@ -1944,7 +1944,7 @@ describe('segmentTranscript', () => {
         it('should group by speaker only when groupBy is ["speaker"]', () => {
             const tokens = [
                 createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
-                createToken('Hola', 500, 1000, { speaker: '1', language: 'es' }),
+                createToken(' Hola', 500, 1000, { speaker: '1', language: 'es' }),
                 createToken('Hi', 1000, 1200, { speaker: '2', language: 'en' }),
             ];
 
@@ -1960,8 +1960,8 @@ describe('segmentTranscript', () => {
         it('should group by language only when groupBy is ["language"]', () => {
             const tokens = [
                 createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
-                createToken('Hi', 500, 1000, { speaker: '2', language: 'en' }),
-                createToken('Hola', 1000, 1200, { speaker: '2', language: 'es' }),
+                createToken(' Hi', 500, 1000, { speaker: '2', language: 'en' }),
+                createToken(' Hola', 1000, 1200, { speaker: '2', language: 'es' }),
             ];
 
             const result = segmentTranscript(tokens, { groupBy: ['language'] });
@@ -1969,15 +1969,15 @@ describe('segmentTranscript', () => {
             expect(result).toHaveLength(2);
             expect(result[0]?.text).toBe('Hello Hi');
             expect(result[0]?.language).toBe('en');
-            expect(result[1]?.text).toBe('Hola');
+            expect(result[1]?.text).toBe(' Hola');
             expect(result[1]?.language).toBe('es');
         });
 
         it('should put all tokens in one segment when groupBy is empty', () => {
             const tokens = [
                 createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
-                createToken('Hola', 500, 1000, { speaker: '2', language: 'es' }),
-                createToken('Hi', 1000, 1200, { speaker: '3', language: 'fr' }),
+                createToken(' Hola', 500, 1000, { speaker: '2', language: 'es' }),
+                createToken(' Hi', 1000, 1200, { speaker: '3', language: 'fr' }),
             ];
 
             const result = segmentTranscript(tokens, { groupBy: [] });
@@ -2027,7 +2027,7 @@ describe('SonioxTranscript', () => {
         it('should return segments from tokens', () => {
             const tokens: TranscriptToken[] = [
                 { text: 'Hello', start_ms: 0, end_ms: 500, confidence: 0.9, speaker: '1' },
-                { text: 'Hi', start_ms: 600, end_ms: 800, confidence: 0.95, speaker: '2' },
+                { text: ' Hi', start_ms: 600, end_ms: 800, confidence: 0.95, speaker: '2' },
             ];
 
             const transcript = new SonioxTranscript({
@@ -2041,7 +2041,7 @@ describe('SonioxTranscript', () => {
             expect(segments).toHaveLength(2);
             expect(segments[0]?.text).toBe('Hello');
             expect(segments[0]?.speaker).toBe('1');
-            expect(segments[1]?.text).toBe('Hi');
+            expect(segments[1]?.text).toBe(' Hi');
             expect(segments[1]?.speaker).toBe('2');
         });
 
@@ -2060,7 +2060,7 @@ describe('SonioxTranscript', () => {
         it('should accept groupBy option', () => {
             const tokens: TranscriptToken[] = [
                 { text: 'Hello', start_ms: 0, end_ms: 500, confidence: 0.9, speaker: '1', language: 'en' },
-                { text: 'Hola', start_ms: 600, end_ms: 800, confidence: 0.95, speaker: '1', language: 'es' },
+                { text: ' Hola', start_ms: 600, end_ms: 800, confidence: 0.95, speaker: '1', language: 'es' },
             ];
 
             const transcript = new SonioxTranscript({

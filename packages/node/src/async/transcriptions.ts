@@ -229,7 +229,7 @@ function buildSegment(
         throw new Error('Cannot build segment from an empty token array');
     }
 
-    const text = tokens.map(t => t.text).join(' ');
+    const text = tokens.map(t => t.text).join('');
 
     return {
         text,
