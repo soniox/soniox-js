@@ -30,7 +30,7 @@ const createMockTranscriptionData = (
 ): SonioxTranscriptionData => ({
     id: '550e8400-e29b-41d4-a716-446655440000',
     status: 'queued',
-    model: 'soniox-precision',
+    model: 'stt-async-v3',
     created_at: '2024-11-26T00:00:00Z',
     filename: 'test-audio.mp3',
     enable_speaker_diarization: false,
@@ -63,7 +63,7 @@ describe('SonioxTranscription', () => {
 
         expect(transcription.id).toBe('550e8400-e29b-41d4-a716-446655440000');
         expect(transcription.status).toBe('queued');
-        expect(transcription.model).toBe('soniox-precision');
+        expect(transcription.model).toBe('stt-async-v3');
         expect(transcription.created_at).toBe('2024-11-26T00:00:00Z');
         expect(transcription.audio_url).toBe('https://example.com/audio.mp3');
         expect(transcription.client_reference_id).toBe('my-ref-123');
@@ -585,7 +585,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
             await api.create({
-                model: 'soniox-precision',
+                model: 'stt-async-v3',
                 audio_url: 'https://example.com/audio.mp3',
             });
 
@@ -593,7 +593,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'POST',
                 path: '/v1/transcriptions',
                 body: {
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                 },
             });
@@ -610,7 +610,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
             const result = await api.create({
-                model: 'soniox-precision',
+                model: 'stt-async-v3',
                 audio_url: 'https://example.com/audio.mp3',
             });
 
@@ -980,7 +980,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
             const result = await api.transcribe({
-                model: 'soniox-precision',
+                model: 'stt-async-v3',
                 audio_url: 'https://example.com/audio.mp3',
             });
 
@@ -990,7 +990,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'POST',
                 path: '/v1/transcriptions',
                 body: expect.objectContaining({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                 }),
             });
@@ -1020,7 +1020,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
             const buffer = Buffer.from('test audio data');
             const result = await api.transcribe({
-                model: 'soniox-precision',
+                model: 'stt-async-v3',
                 file: buffer,
                 filename: 'audio.mp3',
             });
@@ -1033,7 +1033,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'POST',
                 path: '/v1/transcriptions',
                 body: expect.objectContaining({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     file_id: 'uploaded-file-id',
                 }),
             });
@@ -1059,7 +1059,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
             const resultPromise = api.transcribe({
-                model: 'soniox-precision',
+                model: 'stt-async-v3',
                 audio_url: 'https://example.com/audio.mp3',
                 wait: true,
             });
@@ -1084,7 +1084,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
             const result = await api.transcribe({
-                model: 'soniox-precision',
+                model: 'stt-async-v3',
                 audio_url: 'https://example.com/audio.mp3',
             });
 
@@ -1108,7 +1108,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
             await api.transcribe({
-                model: 'soniox-precision',
+                model: 'stt-async-v3',
                 audio_url: 'https://example.com/audio.mp3',
                 webhook_url: 'https://example.com/webhook',
                 webhook_auth_header_name: 'X-Webhook-Auth',
@@ -1119,7 +1119,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'POST',
                 path: '/v1/transcriptions',
                 body: expect.objectContaining({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_auth_header_name: 'X-Webhook-Auth',
@@ -1135,7 +1135,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                 } as TranscribeOptions)).rejects.toThrow('One of file, file_id, or audio_url must be provided');
             });
 
@@ -1145,7 +1145,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     file: Buffer.from('test'),
                     audio_url: 'https://example.com/audio.mp3',
                 } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
@@ -1157,7 +1157,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     file: Buffer.from('test'),
                     file_id: 'existing-file-id',
                 } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
@@ -1169,7 +1169,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     file_id: 'existing-file-id',
                 } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
@@ -1181,7 +1181,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     file: Buffer.from('test'),
                     audio_url: 'https://example.com/audio.mp3',
                     file_id: 'existing-file-id',
@@ -1197,7 +1197,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_auth_header_name: 'X-Webhook-Secret',
@@ -1211,7 +1211,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_auth_header_value: 'secret-token',
@@ -1229,7 +1229,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_auth_header_name: 'X-Webhook-Secret',
@@ -1250,7 +1250,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                 });
@@ -1271,7 +1271,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_query: { transcription_id: 'abc123', user_id: '456' },
@@ -1297,7 +1297,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_query: 'key=value&other=data',
@@ -1327,7 +1327,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 params.append('type', 'test');
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_query: params,
@@ -1353,7 +1353,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook?existing=param',
                     webhook_query: { new: 'value' },
@@ -1379,7 +1379,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                 });
@@ -1404,7 +1404,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_query: { ignored: 'value' },
                 });
@@ -1426,7 +1426,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'ftp://example.com/audio.mp3',
                 })).rejects.toThrow('audio_url must be a valid HTTP or HTTPS URL');
             });
@@ -1437,7 +1437,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/audio file.mp3',
                 })).rejects.toThrow('audio_url must be a valid HTTP or HTTPS URL');
             });
@@ -1448,7 +1448,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: '',
                 })).rejects.toThrow('audio_url must be a valid HTTP or HTTPS URL');
             });
@@ -1464,7 +1464,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'http://example.com/audio.mp3',
                 });
 
@@ -1482,11 +1482,312 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'soniox-precision',
+                    model: 'stt-async-v3',
                     audio_url: 'https://example.com/path/to/audio.mp3?token=abc123',
                 });
 
                 expect(requestMock).toHaveBeenCalled();
+            });
+        });
+
+        describe('signal and timeout options', () => {
+            it('should pass signal to file upload', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const uploadMock = jest.fn().mockResolvedValue({
+                    id: 'uploaded-file-id',
+                    filename: 'test.mp3',
+                    size: 1000,
+                    created_at: new Date().toISOString(),
+                });
+                const mockFilesApi = createMockFilesAPI(uploadMock);
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const controller = new AbortController();
+                await api.transcribe({
+                    model: 'stt-async-v3',
+                    file: Buffer.from('test'),
+                    signal: controller.signal,
+                });
+
+                expect(uploadMock).toHaveBeenCalledWith(
+                    expect.anything(),
+                    expect.objectContaining({
+                        signal: expect.any(Object),
+                    })
+                );
+            });
+
+            it('should pass signal to create request', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const controller = new AbortController();
+                await api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    signal: controller.signal,
+                });
+
+                expect(requestMock).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        signal: expect.any(Object),
+                    })
+                );
+            });
+
+            it('should abort on signal when uploading file', async () => {
+                const mockHttp = createMockHttpClient();
+                const uploadMock = jest.fn().mockImplementation(() => {
+                    return new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Upload aborted')), 100);
+                    });
+                });
+                const mockFilesApi = createMockFilesAPI(uploadMock);
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const controller = new AbortController();
+                const promise = api.transcribe({
+                    model: 'stt-async-v3',
+                    file: Buffer.from('test'),
+                    signal: controller.signal,
+                });
+
+                controller.abort();
+                await expect(promise).rejects.toThrow();
+            });
+
+            it('should create timeout-based signal when timeout_ms is provided', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    timeout_ms: 30000,
+                });
+
+                expect(requestMock).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        signal: expect.any(Object),
+                    })
+                );
+            });
+
+            it('should timeout when timeout_ms expires', async () => {
+                const mockHttp = createMockHttpClient();
+                const uploadMock = jest.fn().mockImplementation(() => {
+                    return new Promise(resolve => {
+                        setTimeout(() => resolve({
+                            id: 'uploaded-file-id',
+                            filename: 'test.mp3',
+                            size: 1000,
+                            created_at: new Date().toISOString(),
+                        }), 200);
+                    });
+                });
+                const mockFilesApi = createMockFilesAPI(uploadMock);
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                // Use a very short timeout
+                await expect(api.transcribe({
+                    model: 'stt-async-v3',
+                    file: Buffer.from('test'),
+                    timeout_ms: 10,
+                })).rejects.toThrow();
+            }, 1000);
+
+            it('should pass signal to wait when wait=true', async () => {
+                let callCount = 0;
+                const requestMock = jest.fn().mockImplementation(() => {
+                    callCount++;
+                    // First call is create, subsequent calls are refresh
+                    if (callCount === 1) {
+                        return Promise.resolve({
+                            status: 201,
+                            headers: {},
+                            data: createMockTranscriptionData({ status: 'queued' }),
+                        });
+                    }
+                    return Promise.resolve({
+                        status: 200,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'completed' }),
+                    });
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const controller = new AbortController();
+                const result = await api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    wait: true,
+                    signal: controller.signal,
+                });
+
+                expect(result.status).toBe('completed');
+            });
+
+            describe('timeout_ms validation', () => {
+                it('should throw when timeout_ms is NaN', async () => {
+                    const mockHttp = createMockHttpClient();
+                    const mockFilesApi = createMockFilesAPI();
+                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                    await expect(api.transcribe({
+                        model: 'stt-async-v3',
+                        audio_url: 'https://example.com/audio.mp3',
+                        timeout_ms: NaN,
+                    })).rejects.toThrow('timeout_ms must be a finite positive number');
+                });
+
+                it('should throw when timeout_ms is Infinity', async () => {
+                    const mockHttp = createMockHttpClient();
+                    const mockFilesApi = createMockFilesAPI();
+                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                    await expect(api.transcribe({
+                        model: 'stt-async-v3',
+                        audio_url: 'https://example.com/audio.mp3',
+                        timeout_ms: Infinity,
+                    })).rejects.toThrow('timeout_ms must be a finite positive number');
+                });
+
+                it('should throw when timeout_ms is negative', async () => {
+                    const mockHttp = createMockHttpClient();
+                    const mockFilesApi = createMockFilesAPI();
+                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                    await expect(api.transcribe({
+                        model: 'stt-async-v3',
+                        audio_url: 'https://example.com/audio.mp3',
+                        timeout_ms: -1000,
+                    })).rejects.toThrow('timeout_ms must be a finite positive number');
+                });
+
+                it('should throw when timeout_ms is zero', async () => {
+                    const mockHttp = createMockHttpClient();
+                    const mockFilesApi = createMockFilesAPI();
+                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                    await expect(api.transcribe({
+                        model: 'stt-async-v3',
+                        audio_url: 'https://example.com/audio.mp3',
+                        timeout_ms: 0,
+                    })).rejects.toThrow('timeout_ms must be a finite positive number');
+                });
+            });
+
+            describe('combined timeout_ms and signal', () => {
+                it('should abort with timeout reason when timeout fires first', async () => {
+                    const mockHttp = createMockHttpClient();
+                    // Create an upload mock that respects abort signals
+                    const uploadMock = jest.fn().mockImplementation((_file: unknown, options?: { signal?: AbortSignal }) => {
+                        return new Promise((resolve, reject) => {
+                            const timeoutId = setTimeout(() => resolve({
+                                id: 'uploaded-file-id',
+                                filename: 'test.mp3',
+                                size: 1000,
+                                created_at: new Date().toISOString(),
+                            }), 500);
+
+                            // Listen for abort signal
+                            if (options?.signal) {
+                                options.signal.addEventListener('abort', () => {
+                                    clearTimeout(timeoutId);
+                                    reject(options.signal?.reason ?? new Error('Aborted'));
+                                }, { once: true });
+                            }
+                        });
+                    });
+                    const mockFilesApi = createMockFilesAPI(uploadMock);
+                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                    const controller = new AbortController();
+                    await expect(api.transcribe({
+                        model: 'stt-async-v3',
+                        file: Buffer.from('test'),
+                        timeout_ms: 50,
+                        signal: controller.signal,
+                    })).rejects.toThrow('timed out');
+                }, 1000);
+
+                it('should abort with user reason when signal fires first', async () => {
+                    const mockHttp = createMockHttpClient();
+                    // Create an upload mock that respects abort signals
+                    const uploadMock = jest.fn().mockImplementation((_file: unknown, options?: { signal?: AbortSignal }) => {
+                        return new Promise((resolve, reject) => {
+                            const timeoutId = setTimeout(() => resolve({
+                                id: 'uploaded-file-id',
+                                filename: 'test.mp3',
+                                size: 1000,
+                                created_at: new Date().toISOString(),
+                            }), 500);
+
+                            // Listen for abort signal
+                            if (options?.signal) {
+                                options.signal.addEventListener('abort', () => {
+                                    clearTimeout(timeoutId);
+                                    reject(options.signal?.reason ?? new Error('Aborted'));
+                                }, { once: true });
+                            }
+                        });
+                    });
+                    const mockFilesApi = createMockFilesAPI(uploadMock);
+                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                    const controller = new AbortController();
+                    const promise = api.transcribe({
+                        model: 'stt-async-v3',
+                        file: Buffer.from('test'),
+                        timeout_ms: 10000,
+                        signal: controller.signal,
+                    });
+
+                    // Abort after a short delay
+                    setTimeout(() => controller.abort(new Error('User cancelled')), 50);
+
+                    await expect(promise).rejects.toThrow('User cancelled');
+                }, 1000);
+
+                it('should work correctly when both timeout and signal are provided but neither fires', async () => {
+                    const requestMock = jest.fn().mockResolvedValue({
+                        status: 201,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'queued' }),
+                    });
+                    const mockHttp = createMockHttpClient(requestMock);
+                    const mockFilesApi = createMockFilesAPI();
+                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                    const controller = new AbortController();
+                    const result = await api.transcribe({
+                        model: 'stt-async-v3',
+                        audio_url: 'https://example.com/audio.mp3',
+                        timeout_ms: 30000,
+                        signal: controller.signal,
+                    });
+
+                    expect(result.status).toBe('queued');
+                });
             });
         });
     });

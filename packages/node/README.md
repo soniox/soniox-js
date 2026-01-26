@@ -77,7 +77,7 @@ The `transcribe()` method is the easiest way to transcribe audio:
 ```typescript
 // Transcribe from URL and wait for completion
 const transcription = await client.transcriptions.transcribe({
-    model: 'soniox-precision',
+    model: 'stt-async-v3',
     audio_url: 'https://example.com/audio.mp3',
     wait: true,
 });
@@ -94,7 +94,7 @@ import { readFile } from 'fs/promises';
 const buffer = await readFile('recording.mp3');
 
 const transcription = await client.transcriptions.transcribe({
-    model: 'soniox-precision',
+    model: 'stt-async-v3',
     file: buffer,
     filename: 'recording.mp3',
     wait: true,
@@ -107,7 +107,7 @@ console.log(await transcription.getTranscript());
 
 ```typescript
 const transcription = await client.transcriptions.transcribe({
-    model: 'soniox-precision',
+    model: 'stt-async-v3',
     audio_url: 'https://example.com/audio.mp3',
     
     // Enable speaker diarization
@@ -145,14 +145,14 @@ const transcription = await client.transcriptions.transcribe({
 ```typescript
 // From URL
 const transcription = await client.transcriptions.create({
-    model: 'soniox-precision',
+    model: 'stt-async-v3',
     audio_url: 'https://example.com/audio.mp3',
 });
 
 // From uploaded file
 const file = await client.files.upload(buffer);
 const transcription = await client.transcriptions.create({
-    model: 'soniox-precision',
+    model: 'stt-async-v3',
     file_id: file.id,
 });
 
@@ -247,7 +247,7 @@ Configure webhooks to receive notifications when transcriptions complete:
 
 ```typescript
 const transcription = await client.transcriptions.transcribe({
-    model: 'soniox-precision',
+    model: 'stt-async-v3',
     audio_url: 'https://example.com/audio.mp3',
     webhook_url: 'https://your-server.com/webhook',
     // Both auth headers must be provided together (or neither)

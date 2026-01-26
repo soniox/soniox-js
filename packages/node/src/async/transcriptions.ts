@@ -68,6 +68,73 @@ function getTranscriptionId(transcription: TranscriptionIdentifier): string {
 }
 
 /**
+ * Creates an AbortSignal that fires when either the timeout expires or the provided signal aborts
+ * Returns the signal and a cleanup function to clear the timeout
+ */
+function createTimeoutSignal(
+    timeout_ms: number | undefined,
+    signal: AbortSignal | undefined
+): { signal: AbortSignal | undefined; cleanup: () => void } {
+    // No timeout and no signal - return undefined
+    if (timeout_ms === undefined && signal === undefined) {
+        return { signal: undefined, cleanup: () => {} };
+    }
+
+    // Only user signal, no timeout
+    if (timeout_ms === undefined) {
+        return { signal, cleanup: () => {} };
+    }
+
+    if (!Number.isFinite(timeout_ms) || timeout_ms <= 0) {
+        throw new Error('timeout_ms must be a finite positive number');
+    }
+
+    // Create timeout-based abort controller
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => {
+        timeoutController.abort(new Error(`Operation timed out after ${timeout_ms}ms`));
+    }, timeout_ms);
+
+    const cleanup = () => clearTimeout(timeoutId);
+
+    // Only timeout, no user signal
+    if (signal === undefined) {
+        return { signal: timeoutController.signal, cleanup };
+    }
+
+    // Both timeout and user signal - combine them
+    const combinedController = new AbortController();
+
+    const onAbort = () => {
+        cleanup();
+        timeoutController.signal.removeEventListener('abort', onTimeout);
+        combinedController.abort(signal.reason ?? new Error('Operation aborted'));
+    };
+
+    const onTimeout = () => {
+        signal.removeEventListener('abort', onAbort);
+        combinedController.abort(timeoutController.signal.reason);
+    };
+
+    if (signal.aborted) {
+        cleanup();
+        combinedController.abort(signal.reason ?? new Error('Operation aborted'));
+    } else {
+        signal.addEventListener('abort', onAbort, { once: true });
+        timeoutController.signal.addEventListener('abort', onTimeout, { once: true });
+    }
+
+    return {
+        signal: combinedController.signal,
+        cleanup: () => {
+            cleanup();
+            signal.removeEventListener('abort', onAbort);
+            timeoutController.signal.removeEventListener('abort', onTimeout);
+        }
+    };
+}
+
+/**
  * A Transcription instance
  */
 export class SonioxTranscription {
@@ -253,7 +320,7 @@ export class SonioxTranscription {
      * ```typescript
      * // Clean up both transcription and uploaded file
      * const transcription = await client.transcriptions.transcribe({
-     *     model: 'soniox-precision',
+     *     model: 'stt-async-v3',
      *     file: buffer,
      *     wait: true,
      * });
@@ -347,7 +414,7 @@ export class SonioxTranscription {
      * @example
      * ```typescript
      * const transcription = await client.transcriptions.create({
-     *     model: 'soniox-precision',
+     *     model: 'stt-async-v3',
      *     audio_url: 'https://example.com/audio.mp3',
      * });
      *
@@ -506,30 +573,31 @@ export class SonioxTranscriptionsAPI {
      * ```typescript
      * // Transcribe from URL
      * const transcription = await client.transcriptions.create({
-     *     model: 'soniox-precision',
+     *     model: 'stt-async-v3',
      *     audio_url: 'https://example.com/audio.mp3',
      * });
      *
      * // Transcribe from uploaded file
      * const file = await client.files.upload(buffer);
      * const transcription = await client.transcriptions.create({
-     *     model: 'soniox-precision',
+     *     model: 'stt-async-v3',
      *     file_id: file.id,
      * });
      *
      * // With speaker diarization
      * const transcription = await client.transcriptions.create({
-     *     model: 'soniox-precision',
+     *     model: 'stt-async-v3',
      *     audio_url: 'https://example.com/audio.mp3',
      *     enable_speaker_diarization: true,
      * });
      * ```
      */
-    async create(options: CreateTranscriptionOptions): Promise<SonioxTranscription> {
+    async create(options: CreateTranscriptionOptions, signal?: AbortSignal): Promise<SonioxTranscription> {
         const response = await this.http.request<SonioxTranscriptionData>({
             method: 'POST',
             path: '/v1/transcriptions',
             body: options,
+            ...(signal && { signal }),
         });
 
         return new SonioxTranscription(response.data, this.http);
@@ -652,7 +720,7 @@ export class SonioxTranscriptionsAPI {
      * ```typescript
      * // Clean up both transcription and uploaded file
      * const transcription = await client.transcriptions.transcribe({
-     *     model: 'soniox-precision',
+     *     model: 'stt-async-v3',
      *     file: buffer,
      *     wait: true,
      * });
@@ -765,14 +833,14 @@ export class SonioxTranscriptionsAPI {
      * ```typescript
      * // Transcribe from URL and wait for completion
      * const result = await client.transcriptions.transcribe({
-     *     model: 'soniox-precision',
+     *     model: 'stt-async-v3',
      *     audio_url: 'https://example.com/audio.mp3',
      *     wait: true,
      * });
      *
      * // Upload file and transcribe in one call
      * const result = await client.transcriptions.transcribe({
-     *     model: 'soniox-precision',
+     *     model: 'stt-async-v3',
      *     file: buffer,  // or Blob, ReadableStream
      *     filename: 'meeting.mp3',
      *     enable_speaker_diarization: true,
@@ -781,7 +849,7 @@ export class SonioxTranscriptionsAPI {
      *
      * // With wait progress callback
      * const result = await client.transcriptions.transcribe({
-     *     model: 'soniox-precision',
+     *     model: 'stt-async-v3',
      *     file: buffer,
      *     wait: true,
      *     wait_options: {
@@ -821,58 +889,71 @@ export class SonioxTranscriptionsAPI {
             throw new Error('webhook_auth_header_name and webhook_auth_header_value must be provided together');
         }
 
-        let file_id = options.file_id;
+        // Create combined signal from timeout_ms and signal options
+        const { signal: combinedSignal, cleanup } = createTimeoutSignal(options.timeout_ms, options.signal);
 
-        // If file data provided, upload first
-        if (options.file) {
-            const uploaded = await this.filesApi.upload(options.file, {
-                filename: options.filename,
+        try {
+            let file_id = options.file_id;
+
+            // If file data provided, upload first
+            if (options.file) {
+                const uploaded = await this.filesApi.upload(options.file, {
+                    filename: options.filename,
+                    client_reference_id: options.client_reference_id,
+                    signal: combinedSignal,
+                });
+                file_id = uploaded.id;
+            }
+
+            // Process webhook_url with optional webhook_query
+            let webhook_url = options.webhook_url;
+            if (webhook_url && options.webhook_query) {
+                const url = new URL(webhook_url);
+                const params = options.webhook_query instanceof URLSearchParams
+                    ? options.webhook_query
+                    : typeof options.webhook_query === 'string'
+                        ? new URLSearchParams(options.webhook_query)
+                        : new URLSearchParams(options.webhook_query);
+
+                params.forEach((value, key) => {
+                    url.searchParams.append(key, value);
+                });
+                webhook_url = url.toString();
+            }
+
+            // Build create options (exclude file-upload specific fields)
+            const createOptions: CreateTranscriptionOptions = {
+                model: options.model,
+                audio_url: options.audio_url,
+                file_id,
+                language_hints: options.language_hints,
+                language_hints_strict: options.language_hints_strict,
+                enable_language_identification: options.enable_language_identification,
+                enable_speaker_diarization: options.enable_speaker_diarization,
+                context: options.context,
+                translation: options.translation,
+                webhook_url,
+                webhook_auth_header_name: options.webhook_auth_header_name,
+                webhook_auth_header_value: options.webhook_auth_header_value,
                 client_reference_id: options.client_reference_id,
-            });
-            file_id = uploaded.id;
+            };
+
+            // Create transcription
+            const transcription = await this.create(createOptions, combinedSignal);
+
+            // Wait if requested (defaults to false)
+            if (options.wait) {
+                // Merge the combined signal with any existing wait_options.signal
+                const waitOptions: WaitOptions = {
+                    ...options.wait_options,
+                    signal: combinedSignal ?? options.wait_options?.signal,
+                };
+                return transcription.wait(waitOptions);
+            }
+
+            return transcription;
+        } finally {
+            cleanup();
         }
-
-        // Process webhook_url with optional webhook_query
-        let webhook_url = options.webhook_url;
-        if (webhook_url && options.webhook_query) {
-            const url = new URL(webhook_url);
-            const params = options.webhook_query instanceof URLSearchParams
-                ? options.webhook_query
-                : typeof options.webhook_query === 'string'
-                    ? new URLSearchParams(options.webhook_query)
-                    : new URLSearchParams(options.webhook_query);
-
-            params.forEach((value, key) => {
-                url.searchParams.append(key, value);
-            });
-            webhook_url = url.toString();
-        }
-
-        // Build create options (exclude file-upload specific fields)
-        const createOptions: CreateTranscriptionOptions = {
-            model: options.model,
-            audio_url: options.audio_url,
-            file_id,
-            language_hints: options.language_hints,
-            language_hints_strict: options.language_hints_strict,
-            enable_language_identification: options.enable_language_identification,
-            enable_speaker_diarization: options.enable_speaker_diarization,
-            context: options.context,
-            translation: options.translation,
-            webhook_url,
-            webhook_auth_header_name: options.webhook_auth_header_name,
-            webhook_auth_header_value: options.webhook_auth_header_value,
-            client_reference_id: options.client_reference_id,
-        };
-
-        // Create transcription
-        const transcription = await this.create(createOptions);
-
-        // Wait if requested (defaults to false)
-        if (options.wait) {
-            return transcription.wait(options.wait_options);
-        }
-
-        return transcription;
     }
 }

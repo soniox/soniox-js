@@ -393,6 +393,16 @@ type TranscribeBaseOptions = {
      * Can be a string, URLSearchParams, or Record<string, string>.
      */
     webhook_query?: string | URLSearchParams | Record<string, string> | undefined;
+
+    /**
+     * AbortSignal to cancel the operation
+     */
+    signal?: AbortSignal | undefined;
+
+    /**
+     * Timeout in milliseconds
+     */
+    timeout_ms?: number | undefined;
 }
 
 /**
