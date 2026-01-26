@@ -6,6 +6,7 @@ Official Soniox SDK for Node.js - Speech-to-Text API
 
 - [Installation](#installation)
 - [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
 - [Temporary API Keys](#temporary-api-keys)
 - [Files API](#files-api)
 - [Transcriptions API](#transcriptions-api)
@@ -25,6 +26,36 @@ import { SonioxNodeClient } from '@soniox/node';
 
 const client = new SonioxNodeClient({
     apiKey: 'your-api-key', // or set SONIOX_API_KEY env var
+});
+```
+
+## Environment Variables
+
+The SDK supports the following environment variables:
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `SONIOX_API_KEY` | API key for authentication. Used when `apiKey` is not provided in client options. | — |
+| `SONIOX_API_BASE_URL` | Base URL for API requests. Used when `baseURL` is not provided in client options. | `https://api.soniox.com` |
+| `SONIOX_API_WEBHOOK_HEADER` | Header name for webhook authentication. Used by webhook handlers when `auth` is not provided. | — |
+| `SONIOX_API_WEBHOOK_SECRET` | Header value for webhook authentication. Used by webhook handlers when `auth` is not provided. | — |
+
+**Example:**
+
+```bash
+export SONIOX_API_KEY=your-api-key
+export SONIOX_API_WEBHOOK_HEADER=X-Webhook-Secret
+export SONIOX_API_WEBHOOK_SECRET=your-webhook-secret
+```
+
+```typescript
+// No need to pass apiKey when SONIOX_API_KEY is set
+const client = new SonioxNodeClient();
+
+// No need to pass auth when webhook env vars are set
+app.post('/webhook', (req, res) => {
+    const result = webhooks.handleWebhookExpress(req);
+    // ...
 });
 ```
 
