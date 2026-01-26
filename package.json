@@ -14,8 +14,9 @@
   "scripts": {
     "build": "tsc -b && npm run build --workspaces --if-present",
     "clean": "tsc -b --clean && npm run clean --workspaces --if-present",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint:dev": "eslint .",
+    "lint:fix": "npm run lint:dev -- --fix",
+    "lint": "npm run lint:dev -- --quiet",
     "format": "prettier --write \"packages/*/src/**/*.ts\"",
     "format:check": "prettier --check \"packages/*/src/**/*.ts\"",
     "test": "jest",
