@@ -258,11 +258,12 @@ export class FetchHttpClient implements HttpClient {
 
     try {
       // Perform the fetch
+      const preparedBody = prepareBody(request.body);
       const response = await this.fetchImpl(url, {
         method,
         headers,
-        body: prepareBody(request.body),
         signal,
+        ...(preparedBody !== undefined && { body: preparedBody }),
       });
 
       // Clear timeout
