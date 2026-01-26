@@ -29,6 +29,51 @@ const client = new SonioxNodeClient({
 });
 ```
 
+## Compact API Reference
+
+**Client**
+- `new SonioxNodeClient({ apiKey?, baseURL?, httpClient? })`
+
+**Files**
+- `client.files.upload(file, options?)`
+- `client.files.list(options?)`
+- `client.files.get(fileId | file)`
+- `client.files.delete(fileId | file)`
+
+**Transcriptions**
+- `client.transcriptions.transcribe(options)` (exactly one of `file`, `file_id`, `audio_url`)
+- `client.transcriptions.transcribeFromUrl(audioUrl, options)`
+- `client.transcriptions.transcribeFromFile(file, options)`
+- `client.transcriptions.transcribeFromFileId(fileId, options)`
+- `client.transcriptions.create(options)`
+- `client.transcriptions.list(options?)`
+- `client.transcriptions.get(id | transcription)`
+- `client.transcriptions.getTranscript(id | transcription)`
+- `client.transcriptions.wait(id | transcription, options?)`
+- `client.transcriptions.delete(id | transcription)`
+- `client.transcriptions.destroy(id | transcription)`
+
+**Webhooks**
+- `client.webhooks.handle(options)`
+- `client.webhooks.handleRequest(request, auth?)`
+- `client.webhooks.handleExpress(req, auth?)`
+- `client.webhooks.handleFastify(req, auth?)`
+- `client.webhooks.handleNestJS(req, auth?)`
+- `client.webhooks.handleHono(c, auth?)`
+- `client.webhooks.getAuthFromEnv()`
+- `client.webhooks.isEvent(payload)`
+- `client.webhooks.parseEvent(payload)`
+- `client.webhooks.verifyAuth(headers, auth)`
+
+**Models**
+- `client.models.list()`
+
+**Auth**
+- `client.auth.createTemporaryKey(request)`
+
+**Realtime**
+- `client.realtime.createSession()`
+
 ## Environment Variables
 
 The SDK supports the following environment variables:
@@ -115,6 +160,15 @@ const transcription = await client.transcriptions.transcribe({
 
 const transcript = await transcription.getTranscript();
 console.log(transcript.text);
+```
+
+If you want to avoid the "one-of" audio source options, use the convenience wrappers:
+
+```typescript
+const transcription = await client.transcriptions.transcribeFromUrl(
+    'https://example.com/audio.mp3',
+    { model: 'stt-async-v3', wait: true }
+);
 ```
 
 ### Upload and Transcribe in One Call

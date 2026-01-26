@@ -315,7 +315,7 @@ export type WaitOptions = {
 /**
  * Base options shared by all audio source variants.
  */
-type TranscribeBaseOptions = {
+export type TranscribeBaseOptions = {
     /**
      * Speech-to-text model to use.
      * @maxLength 32
@@ -408,7 +408,7 @@ type TranscribeBaseOptions = {
 /**
  * Transcribe from a direct file upload (Buffer, Uint8Array, Blob, or ReadableStream)
  */
-type TranscribeFromFile = TranscribeBaseOptions & {
+export type TranscribeFromFile = TranscribeBaseOptions & {
     /**
      * File data to upload and transcribe.
      */
@@ -421,7 +421,7 @@ type TranscribeFromFile = TranscribeBaseOptions & {
 /**
  * Transcribe from a previously uploaded file
  */
-type TranscribeFromFileId = TranscribeBaseOptions & {
+export type TranscribeFromFileId = TranscribeBaseOptions & {
     /**
      * ID of a previously uploaded file.
      * @format uuid
@@ -435,7 +435,7 @@ type TranscribeFromFileId = TranscribeBaseOptions & {
 /**
  * Transcribe from a publicly accessible audio URL
  */
-type TranscribeFromUrl = TranscribeBaseOptions & {
+export type TranscribeFromUrl = TranscribeBaseOptions & {
     /**
      * URL of a publicly accessible audio file.
      * @maxLength 4096
@@ -451,6 +451,21 @@ type TranscribeFromUrl = TranscribeBaseOptions & {
  * Exactly one audio source must be provided: `file`, `file_id`, or `audio_url`
  */
 export type TranscribeOptions = TranscribeFromFile | TranscribeFromFileId | TranscribeFromUrl;
+
+/**
+ * Options for transcribing from a URL via `transcribeFromUrl`.
+ */
+export type TranscribeFromUrlOptions = Omit<TranscribeFromUrl, 'audio_url'>;
+
+/**
+ * Options for transcribing from a file via `transcribeFromFile`.
+ */
+export type TranscribeFromFileOptions = Omit<TranscribeFromFile, 'file'>;
+
+/**
+ * Options for transcribing from an uploaded file ID via `transcribeFromFileId`.
+ */
+export type TranscribeFromFileIdOptions = Omit<TranscribeFromFileId, 'file_id'>;
 
 /**
  * Options for listing transcriptions

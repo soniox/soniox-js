@@ -5,10 +5,14 @@ import type {
     ListTranscriptionsOptions,
     ListTranscriptionsResponse,
     SonioxTranscriptionData,
+    TranscribeFromFileIdOptions,
+    TranscribeFromFileOptions,
+    TranscribeFromUrlOptions,
     TranscribeOptions,
     TranscriptionIdentifier,
     TranscriptionStatus,
     TranscriptResponse,
+    UploadFileInput,
     WaitOptions,
 } from "../types/public/index.js";
 
@@ -816,6 +820,48 @@ export class SonioxTranscriptionsAPI {
             throw new Error(`Transcription not found: ${getTranscriptionId(id)}`);
         }
         return transcription.wait(options);
+    }
+
+    /**
+     * Wrapper to transcribe from a URL.
+     *
+     * @param audio_url - Publicly accessible audio URL
+     * @param options - Transcription options (excluding audio_url)
+     * @returns The transcription (completed if wait=true, otherwise in queued/processing state).
+     */
+    async transcribeFromUrl(
+        audio_url: string,
+        options: TranscribeFromUrlOptions,
+    ): Promise<SonioxTranscription> {
+        return this.transcribe({ ...options, audio_url });
+    }
+
+    /**
+     * Wrapper to transcribe from an uploaded file ID.
+     *
+     * @param file_id - ID of a previously uploaded file
+     * @param options - Transcription options (excluding file_id)
+     * @returns The transcription (completed if wait=true, otherwise in queued/processing state).
+     */
+    async transcribeFromFileId(
+        file_id: string,
+        options: TranscribeFromFileIdOptions,
+    ): Promise<SonioxTranscription> {
+        return this.transcribe({ ...options, file_id });
+    }
+
+    /**
+     * Wrapper to transcribe from raw file data.
+     *
+     * @param file - Buffer, Uint8Array, Blob, or ReadableStream
+     * @param options - Transcription options (excluding file)
+     * @returns The transcription (completed if wait=true, otherwise in queued/processing state).
+     */
+    async transcribeFromFile(
+        file: UploadFileInput,
+        options: TranscribeFromFileOptions,
+    ): Promise<SonioxTranscription> {
+        return this.transcribe({ ...options, file });
     }
 
     /**

@@ -1,0 +1,60 @@
+Soniox Node SDK
+
+Package: @soniox/node
+Install: npm install @soniox/node
+
+Create client:
+  import { SonioxNodeClient } from '@soniox/node';
+  const client = new SonioxNodeClient({ apiKey: '...' });
+  // or set SONIOX_API_KEY
+
+Transcribe (recommended wrappers to avoid one-of errors):
+  const t = await client.transcriptions.transcribeFromUrl(
+    'https://example.com/audio.mp3',
+    { model: 'stt-async-v3', wait: true }
+  );
+  const transcript = await t.getTranscript();
+  console.log(transcript?.text);
+
+Transcribe from file (Buffer/Uint8Array/Blob/ReadableStream):
+  const t = await client.transcriptions.transcribeFromFile(file, {
+    model: 'stt-async-v3',
+    filename: 'audio.mp3',
+    wait: true,
+  });
+
+Transcribe from uploaded file id:
+  const t = await client.transcriptions.transcribeFromFileId(fileId, {
+    model: 'stt-async-v3',
+    wait: true,
+  });
+
+Core APIs:
+  client.files.upload(file, options?)
+  client.files.list(options?)
+  client.files.get(id)
+  client.files.delete(id)
+
+  client.transcriptions.create(options)
+  client.transcriptions.list(options?)
+  client.transcriptions.get(id)
+  client.transcriptions.getTranscript(id)
+  client.transcriptions.wait(id, options?)
+  client.transcriptions.delete(id)
+  client.transcriptions.destroy(id)
+
+  client.models.list()
+  client.auth.createTemporaryKey({ usage_type: 'transcribe_websocket', expires_in_seconds })
+  client.realtime.createSession()
+
+Webhooks:
+  client.webhooks.handleExpress(req, auth?)
+  client.webhooks.handleRequest(request, auth?)
+  client.webhooks.handleFastify/handleNestJS/handleHono(...)
+  // ok result includes fetchTranscript() for completed events
+
+Environment variables:
+  SONIOX_API_KEY
+  SONIOX_API_BASE_URL
+  SONIOX_API_WEBHOOK_HEADER
+  SONIOX_API_WEBHOOK_SECRET
