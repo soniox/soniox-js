@@ -313,19 +313,68 @@ export type WaitOptions = {
 }
 
 /**
- * Options for the unified transcribe method.
- * Supports direct file input in addition to audio_url/file_id.
+ * Base options shared by all audio source variants.
  */
-export type TranscribeOptions = CreateTranscriptionOptions & {
+type TranscribeBaseOptions = {
     /**
-     * File data to upload and transcribe (Buffer, Uint8Array, Blob, or ReadableStream).
+     * Speech-to-text model to use.
+     * @maxLength 32
      */
-    file?: UploadFileInput | undefined;
+    model: string;
 
     /**
-     * Filename for the uploaded file.
+     * Array of expected ISO language codes to bias recognition.
      */
-    filename?: string | undefined;
+    language_hints?: string[] | undefined;
+
+    /**
+     * When true, model relies more heavily on language hints.
+     */
+    language_hints_strict?: boolean | undefined;
+
+    /**
+     * Enable automatic language identification.
+     */
+    enable_language_identification?: boolean | undefined;
+
+    /**
+     * Enable speaker diarization to identify different speakers.
+     */
+    enable_speaker_diarization?: boolean | undefined;
+
+    /**
+     * Additional context to improve transcription accuracy and formatting of specialized terms.
+     */
+    context?: TranscriptionContext | undefined;
+
+    /**
+     * Translation configuration.
+     */
+    translation?: TranslationConfig | undefined;
+
+    /**
+     * URL to receive webhook notifications when transcription is completed or fails.
+     * @maxLength 256
+     */
+    webhook_url?: string | undefined;
+
+    /**
+     * Name of the authentication header sent with webhook notifications.
+     * @maxLength 256
+     */
+    webhook_auth_header_name?: string | undefined;
+
+    /**
+     * Authentication header value sent with webhook notifications.
+     * @maxLength 256
+     */
+    webhook_auth_header_value?: string | undefined;
+
+    /**
+     * Optional tracking identifier.
+     * @maxLength 256
+     */
+    client_reference_id?: string | undefined;
 
     /**
      * When true, waits for transcription to complete before returning.
@@ -345,6 +394,53 @@ export type TranscribeOptions = CreateTranscriptionOptions & {
      */
     webhook_query?: string | URLSearchParams | Record<string, string> | undefined;
 }
+
+/**
+ * Transcribe from a direct file upload (Buffer, Uint8Array, Blob, or ReadableStream)
+ */
+type TranscribeFromFile = TranscribeBaseOptions & {
+    /**
+     * File data to upload and transcribe.
+     */
+    file: UploadFileInput;
+    filename?: string | undefined;
+    file_id?: never;
+    audio_url?: never;
+}
+
+/**
+ * Transcribe from a previously uploaded file
+ */
+type TranscribeFromFileId = TranscribeBaseOptions & {
+    /**
+     * ID of a previously uploaded file.
+     * @format uuid
+     */
+    file_id: string;
+    file?: never;
+    filename?: never;
+    audio_url?: never;
+}
+
+/**
+ * Transcribe from a publicly accessible audio URL
+ */
+type TranscribeFromUrl = TranscribeBaseOptions & {
+    /**
+     * URL of a publicly accessible audio file.
+     * @maxLength 4096
+     */
+    audio_url: string;
+    file?: never;
+    filename?: never;
+    file_id?: never;
+}
+
+/**
+ * Options for the unified transcribe method
+ * Exactly one audio source must be provided: `file`, `file_id`, or `audio_url`
+ */
+export type TranscribeOptions = TranscribeFromFile | TranscribeFromFileId | TranscribeFromUrl;
 
 /**
  * Options for listing transcriptions

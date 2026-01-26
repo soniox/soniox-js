@@ -10,6 +10,7 @@ import type {
     ListTranscriptionsResponse,
     SonioxTranscriptionData,
     SonioxFileData,
+    TranscribeOptions,
 } from '../../src/types/public';
 
 // Helper to create a mock 404 error
@@ -1128,14 +1129,14 @@ describe('SonioxTranscriptionsAPI', () => {
         });
 
         describe('audio source validation', () => {
-            it('should throw when no audio source is provided', async () => {
+           it('should throw when no audio source is provided', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
                 const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'soniox-precision',
-                })).rejects.toThrow('One of file, file_id, or audio_url must be provided');
+                } as TranscribeOptions)).rejects.toThrow('One of file, file_id, or audio_url must be provided');
             });
 
             it('should throw when both file and audio_url are provided', async () => {
@@ -1147,7 +1148,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     model: 'soniox-precision',
                     file: Buffer.from('test'),
                     audio_url: 'https://example.com/audio.mp3',
-                })).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
+                } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
             });
 
             it('should throw when both file and file_id are provided', async () => {
@@ -1159,7 +1160,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     model: 'soniox-precision',
                     file: Buffer.from('test'),
                     file_id: 'existing-file-id',
-                })).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
+                } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
             });
 
             it('should throw when both audio_url and file_id are provided', async () => {
@@ -1171,7 +1172,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     model: 'soniox-precision',
                     audio_url: 'https://example.com/audio.mp3',
                     file_id: 'existing-file-id',
-                })).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
+                } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
             });
 
             it('should throw when all three audio sources are provided', async () => {
@@ -1184,7 +1185,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     file: Buffer.from('test'),
                     audio_url: 'https://example.com/audio.mp3',
                     file_id: 'existing-file-id',
-                })).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
+                } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
             });
         });
 
