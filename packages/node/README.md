@@ -291,24 +291,101 @@ const transcription = await client.transcriptions.transcribe({
 
 ### Handling Webhooks
 
-The SDK provides framework-agnostic utilities for handling incoming webhook requests via the `webhooks` namespace.
+Use `client.webhooks` to handle incoming webhook requests.
+
+**Authentication** is automatically read from environment variables (`SONIOX_API_WEBHOOK_HEADER` and `SONIOX_API_WEBHOOK_SECRET`). You can also pass explicit auth to override.
+
+#### Express
+
+```typescript
+import express from 'express';
+import { SonioxNodeClient } from '@soniox/node';
+
+const app = express();
+app.use(express.json());
+
+const client = new SonioxNodeClient();
+
+app.post('/webhook', (req, res) => {
+    const result = client.webhooks.handleExpress(req);
+
+    // Respond immediately to acknowledge receipt
+    res.status(result.status).json(result.ok ? { received: true } : { error: result.error });
+
+    // Then process in background
+    if (result.ok && result.event?.status === 'completed' && result.fetchTranscript) {
+        result.fetchTranscript()
+            .then((transcript) => console.log('Text:', transcript?.text))
+            .catch(console.error);
+    }
+});
+```
+
+#### Fastify
+
+```typescript
+import Fastify from 'fastify';
+import { SonioxNodeClient } from '@soniox/node';
+
+const fastify = Fastify();
+const client = new SonioxNodeClient();
+
+fastify.post('/webhook', (req, reply) => {
+    const result = client.webhooks.handleFastify(req);
+
+    // Respond immediately
+    reply.status(result.status).send(result.ok ? { received: true } : { error: result.error });
+
+    // Process in background
+    if (result.ok && result.event?.status === 'completed' && result.fetchTranscript) {
+        result.fetchTranscript()
+            .then((transcript) => console.log('Text:', transcript?.text))
+            .catch(console.error);
+    }
+});
+```
+
+#### Hono
+
+```typescript
+import { Hono } from 'hono';
+import { SonioxNodeClient } from '@soniox/node';
+
+const app = new Hono();
+const client = new SonioxNodeClient();
+
+app.post('/webhook', async (c) => {
+    const result = await client.webhooks.handleHono(c);
+
+    // Process in background (non-blocking)
+    if (result.ok && result.event?.status === 'completed' && result.fetchTranscript) {
+        result.fetchTranscript()
+            .then((transcript) => console.log('Text:', transcript?.text))
+            .catch(console.error);
+    }
+
+    // Respond immediately
+    return c.json(result.ok ? { received: true } : { error: result.error }, result.status);
+});
+```
 
 #### Fetch API (Bun/Deno/Node 18+)
 
 ```typescript
-import { webhooks } from '@soniox/node';
+import { SonioxNodeClient } from '@soniox/node';
+
+const client = new SonioxNodeClient();
 
 Bun.serve({
     async fetch(req) {
         if (new URL(req.url).pathname === '/webhook') {
-            const result = await webhooks.handleWebhookRequest(req, {
-                name: 'X-Webhook-Secret',
-                value: process.env.WEBHOOK_SECRET!,
-            });
+            const result = await client.webhooks.handleRequest(req);
 
-            if (result.ok) {
-                // Process completed transcription
-                console.log('Transcription completed:', result.event.id);
+            // Process in background
+            if (result.ok && result.event?.status === 'completed' && result.fetchTranscript) {
+                result.fetchTranscript()
+                    .then((transcript) => console.log('Text:', transcript?.text))
+                    .catch(console.error);
             }
 
             return new Response(
@@ -321,139 +398,32 @@ Bun.serve({
 });
 ```
 
-#### Express
+### Fetch Helpers
+
+The webhook result includes helpers to fetch transcript or transcription details:
+
+| Helper | Available When | Returns |
+| --- | --- | --- |
+| `fetchTranscript()` | `status === 'completed'` | Transcript with `text` and `tokens` |
+| `fetchTranscription()` | Always (when `ok`) | Full transcription object (useful for error details) |
 
 ```typescript
-import express from 'express';
-import { webhooks } from '@soniox/node';
-
-const app = express();
-app.use(express.json());
-
-app.post('/webhook', (req, res) => {
-    const result = webhooks.handleWebhookExpress(req, {
-        name: 'X-Webhook-Secret',
-        value: process.env.WEBHOOK_SECRET!,
-    });
-
-    if (result.ok) {
-        console.log('Transcription:', result.event.id, result.event.status);
-    }
-
-    res.status(result.status).json(
-        result.ok ? { received: true } : { error: result.error }
-    );
-});
-```
-
-#### Fastify
-
-```typescript
-import Fastify from 'fastify';
-import { webhooks } from '@soniox/node';
-
-const fastify = Fastify();
-
-fastify.post('/webhook', async (req, reply) => {
-    const result = webhooks.handleWebhookFastify(req, {
-        name: 'X-Webhook-Secret',
-        value: process.env.WEBHOOK_SECRET!,
-    });
-
-    if (result.ok) {
-        console.log('Transcription:', result.event.id, result.event.status);
-    }
-
-    return reply.status(result.status).send(
-        result.ok ? { received: true } : { error: result.error }
-    );
-});
-```
-
-#### NestJS
-
-```typescript
-import { Controller, Post, Req, Res } from '@nestjs/common';
-import { Request, Response } from 'express';
-import { webhooks } from '@soniox/node';
-
-@Controller('webhook')
-export class WebhookController {
-    @Post()
-    handleWebhook(@Req() req: Request, @Res() res: Response) {
-        const result = webhooks.handleWebhookNestJS(req, {
-            name: 'X-Webhook-Secret',
-            value: process.env.WEBHOOK_SECRET!,
-        });
-
-        if (result.ok) {
-            console.log('Transcription:', result.event.id, result.event.status);
-        }
-
-        return res.status(result.status).json(
-            result.ok ? { received: true } : { error: result.error }
-        );
-    }
+// Handle errors
+if (result.event?.status === 'error' && result.fetchTranscription) {
+    result.fetchTranscription()
+        .then((t) => console.error('Error:', t?.error_type, t?.error_message))
+        .catch(console.error);
 }
 ```
 
-#### Hono
+### Explicit Auth
+
+Pass auth explicitly to override environment variables:
 
 ```typescript
-import { Hono } from 'hono';
-import { webhooks } from '@soniox/node';
-
-const app = new Hono();
-
-app.post('/webhook', async (c) => {
-    const result = await webhooks.handleWebhookHono(c, {
-        name: 'X-Webhook-Secret',
-        value: process.env.WEBHOOK_SECRET!,
-    });
-
-    if (result.ok) {
-        console.log('Transcription:', result.event.id, result.event.status);
-    }
-
-    return c.json(
-        result.ok ? { received: true } : { error: result.error },
-        result.status
-    );
-});
-```
-
-### Low-Level Utilities
-
-For custom integrations, use the core utilities directly:
-
-```typescript
-import { webhooks } from '@soniox/node';
-
-// Type guard
-if (webhooks.isWebhookEvent(payload)) {
-    console.log(payload.id, payload.status);
-}
-
-// Parse with validation
-try {
-    const event = webhooks.parseWebhookEvent(req.body);
-    console.log(event.id, event.status);
-} catch (error) {
-    console.error('Invalid payload:', error.message);
-}
-
-// Verify auth header
-const isValid = webhooks.verifyWebhookAuth(req.headers, {
+const result = client.webhooks.handleExpress(req, {
     name: 'X-Webhook-Secret',
-    value: process.env.WEBHOOK_SECRET!,
-});
-
-// Full handler
-const result = webhooks.handleWebhook({
-    method: req.method,
-    headers: req.headers,
-    body: req.body,
-    auth: { name: 'X-Webhook-Secret', value: process.env.WEBHOOK_SECRET! },
+    value: 'your-secret-token',
 });
 ```
 

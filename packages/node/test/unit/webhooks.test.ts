@@ -9,6 +9,7 @@ import {
     handleWebhookNestJS,
     handleWebhookHono,
     getWebhookAuthFromEnv,
+    SonioxWebhooksAPI,
     type WebhookEvent,
     type WebhookAuthConfig,
 } from '../../src/async/webhooks';
@@ -928,5 +929,186 @@ describe('handleWebhook with environment variables', () => {
 
         expect(result.ok).toBe(true);
         expect(result.status).toBe(200);
+    });
+});
+
+describe('SonioxWebhooksAPI with fetch helpers', () => {
+    const validPayload: WebhookEvent = { id: 'test-transcription-id', status: 'completed' };
+    const errorPayload: WebhookEvent = { id: 'error-transcription-id', status: 'error' };
+
+    const mockTranscript = { id: 'test-transcription-id', text: 'Hello world', tokens: [] };
+    const mockTranscription = {
+        id: 'test-transcription-id',
+        status: 'completed',
+        error_type: null,
+        error_message: null,
+    };
+    const mockErrorTranscription = {
+        id: 'error-transcription-id',
+        status: 'error',
+        error_type: 'processing_error',
+        error_message: 'Audio file is corrupted',
+    };
+
+    type MockTranscriptionsAPI = {
+        getTranscript: jest.Mock;
+        get: jest.Mock;
+    };
+
+    // Create a mock that satisfies the minimum interface needed by SonioxWebhooksAPI
+    const createMockTranscriptionsAPI = () => ({
+        getTranscript: jest.fn().mockResolvedValue(mockTranscript),
+        get: jest.fn().mockImplementation((id: string) => {
+            if (id === 'error-transcription-id') {
+                return Promise.resolve(mockErrorTranscription);
+            }
+            return Promise.resolve(mockTranscription);
+        }),
+    });
+
+    // Type-safe way to create API with mock
+    const createApiWithMock = (mock: MockTranscriptionsAPI) => {
+        // Cast through unknown since we're providing a partial mock
+        return new SonioxWebhooksAPI(mock as unknown as undefined);
+    };
+
+    describe('without transcriptions API', () => {
+        it('should return undefined fetch helpers when no transcriptions API', () => {
+            const api = new SonioxWebhooksAPI();
+            const result = api.handleExpress({
+                method: 'POST',
+                headers: {},
+                body: validPayload,
+            });
+
+            expect(result.ok).toBe(true);
+            expect(result.fetchTranscript).toBeUndefined();
+            expect(result.fetchTranscription).toBeUndefined();
+        });
+    });
+
+    describe('with transcriptions API', () => {
+        it('should include fetchTranscript for completed status', () => {
+            const mockApi = createMockTranscriptionsAPI();
+            const api = createApiWithMock(mockApi);
+            const result = api.handleExpress({
+                method: 'POST',
+                headers: {},
+                body: validPayload,
+            });
+
+            expect(result.ok).toBe(true);
+            expect(result.fetchTranscript).toBeDefined();
+            expect(result.fetchTranscription).toBeDefined();
+        });
+
+        it('should not include fetchTranscript for error status', () => {
+            const mockApi = createMockTranscriptionsAPI();
+            const api = createApiWithMock(mockApi);
+            const result = api.handleExpress({
+                method: 'POST',
+                headers: {},
+                body: errorPayload,
+            });
+
+            expect(result.ok).toBe(true);
+            expect(result.fetchTranscript).toBeUndefined();
+            expect(result.fetchTranscription).toBeDefined();
+        });
+
+        it('fetchTranscript should call transcriptions.getTranscript', async () => {
+            const mockApi = createMockTranscriptionsAPI();
+            const api = createApiWithMock(mockApi);
+            const result = api.handleExpress({
+                method: 'POST',
+                headers: {},
+                body: validPayload,
+            });
+
+            const transcript = await result.fetchTranscript?.();
+
+            expect(mockApi.getTranscript).toHaveBeenCalledWith('test-transcription-id');
+            expect(transcript).toEqual(mockTranscript);
+        });
+
+        it('fetchTranscription should call transcriptions.get', async () => {
+            const mockApi = createMockTranscriptionsAPI();
+            const api = createApiWithMock(mockApi);
+            const result = api.handleExpress({
+                method: 'POST',
+                headers: {},
+                body: validPayload,
+            });
+
+            const transcription = await result.fetchTranscription?.();
+
+            expect(mockApi.get).toHaveBeenCalledWith('test-transcription-id');
+            expect(transcription).toEqual(mockTranscription);
+        });
+
+        it('fetchTranscription should return error details for error status', async () => {
+            const mockApi = createMockTranscriptionsAPI();
+            const api = createApiWithMock(mockApi);
+            const result = api.handleExpress({
+                method: 'POST',
+                headers: {},
+                body: errorPayload,
+            });
+
+            const transcription = await result.fetchTranscription?.();
+
+            expect(mockApi.get).toHaveBeenCalledWith('error-transcription-id');
+            expect(transcription).toEqual(mockErrorTranscription);
+        });
+
+        it('should not include fetch helpers when webhook validation fails', () => {
+            const mockApi = createMockTranscriptionsAPI();
+            const api = createApiWithMock(mockApi);
+            const result = api.handleExpress({
+                method: 'GET', // Invalid method
+                headers: {},
+                body: validPayload,
+            });
+
+            expect(result.ok).toBe(false);
+            expect(result.fetchTranscript).toBeUndefined();
+            expect(result.fetchTranscription).toBeUndefined();
+        });
+    });
+
+    describe('async handlers with fetch helpers', () => {
+        it('handleRequest should include fetch helpers', async () => {
+            const mockApi = createMockTranscriptionsAPI();
+            const api = createApiWithMock(mockApi);
+            const request = new Request('http://localhost/webhook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(validPayload),
+            });
+
+            const result = await api.handleRequest(request);
+
+            expect(result.ok).toBe(true);
+            expect(result.fetchTranscript).toBeDefined();
+            expect(result.fetchTranscription).toBeDefined();
+        });
+
+        it('handleHono should include fetch helpers', async () => {
+            const mockApi = createMockTranscriptionsAPI();
+            const api = createApiWithMock(mockApi);
+            const ctx = {
+                req: {
+                    method: 'POST',
+                    header: () => undefined,
+                    json: () => Promise.resolve(validPayload),
+                },
+            };
+
+            const result = await api.handleHono(ctx);
+
+            expect(result.ok).toBe(true);
+            expect(result.fetchTranscript).toBeDefined();
+            expect(result.fetchTranscription).toBeDefined();
+        });
     });
 });

@@ -12,8 +12,11 @@ import type {
     WebhookEvent,
     WebhookEventStatus,
     WebhookHandlerResult,
+    WebhookHandlerResultWithFetch,
     WebhookHeaders,
 } from '../types/public/webhooks.js';
+
+import type { SonioxTranscriptionsAPI } from './transcriptions.js';
 
 export type {
     ExpressLikeRequest,
@@ -25,6 +28,7 @@ export type {
     WebhookEvent,
     WebhookEventStatus,
     WebhookHandlerResult,
+    WebhookHandlerResultWithFetch,
     WebhookHeaders,
 };
 
@@ -570,8 +574,45 @@ export async function handleWebhookHono(
  * Webhook utilities API accessible via client.webhooks
  *
  * Provides methods for handling incoming Soniox webhook requests.
+ * When used via the client, results include lazy fetch helpers for transcripts.
  */
 export class SonioxWebhooksAPI {
+    private transcriptions: SonioxTranscriptionsAPI | undefined;
+
+    /**
+     * @internal
+     */
+    constructor(transcriptions?: SonioxTranscriptionsAPI) {
+        this.transcriptions = transcriptions;
+    }
+
+    /**
+     * Enhance a webhook result with fetch helpers
+     */
+    private withFetchHelpers(result: WebhookHandlerResult): WebhookHandlerResultWithFetch {
+        const transcriptions = this.transcriptions;
+        const event = result.event;
+
+        // If no transcriptions API or no event, return result without fetch helpers
+        if (!transcriptions || !event) {
+            return {
+                ...result,
+                fetchTranscript: undefined,
+                fetchTranscription: undefined,
+            };
+        }
+
+        const transcriptionId = event.id;
+
+        return {
+            ...result,
+            fetchTranscript: event.status === 'completed'
+                ? () => transcriptions.getTranscript(transcriptionId)
+                : undefined,
+            fetchTranscription: () => transcriptions.get(transcriptionId),
+        };
+    }
+
     /**
      * Get webhook authentication configuration from environment variables.
      *
@@ -606,42 +647,58 @@ export class SonioxWebhooksAPI {
     /**
      * Framework-agnostic webhook handler
      */
-    handle(options: HandleWebhookOptions): WebhookHandlerResult {
-        return handleWebhook(options);
+    handle(options: HandleWebhookOptions): WebhookHandlerResultWithFetch {
+        return this.withFetchHelpers(handleWebhook(options));
     }
 
     /**
      * Handle a webhook from a Fetch API Request
      */
-    async handleRequest(request: Request, auth?: WebhookAuthConfig): Promise<WebhookHandlerResult> {
-        return handleWebhookRequest(request, auth);
+    async handleRequest(request: Request, auth?: WebhookAuthConfig): Promise<WebhookHandlerResultWithFetch> {
+        const result = await handleWebhookRequest(request, auth);
+        return this.withFetchHelpers(result);
     }
 
     /**
      * Handle a webhook from an Express-like request
+     *
+     * @example
+     * ```typescript
+     * app.post('/webhook', async (req, res) => {
+     *     const result = soniox.webhooks.handleExpress(req);
+     *
+     *     if (result.ok && result.event.status === 'completed') {
+     *         const transcript = await result.fetchTranscript();
+     *         console.log(transcript?.text);
+     *     }
+     *
+     *     res.status(result.status).json({ received: true });
+     * });
+     * ```
      */
-    handleExpress(req: ExpressLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResult {
-        return handleWebhookExpress(req, auth);
+    handleExpress(req: ExpressLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResultWithFetch {
+        return this.withFetchHelpers(handleWebhookExpress(req, auth));
     }
 
     /**
      * Handle a webhook from a Fastify request
      */
-    handleFastify(req: FastifyLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResult {
-        return handleWebhookFastify(req, auth);
+    handleFastify(req: FastifyLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResultWithFetch {
+        return this.withFetchHelpers(handleWebhookFastify(req, auth));
     }
 
     /**
      * Handle a webhook from a NestJS request
      */
-    handleNestJS(req: NestJSLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResult {
-        return handleWebhookNestJS(req, auth);
+    handleNestJS(req: NestJSLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResultWithFetch {
+        return this.withFetchHelpers(handleWebhookNestJS(req, auth));
     }
 
     /**
      * Handle a webhook from a Hono context
      */
-    async handleHono(c: HonoLikeContext, auth?: WebhookAuthConfig): Promise<WebhookHandlerResult> {
-        return handleWebhookHono(c, auth);
+    async handleHono(c: HonoLikeContext, auth?: WebhookAuthConfig): Promise<WebhookHandlerResultWithFetch> {
+        const result = await handleWebhookHono(c, auth);
+        return this.withFetchHelpers(result);
     }
 }

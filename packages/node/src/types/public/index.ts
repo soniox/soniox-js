@@ -66,6 +66,7 @@ export type {
     WebhookEvent,
     WebhookEventStatus,
     WebhookHandlerResult,
+    WebhookHandlerResultWithFetch,
     WebhookHeaders,
 } from './webhooks.js';
 

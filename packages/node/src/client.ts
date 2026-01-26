@@ -36,7 +36,7 @@ export class SonioxNodeClient {
     this.files = new SonioxFilesAPI(http);
     this.transcriptions = new SonioxTranscriptionsAPI(http, this.files);
     this.models = new SonioxModelsAPI(http);
-    this.webhooks = new SonioxWebhooksAPI();
+    this.webhooks = new SonioxWebhooksAPI(this.transcriptions);
     this.auth = new SonioxAuthAPI(http);
 
     this.realtime = new SonioxRealtimeAPI();

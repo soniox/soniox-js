@@ -1,3 +1,5 @@
+import type { SonioxTranscriptionData, TranscriptResponse } from './transcriptions.js';
+
 /**
  * Webhook event status values
  */
@@ -65,6 +67,48 @@ export type WebhookHandlerResult = {
      * Error message (only present when ok=false)
      */
     error?: string;
+};
+
+/**
+ * Result of webhook handling with lazy fetch capabilities.
+ *
+ * When using `client.webhooks.handleExpress()` (or other framework handlers),
+ * the result includes helper methods to fetch the transcript or transcription.
+ */
+export type WebhookHandlerResultWithFetch = WebhookHandlerResult & {
+    /**
+     * Fetch the transcript for a completed transcription.
+     * Only available when `ok=true` and `event.status='completed'`.
+     *
+     * @returns The transcript with text and tokens, or null if not found
+     *
+     * @example
+     * ```typescript
+     * const result = soniox.webhooks.handleExpress(req);
+     * if (result.ok && result.event.status === 'completed') {
+     *     const transcript = await result.fetchTranscript();
+     *     console.log(transcript?.text);
+     * }
+     * ```
+     */
+    fetchTranscript: (() => Promise<TranscriptResponse | null>) | undefined;
+
+    /**
+     * Fetch the full transcription object.
+     * Useful for both completed (metadata) and error (error details) statuses.
+     *
+     * @returns The transcription object, or null if not found
+     *
+     * @example
+     * ```typescript
+     * const result = soniox.webhooks.handleExpress(req);
+     * if (result.ok && result.event.status === 'error') {
+     *     const transcription = await result.fetchTranscription();
+     *     console.log(transcription?.error_message);
+     * }
+     * ```
+     */
+    fetchTranscription: (() => Promise<SonioxTranscriptionData | null>) | undefined;
 };
 
 /**
