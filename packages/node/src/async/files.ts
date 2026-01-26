@@ -267,7 +267,7 @@ async function resolveFileInput(
         }
 
         return {
-            blob: new Blob([new Uint8Array(input.buffer, input.byteOffset, input.byteLength)]),
+            blob: new Blob([new Uint8Array(input)]),
             filename: filenameOverride ?? DEFAULT_FILENAME,
         };
     }
@@ -281,7 +281,7 @@ async function resolveFileInput(
         }
 
         return {
-            blob: new Blob([new Uint8Array(input.buffer, input.byteOffset, input.byteLength)]),
+            blob: new Blob([new Uint8Array(input)]),
             filename: filenameOverride ?? DEFAULT_FILENAME,
         };
     }
@@ -290,7 +290,7 @@ async function resolveFileInput(
     if (isWebReadableStream(input)) {
         const data = await collectWebStream(input);
         return {
-            blob: new Blob([new Uint8Array(data.buffer, data.byteOffset, data.byteLength)]),
+            blob: new Blob([new Uint8Array(data)]),
             filename: filenameOverride ?? DEFAULT_FILENAME,
         };
     }
@@ -299,7 +299,7 @@ async function resolveFileInput(
     if (isNodeReadableStream(input)) {
         const buffer = await collectNodeStream(input);
         return {
-            blob: new Blob([new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)]),
+            blob: new Blob([new Uint8Array(buffer)]),
             filename: filenameOverride ?? DEFAULT_FILENAME,
         };
     }

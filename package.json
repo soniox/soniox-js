@@ -21,7 +21,7 @@
     "format:check": "prettier --check \"packages/*/src/**/*.ts\"",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "tsc -b --force",
     "prepare": "npm run build"
   },
   "devDependencies": {
