@@ -6,11 +6,11 @@ Official Soniox SDKs for Speech-to-Text API.
 
 | Package | Description |
 |---------|-------------|
-| [@soniox/core](./packages/core) | Core types, errors, and utilities (platform-agnostic) |
-| [@soniox/node](./packages/node) | Node.js SDK for server-side applications |
-| [@soniox/web](./packages/web) | Web SDK for browser applications |
-| [@soniox/react](./packages/react) | SDK for React |
-| [@soniox/react-native](./packages/react-native) | SDK for React Native |
+| [@soniox/core](./packages/core/README.md) | Core types, errors, and utilities (platform-agnostic) |
+| [@soniox/node](./packages/node/README.md) | Node.js SDK for server-side applications |
+| [@soniox/web](./packages/web/README.md) | Web SDK for browser applications |
+| [@soniox/react](./packages/react/README.md) | SDK for React |
+| [@soniox/react-native](./packages/react-native/README.md) | SDK for React Native |
 
 ## Documentation
 
