@@ -33,3 +33,6 @@ npm-debug.log*
 
 # OS
 Thumbs.db
+
+# LLM
+.cursor/
