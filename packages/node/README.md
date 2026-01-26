@@ -309,10 +309,8 @@ const client = new SonioxNodeClient();
 app.post('/webhook', (req, res) => {
     const result = client.webhooks.handleExpress(req);
 
-    // Respond immediately to acknowledge receipt
     res.status(result.status).json(result.ok ? { received: true } : { error: result.error });
 
-    // Then process in background
     if (result.ok && result.event?.status === 'completed' && result.fetchTranscript) {
         result.fetchTranscript()
             .then((transcript) => console.log('Text:', transcript?.text))
@@ -333,10 +331,8 @@ const client = new SonioxNodeClient();
 fastify.post('/webhook', (req, reply) => {
     const result = client.webhooks.handleFastify(req);
 
-    // Respond immediately
     reply.status(result.status).send(result.ok ? { received: true } : { error: result.error });
 
-    // Process in background
     if (result.ok && result.event?.status === 'completed' && result.fetchTranscript) {
         result.fetchTranscript()
             .then((transcript) => console.log('Text:', transcript?.text))
@@ -357,14 +353,12 @@ const client = new SonioxNodeClient();
 app.post('/webhook', async (c) => {
     const result = await client.webhooks.handleHono(c);
 
-    // Process in background (non-blocking)
     if (result.ok && result.event?.status === 'completed' && result.fetchTranscript) {
         result.fetchTranscript()
             .then((transcript) => console.log('Text:', transcript?.text))
             .catch(console.error);
     }
 
-    // Respond immediately
     return c.json(result.ok ? { received: true } : { error: result.error }, result.status);
 });
 ```
@@ -381,7 +375,6 @@ Bun.serve({
         if (new URL(req.url).pathname === '/webhook') {
             const result = await client.webhooks.handleRequest(req);
 
-            // Process in background
             if (result.ok && result.event?.status === 'completed' && result.fetchTranscript) {
                 result.fetchTranscript()
                     .then((transcript) => console.log('Text:', transcript?.text))
