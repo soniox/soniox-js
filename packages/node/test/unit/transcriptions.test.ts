@@ -1091,6 +1091,42 @@ describe('SonioxTranscriptionsAPI', () => {
             jest.useRealTimers();
         });
 
+        it('should allow opting out of transcript fetch when wait=true', async () => {
+            jest.useFakeTimers();
+
+            const requestMock = jest.fn()
+                .mockResolvedValueOnce({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                })
+                .mockResolvedValueOnce({
+                    status: 200,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'completed' }),
+                });
+            const mockHttp = createMockHttpClient(requestMock);
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            const resultPromise = api.transcribe({
+                model: 'stt-async-v3',
+                audio_url: 'https://example.com/audio.mp3',
+                wait: true,
+                fetch_transcript: false,
+            });
+
+            await jest.advanceTimersByTimeAsync(1000);
+
+            const result = await resultPromise;
+
+            expect(result.status).toBe('completed');
+            expect(result.transcript).toBeUndefined();
+            expect(requestMock).toHaveBeenCalledTimes(2);
+
+            jest.useRealTimers();
+        });
+
         it('should not fetch transcript when wait=true but status is error', async () => {
             jest.useFakeTimers();
 

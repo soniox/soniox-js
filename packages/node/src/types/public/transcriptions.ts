@@ -396,6 +396,14 @@ export type TranscribeBaseOptions = {
     wait_options?: WaitOptions | undefined;
 
     /**
+     * When true (default), fetches the transcript and attaches it to the result
+     * when wait=true and the transcription completes successfully.
+     * Set to false to skip fetching the full transcript payload.
+     * @default true
+     */
+    fetch_transcript?: boolean | undefined;
+
+    /**
      * Query parameters to append to the webhook URL.
      * Useful for encoding metadata like transcription ID in the webhook callback.
      * Can be a string, URLSearchParams, or Record<string, string>.

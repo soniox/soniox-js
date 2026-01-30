@@ -395,8 +395,8 @@ export class SonioxTranscription {
     readonly context: string | null | undefined;
 
     /**
-     * Pre-fetched transcript. Only available when using `transcribe()` with `wait: true`
-     * and the transcription completed successfully.
+     * Pre-fetched transcript. Only available when using `transcribe()` with `wait: true`,
+     * `fetch_transcript !== false`, and the transcription completed successfully
      */
     readonly transcript: SonioxTranscript | null | undefined;
 
@@ -1236,10 +1236,16 @@ export class SonioxTranscriptionsAPI {
                 };
                 const completed = await transcription.wait(waitOptions);
 
-                // Fetch transcript if transcription completed successfully
-                let transcript: SonioxTranscript | null = null;
+                const shouldFetchTranscript = options.fetch_transcript !== false;
+
+                // Fetch transcript if transcription completed successfully and opted in
+                let transcript: SonioxTranscript | null | undefined;
                 if (completed.status === 'completed') {
-                    transcript = await completed.getTranscript(combinedSignal);
+                    if (shouldFetchTranscript) {
+                        transcript = await completed.getTranscript(combinedSignal);
+                    }
+                } else {
+                    transcript = null;
                 }
 
                 // Create a new transcription instance with the transcript attached
