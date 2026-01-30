@@ -11,9 +11,9 @@ import type { HttpClient } from '../../src/http';
 import type {
     ListTranscriptionsResponse,
     SonioxTranscriptionData,
-    SonioxFileData,
     TranscribeOptions,
     TranscriptToken,
+    SonioxFileData,
 } from '../../src/types/public';
 
 // Helper to create a mock 404 error
@@ -1045,7 +1045,7 @@ describe('SonioxTranscriptionsAPI', () => {
             expect(result.file_id).toBe('uploaded-file-id');
         });
 
-        it('should wait for completion when wait=true', async () => {
+        it('should wait for completion when wait=true and fetch transcript', async () => {
             jest.useFakeTimers();
 
             const requestMock = jest.fn()
@@ -1058,6 +1058,11 @@ describe('SonioxTranscriptionsAPI', () => {
                     status: 200,
                     headers: {},
                     data: createMockTranscriptionData({ status: 'completed' }),
+                })
+                .mockResolvedValueOnce({
+                    status: 200,
+                    headers: {},
+                    data: { id: '550e8400-e29b-41d4-a716-446655440000', text: 'Hello world', tokens: [] },
                 });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
@@ -1074,6 +1079,94 @@ describe('SonioxTranscriptionsAPI', () => {
             const result = await resultPromise;
 
             expect(result.status).toBe('completed');
+            expect(result.transcript).not.toBeNull();
+            expect(result.transcript?.text).toBe('Hello world');
+
+            // Verify transcript was fetched
+            expect(requestMock).toHaveBeenCalledWith({
+                method: 'GET',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000/transcript',
+            });
+
+            jest.useRealTimers();
+        });
+
+        it('should not fetch transcript when wait=true but status is error', async () => {
+            jest.useFakeTimers();
+
+            const requestMock = jest.fn()
+                .mockResolvedValueOnce({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                })
+                .mockResolvedValueOnce({
+                    status: 200,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'error', error_message: 'Processing failed' }),
+                });
+            const mockHttp = createMockHttpClient(requestMock);
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            const resultPromise = api.transcribe({
+                model: 'stt-async-v3',
+                audio_url: 'https://example.com/audio.mp3',
+                wait: true,
+            });
+
+            await jest.advanceTimersByTimeAsync(1000);
+
+            const result = await resultPromise;
+
+            expect(result.status).toBe('error');
+            expect(result.transcript).toBeNull();
+            // Should not call getTranscript for error status
+            expect(requestMock).toHaveBeenCalledTimes(2);
+
+            jest.useRealTimers();
+        });
+
+        it('should pass signal to getTranscript when wait=true', async () => {
+            jest.useFakeTimers();
+
+            const requestMock = jest.fn()
+                .mockResolvedValueOnce({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                })
+                .mockResolvedValueOnce({
+                    status: 200,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'completed' }),
+                })
+                .mockResolvedValueOnce({
+                    status: 200,
+                    headers: {},
+                    data: { id: '550e8400-e29b-41d4-a716-446655440000', text: 'Hello', tokens: [] },
+                });
+            const mockHttp = createMockHttpClient(requestMock);
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+            const controller = new AbortController();
+            const resultPromise = api.transcribe({
+                model: 'stt-async-v3',
+                audio_url: 'https://example.com/audio.mp3',
+                wait: true,
+                signal: controller.signal,
+            });
+
+            await jest.advanceTimersByTimeAsync(1000);
+            await resultPromise;
+
+            // Verify signal was passed to the transcript fetch
+            expect(requestMock).toHaveBeenNthCalledWith(3, {
+                method: 'GET',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000/transcript',
+                signal: expect.any(Object),
+            });
 
             jest.useRealTimers();
         });
@@ -1793,6 +1886,410 @@ describe('SonioxTranscriptionsAPI', () => {
 
                     expect(result.status).toBe('queued');
                 });
+            });
+        });
+
+        describe('cleanup option', () => {
+            it('should throw when cleanup is used without wait=true', async () => {
+                const mockHttp = createMockHttpClient();
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await expect(api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    cleanup: ['file'],
+                })).rejects.toThrow('cleanup can only be used when wait=true');
+            });
+
+            it('should delete file when cleanup includes "file"', async () => {
+                jest.useFakeTimers();
+
+                const requestMock = jest.fn()
+                    .mockResolvedValueOnce({
+                        status: 201,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'queued', file_id: 'file-123' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'completed', file_id: 'file-123' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: { id: '550e8400-e29b-41d4-a716-446655440000', text: 'Hello', tokens: [] },
+                    });
+                const mockHttp = createMockHttpClient(requestMock);
+                const deleteMock = jest.fn().mockResolvedValue(undefined);
+                const mockFilesApi = createMockFilesAPI();
+                mockFilesApi.delete = deleteMock;
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const resultPromise = api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    wait: true,
+                    cleanup: ['file'],
+                });
+
+                await jest.advanceTimersByTimeAsync(1000);
+                const result = await resultPromise;
+
+                expect(deleteMock).toHaveBeenCalledWith('file-123');
+                expect(result.transcript?.text).toBe('Hello');
+
+                jest.useRealTimers();
+            });
+
+            it('should delete transcription when cleanup includes "transcription"', async () => {
+                jest.useFakeTimers();
+
+                const requestMock = jest.fn()
+                    .mockResolvedValueOnce({
+                        status: 201,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'queued' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'completed' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: { id: '550e8400-e29b-41d4-a716-446655440000', text: 'Hello', tokens: [] },
+                    })
+                    .mockResolvedValueOnce({
+                        status: 204,
+                        headers: {},
+                        data: null,
+                    });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const resultPromise = api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    wait: true,
+                    cleanup: ['transcription'],
+                });
+
+                await jest.advanceTimersByTimeAsync(1000);
+                const result = await resultPromise;
+
+                // Transcript is available even though transcription was deleted
+                expect(result.transcript?.text).toBe('Hello');
+                expect(requestMock).toHaveBeenLastCalledWith({
+                    method: 'DELETE',
+                    path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000',
+                });
+
+                jest.useRealTimers();
+            });
+
+            it('should delete both file and transcription when cleanup includes both', async () => {
+                jest.useFakeTimers();
+
+                const requestMock = jest.fn()
+                    .mockResolvedValueOnce({
+                        status: 201,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'queued', file_id: 'file-123' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'completed', file_id: 'file-123' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: { id: '550e8400-e29b-41d4-a716-446655440000', text: 'Hello', tokens: [] },
+                    })
+                    .mockResolvedValueOnce({
+                        status: 204,
+                        headers: {},
+                        data: null,
+                    });
+                const mockHttp = createMockHttpClient(requestMock);
+                const deleteMock = jest.fn().mockResolvedValue(undefined);
+                const mockFilesApi = createMockFilesAPI();
+                mockFilesApi.delete = deleteMock;
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const resultPromise = api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    wait: true,
+                    cleanup: ['file', 'transcription'],
+                });
+
+                await jest.advanceTimersByTimeAsync(1000);
+                const result = await resultPromise;
+
+                // Transcript is available even though both file and transcription were deleted
+                expect(result.transcript?.text).toBe('Hello');
+                expect(deleteMock).toHaveBeenCalledWith('file-123');
+                expect(requestMock).toHaveBeenLastCalledWith({
+                    method: 'DELETE',
+                    path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000',
+                });
+
+                jest.useRealTimers();
+            });
+
+            it('should not delete file when no file_id exists', async () => {
+                jest.useFakeTimers();
+
+                const requestMock = jest.fn()
+                    .mockResolvedValueOnce({
+                        status: 201,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'queued', audio_url: 'https://example.com/audio.mp3' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'completed', audio_url: 'https://example.com/audio.mp3' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: { id: '550e8400-e29b-41d4-a716-446655440000', text: 'Hello', tokens: [] },
+                    });
+                const mockHttp = createMockHttpClient(requestMock);
+                const deleteMock = jest.fn();
+                const mockFilesApi = createMockFilesAPI();
+                mockFilesApi.delete = deleteMock;
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const resultPromise = api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    wait: true,
+                    cleanup: ['file'],
+                });
+
+                await jest.advanceTimersByTimeAsync(1000);
+                await resultPromise;
+
+                expect(deleteMock).not.toHaveBeenCalled();
+
+                jest.useRealTimers();
+            });
+
+            it('should cleanup on error when wait=true with file upload', async () => {
+                const mockFileData: SonioxFileData = {
+                    id: 'uploaded-file-id',
+                    filename: 'audio.mp3',
+                    size: 12345,
+                    created_at: '2024-11-26T00:00:00Z',
+                };
+                const uploadMock = jest.fn().mockResolvedValue(
+                    new SonioxFile(mockFileData, createMockHttpClient())
+                );
+                const requestMock = jest.fn()
+                    .mockResolvedValueOnce({
+                        status: 201,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'queued', file_id: 'uploaded-file-id' }),
+                    })
+                    .mockRejectedValueOnce(new Error('Network error during wait'));
+                const mockHttp = createMockHttpClient(requestMock);
+                const deleteMock = jest.fn().mockResolvedValue(undefined);
+                const mockFilesApi = createMockFilesAPI(uploadMock);
+                mockFilesApi.delete = deleteMock;
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await expect(api.transcribe({
+                    model: 'stt-async-v3',
+                    file: Buffer.from('test'),
+                    wait: true,
+                    cleanup: ['file', 'transcription'],
+                })).rejects.toThrow('Network error during wait');
+
+                // Should still cleanup even on error
+                expect(deleteMock).toHaveBeenCalledWith('uploaded-file-id');
+            });
+
+            it('should cleanup file on error with audio_url when transcription response has file_id', async () => {
+                // This tests the case where:
+                // 1. Using audio_url (no file upload)
+                // 2. API creates a file and returns file_id in transcription response
+                // 3. wait() throws (timeout/abort/network error)
+                // 4. Cleanup should still delete the file from the transcription response
+                const requestMock = jest.fn()
+                    .mockResolvedValueOnce({
+                        status: 201,
+                        headers: {},
+                        // API returns file_id even though we used audio_url
+                        data: createMockTranscriptionData({ 
+                            status: 'queued', 
+                            file_id: 'api-created-file-id',
+                            audio_url: 'https://example.com/audio.mp3',
+                        }),
+                    })
+                    .mockRejectedValueOnce(new Error('Timeout during wait'));
+                const mockHttp = createMockHttpClient(requestMock);
+                const deleteMock = jest.fn().mockResolvedValue(undefined);
+                const mockFilesApi = createMockFilesAPI();
+                mockFilesApi.delete = deleteMock;
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                await expect(api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    wait: true,
+                    cleanup: ['file', 'transcription'],
+                })).rejects.toThrow('Timeout during wait');
+
+                // Should cleanup the file_id from the transcription response
+                expect(deleteMock).toHaveBeenCalledWith('api-created-file-id');
+                // Should also delete the transcription
+                expect(requestMock).toHaveBeenLastCalledWith({
+                    method: 'DELETE',
+                    path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000',
+                });
+            });
+
+            it('should cleanup when transcription status is error', async () => {
+                jest.useFakeTimers();
+
+                const requestMock = jest.fn()
+                    .mockResolvedValueOnce({
+                        status: 201,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'queued', file_id: 'file-123' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: createMockTranscriptionData({ 
+                            status: 'error', 
+                            file_id: 'file-123',
+                            error_type: 'processing_error',
+                            error_message: 'Failed to process audio',
+                        }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 204,
+                        headers: {},
+                        data: null,
+                    });
+                const mockHttp = createMockHttpClient(requestMock);
+                const deleteMock = jest.fn().mockResolvedValue(undefined);
+                const mockFilesApi = createMockFilesAPI();
+                mockFilesApi.delete = deleteMock;
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const resultPromise = api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    wait: true,
+                    cleanup: ['file', 'transcription'],
+                });
+
+                await jest.advanceTimersByTimeAsync(1000);
+                const result = await resultPromise;
+
+                expect(result.status).toBe('error');
+                expect(result.transcript).toBeNull(); // No transcript for error status
+                expect(deleteMock).toHaveBeenCalledWith('file-123');
+                expect(requestMock).toHaveBeenLastCalledWith({
+                    method: 'DELETE',
+                    path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000',
+                });
+
+                jest.useRealTimers();
+            });
+
+            it('should not perform cleanup when cleanup array is empty', async () => {
+                jest.useFakeTimers();
+
+                const requestMock = jest.fn()
+                    .mockResolvedValueOnce({
+                        status: 201,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'queued', file_id: 'file-123' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'completed', file_id: 'file-123' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: { id: '550e8400-e29b-41d4-a716-446655440000', text: 'Hello', tokens: [] },
+                    });
+                const mockHttp = createMockHttpClient(requestMock);
+                const deleteMock = jest.fn();
+                const mockFilesApi = createMockFilesAPI();
+                mockFilesApi.delete = deleteMock;
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const resultPromise = api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    wait: true,
+                    cleanup: [],
+                });
+
+                await jest.advanceTimersByTimeAsync(1000);
+                await resultPromise;
+
+                expect(deleteMock).not.toHaveBeenCalled();
+                // create, wait, and getTranscript calls - no delete
+                expect(requestMock).toHaveBeenCalledTimes(3);
+
+                jest.useRealTimers();
+            });
+
+            it('should ignore cleanup errors and still return result', async () => {
+                jest.useFakeTimers();
+
+                const requestMock = jest.fn()
+                    .mockResolvedValueOnce({
+                        status: 201,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'queued', file_id: 'file-123' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: createMockTranscriptionData({ status: 'completed', file_id: 'file-123' }),
+                    })
+                    .mockResolvedValueOnce({
+                        status: 200,
+                        headers: {},
+                        data: { id: '550e8400-e29b-41d4-a716-446655440000', text: 'Hello', tokens: [] },
+                    })
+                    .mockRejectedValueOnce(new Error('Delete failed'));
+                const mockHttp = createMockHttpClient(requestMock);
+                const deleteMock = jest.fn().mockRejectedValue(new Error('File delete failed'));
+                const mockFilesApi = createMockFilesAPI();
+                mockFilesApi.delete = deleteMock;
+                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+
+                const resultPromise = api.transcribe({
+                    model: 'stt-async-v3',
+                    audio_url: 'https://example.com/audio.mp3',
+                    wait: true,
+                    cleanup: ['file', 'transcription'],
+                });
+
+                await jest.advanceTimersByTimeAsync(1000);
+                const result = await resultPromise;
+
+                // Should still return the result despite cleanup errors
+                expect(result.status).toBe('completed');
+                expect(result.transcript?.text).toBe('Hello');
+
+                jest.useRealTimers();
             });
         });
     });

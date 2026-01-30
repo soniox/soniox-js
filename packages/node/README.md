@@ -224,8 +224,58 @@ const transcription = await client.transcriptions.transcribe({
         interval_ms: 2000,   // Poll every 2 seconds
         on_status_change: (status) => console.log(`Status: ${status}`),
     },
+    
+    // Auto-cleanup after completion (requires wait: true)
+    cleanup: ['file', 'transcription'],
 });
 ```
+
+### Auto-Cleanup
+
+When using `wait: true`, the transcript is automatically fetched and attached to the result before any cleanup runs. This means you can safely use `cleanup: ['file', 'transcription']` and still access the transcript:
+
+```typescript
+const transcription = await client.transcriptions.transcribe({
+    model: 'stt-async-v3',
+    file: buffer,
+    wait: true,
+    cleanup: ['file', 'transcription'],  // Both are deleted after transcript is fetched
+});
+
+// Transcript is pre-fetched and attached to the result
+console.log(transcription.transcript?.text);
+
+// No need to call getTranscript() - it's already available
+for (const segment of transcription.transcript?.segments() ?? []) {
+    console.log(`[${segment.speaker}] ${segment.text}`);
+}
+```
+
+You can also clean up just the file if you want to keep the transcription record:
+
+```typescript
+const transcription = await client.transcriptions.transcribe({
+    model: 'stt-async-v3',
+    file: buffer,
+    wait: true,
+    cleanup: ['file'],  // Only delete the uploaded file
+});
+
+// Transcript is available via the pre-fetched property
+console.log(transcription.transcript?.text);
+
+// Or fetch it again later (transcription record still exists)
+const transcript = await transcription.getTranscript();
+```
+
+**Note:** The `transcript` property is only available when using `wait: true`. When the transcription status is `'error'`, `transcript` will be `null`.
+
+Cleanup runs in all cases when `wait: true`:
+- After successful completion (transcript is fetched first)
+- After transcription errors (status: 'error')
+- On timeout or abort
+
+This ensures no orphaned resources are left behind, even when something goes wrong.
 
 ### Create Transcription (without waiting)
 

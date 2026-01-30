@@ -37,6 +37,7 @@ export type {
 
 // Import and re-export Transcriptions API types
 export type {
+    CleanupTarget,
     ContextGeneralEntry,
     ContextTranslationTerm,
     CreateTranscriptionOptions,

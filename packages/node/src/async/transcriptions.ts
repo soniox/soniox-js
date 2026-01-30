@@ -394,9 +394,16 @@ export class SonioxTranscription {
      */
     readonly context: string | null | undefined;
 
+    /**
+     * Pre-fetched transcript. Only available when using `transcribe()` with `wait: true`
+     * and the transcription completed successfully.
+     */
+    readonly transcript: SonioxTranscript | null | undefined;
+
     constructor(
         data: SonioxTranscriptionData,
         private readonly _http: HttpClient,
+        transcript?: SonioxTranscript | null,
     ) {
         this.id = data.id;
         this.status = data.status;
@@ -417,6 +424,7 @@ export class SonioxTranscription {
         this.webhook_status_code = data.webhook_status_code;
         this.client_reference_id = data.client_reference_id;
         this.context = data.context;
+        this.transcript = transcript;
     }
 
     /**
@@ -526,11 +534,12 @@ export class SonioxTranscription {
      * }
      * ```
      */
-    async getTranscript(): Promise<SonioxTranscript | null> {
+    async getTranscript(signal?: AbortSignal): Promise<SonioxTranscript | null> {
         try {
             const response = await this._http.request<TranscriptResponse>({
                 method: 'GET',
                 path: `/v1/transcriptions/${this.id}/transcript`,
+                ...(signal && { signal }),
             });
             return new SonioxTranscript(response.data);
         } catch (error) {
@@ -945,12 +954,13 @@ export class SonioxTranscriptionsAPI {
      * }
      * ```
      */
-    async getTranscript(id: TranscriptionIdentifier): Promise<SonioxTranscript | null> {
+    async getTranscript(id: TranscriptionIdentifier, signal?: AbortSignal): Promise<SonioxTranscript | null> {
         const transcription_id = getTranscriptionId(id);
         try {
             const response = await this.http.request<TranscriptResponse>({
                 method: 'GET',
                 path: `/v1/transcriptions/${transcription_id}/transcript`,
+                ...(signal && { signal }),
             });
             return new SonioxTranscript(response.data);
         } catch (error) {
@@ -1036,6 +1046,7 @@ export class SonioxTranscriptionsAPI {
      *
      * When `file` is provided, uploads it first then creates a transcription
      * When `wait: true`, waits for completion before returning
+     * When `cleanup` is specified (requires `wait: true`), cleans up resources after completion or on error/timeout
      *
      * @param options - Transcribe options including model, audio source, and wait settings.
      * @returns The transcription (completed if wait=true, otherwise in queued/processing state).
@@ -1070,6 +1081,22 @@ export class SonioxTranscriptionsAPI {
      *         on_status_change: (status) => console.log(`Status: ${status}`),
      *     },
      * });
+     *
+     * // Auto-cleanup uploaded file after transcription
+     * const result = await client.transcriptions.transcribe({
+     *     model: 'stt-async-v3',
+     *     file: buffer,
+     *     wait: true,
+     *     cleanup: ['file'], // Deletes uploaded file, keeps transcription record
+     * });
+     *
+     * // Auto-cleanup everything after transcription
+     * const result = await client.transcriptions.transcribe({
+     *     model: 'stt-async-v3',
+     *     file: buffer,
+     *     wait: true,
+     *     cleanup: ['file', 'transcription'], // Deletes both file and transcription record
+     * });
      * ```
      */
     async transcribe(options: TranscribeOptions): Promise<SonioxTranscription> {
@@ -1102,8 +1129,43 @@ export class SonioxTranscriptionsAPI {
             throw new Error('webhook_auth_header_name and webhook_auth_header_value must be provided together');
         }
 
+        // Validate cleanup - only allowed when wait=true
+        if (options.cleanup?.length && !options.wait) {
+            throw new Error('cleanup can only be used when wait=true');
+        }
+
         // Create combined signal from timeout_ms and signal options
-        const { signal: combinedSignal, cleanup } = createTimeoutSignal(options.timeout_ms, options.signal);
+        const { signal: combinedSignal, cleanup: cleanupSignal } = createTimeoutSignal(options.timeout_ms, options.signal);
+
+        // Track created resources for cleanup on error
+        let fileIdToCleanup: string | undefined;
+        let transcriptionId: string | undefined;
+
+        // Helper to perform cleanup (ignores errors to avoid masking original error)
+        const performCleanup = async (finalFileId?: string | null) => {
+            if (!options.cleanup?.length) return;
+
+            // Use the file_id from the completed transcription if available, otherwise use tracked id
+            const fileId = finalFileId ?? fileIdToCleanup;
+
+            // Delete file if requested and we have one
+            if (options.cleanup.includes('file') && fileId) {
+                try {
+                    await this.filesApi.delete(fileId);
+                } catch {
+                    // Ignore cleanup errors
+                }
+            }
+
+            // Delete transcription if requested and we have one
+            if (options.cleanup.includes('transcription') && transcriptionId) {
+                try {
+                    await this.delete(transcriptionId);
+                } catch {
+                    // Ignore cleanup errors
+                }
+            }
+        };
 
         try {
             let file_id = options.file_id;
@@ -1116,6 +1178,10 @@ export class SonioxTranscriptionsAPI {
                     signal: combinedSignal,
                 });
                 file_id = uploaded.id;
+                fileIdToCleanup = uploaded.id;
+            } else if (options.file_id) {
+                // Track provided file_id for cleanup on error
+                fileIdToCleanup = options.file_id;
             }
 
             // Process webhook_url with optional webhook_query
@@ -1153,6 +1219,13 @@ export class SonioxTranscriptionsAPI {
 
             // Create transcription
             const transcription = await this.create(createOptions, combinedSignal);
+            transcriptionId = transcription.id;
+
+            // Track file_id from transcription response for cleanup on error
+            // This handles cases where audio_url creates an associated file
+            if (transcription.file_id) {
+                fileIdToCleanup = transcription.file_id;
+            }
 
             // Wait if requested (defaults to false)
             if (options.wait) {
@@ -1161,12 +1234,32 @@ export class SonioxTranscriptionsAPI {
                     ...options.wait_options,
                     signal: combinedSignal ?? options.wait_options?.signal,
                 };
-                return transcription.wait(waitOptions);
+                const completed = await transcription.wait(waitOptions);
+
+                // Fetch transcript if transcription completed successfully
+                let transcript: SonioxTranscript | null = null;
+                if (completed.status === 'completed') {
+                    transcript = await completed.getTranscript(combinedSignal);
+                }
+
+                // Create a new transcription instance with the transcript attached
+                const result = new SonioxTranscription(completed.toJSON(), this.http, transcript);
+
+                // Perform cleanup after fetching transcript
+                await performCleanup(completed.file_id);
+
+                return result;
             }
 
             return transcription;
+        } catch (error) {
+            if (options.wait) {
+                await performCleanup();
+            }
+
+            throw error;
         } finally {
-            cleanup();
+            cleanupSignal();
         }
     }
 }

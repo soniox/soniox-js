@@ -6,6 +6,14 @@ import type { UploadFileInput } from './files.js';
 export type TranscriptionStatus = 'queued' | 'processing' | 'completed' | 'error';
 
 /**
+ * Resource types that can be cleaned up after transcription completes.
+ *
+ * - `'file'` - The uploaded file
+ * - `'transcription'` - The transcription record
+ */
+export type CleanupTarget = 'file' | 'transcription';
+
+/**
  * Key-value pair for general context information.
  */
 export type ContextGeneralEntry = {
@@ -403,6 +411,31 @@ export type TranscribeBaseOptions = {
      * Timeout in milliseconds
      */
     timeout_ms?: number | undefined;
+
+    /**
+     * Resources to clean up after transcription completes or on error/timeout.
+     * Only applies when `wait: true`.
+     *
+     * Cleanup runs in all cases when `wait: true`:
+     * - After successful completion
+     * - After transcription errors (status: 'error')
+     * - On timeout or abort
+     *
+     * This ensures no orphaned resources are left behind.
+     *
+     * @example
+     * ```typescript
+     * // Delete only the uploaded file
+     * cleanup: ['file']
+     *
+     * // Delete only the transcription record
+     * cleanup: ['transcription']
+     *
+     * // Delete both file and transcription
+     * cleanup: ['file', 'transcription']
+     * ```
+     */
+    cleanup?: CleanupTarget[] | undefined;
 }
 
 /**
