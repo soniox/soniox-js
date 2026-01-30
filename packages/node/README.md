@@ -224,6 +224,9 @@ const transcription = await client.transcriptions.transcribe({
         interval_ms: 2000,   // Poll every 2 seconds
         on_status_change: (status) => console.log(`Status: ${status}`),
     },
+
+    // Skip auto-fetching the full transcript payload
+    fetch_transcript: false,
     
     // Auto-cleanup after completion (requires wait: true)
     cleanup: ['file', 'transcription'],
@@ -232,7 +235,7 @@ const transcription = await client.transcriptions.transcribe({
 
 ### Auto-Cleanup
 
-When using `wait: true`, the transcript is automatically fetched and attached to the result before any cleanup runs. This means you can safely use `cleanup: ['file', 'transcription']` and still access the transcript:
+When using `wait: true` and `fetch_transcript` is not set to `false`, the transcript is automatically fetched and attached to the result before any cleanup runs. This means you can safely use `cleanup: ['file', 'transcription']` and still access the transcript:
 
 ```typescript
 const transcription = await client.transcriptions.transcribe({
@@ -268,7 +271,7 @@ console.log(transcription.transcript?.text);
 const transcript = await transcription.getTranscript();
 ```
 
-**Note:** The `transcript` property is only available when using `wait: true`. When the transcription status is `'error'`, `transcript` will be `null`.
+**Note:** The `transcript` property is only available when using `wait: true` and `fetch_transcript` is not set to `false`. When the transcription status is `'error'`, `transcript` will be `null`.
 
 Cleanup runs in all cases when `wait: true`:
 - After successful completion (transcript is fetched first)
