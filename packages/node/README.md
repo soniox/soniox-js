@@ -9,9 +9,10 @@ Official Soniox SDK for Node.js - Speech-to-Text API
 - [Environment Variables](#environment-variables)
 - [Temporary API Keys](#temporary-api-keys)
 - [Files API](#files-api)
-- [Transcriptions API](#transcriptions-api)
+- [Speech-To-Text API](#speech-to-text-api)
 - [Webhooks](#webhooks)
 - [Models API](#models-api)
+- [Realtime API](./REALTIME.md) - WebSocket streaming transcription
 
 ## Installation
 
@@ -40,20 +41,21 @@ const client = new SonioxNodeClient({
 - `client.files.get(fileId | file)`
 - `client.files.delete(fileId | file)`
 
-**Transcriptions**
-- `client.transcriptions.transcribe(options)` (exactly one of `file`, `file_id`, `audio_url`)
-- `client.transcriptions.transcribeFromUrl(audioUrl, options)`
-- `client.transcriptions.transcribeFromFile(file, options)`
-- `client.transcriptions.transcribeFromFileId(fileId, options)`
-- `client.transcriptions.create(options)`
-- `client.transcriptions.list(options?)`
-- `client.transcriptions.get(id | transcription)`
-- `client.transcriptions.getTranscript(id | transcription)`
-- `client.transcriptions.wait(id | transcription, options?)`
-- `client.transcriptions.delete(id | transcription)`
-- `client.transcriptions.destroy(id | transcription)`
+**Speech-To-Text**
+- `client.stt.transcribe(options)` (exactly one of `file`, `file_id`, `audio_url`)
+- `client.stt.transcribeFromUrl(audioUrl, options)`
+- `client.stt.transcribeFromFile(file, options)`
+- `client.stt.transcribeFromFileId(fileId, options)`
+- `client.stt.create(options)`
+- `client.stt.list(options?)`
+- `client.stt.get(id | transcription)`
+- `client.stt.getTranscript(id | transcription)`
+- `client.stt.wait(id | transcription, options?)`
+- `client.stt.delete(id | transcription)`
+- `client.stt.destroy(id | transcription)`
+
+**Transcript Methods**
 - `transcript.segments(options?)` - group tokens by speaker/language
-- `segmentTranscript(tokens, options?)` - standalone segmentation utility
 
 **Webhooks**
 - `client.webhooks.handle(options)`
@@ -73,8 +75,8 @@ const client = new SonioxNodeClient({
 **Auth**
 - `client.auth.createTemporaryKey(request)`
 
-**Realtime**
-- `client.realtime.createSession()`
+**Realtime** ([full documentation](./REALTIME.md))
+- `client.realtime.stt(config, options?)` - Create realtime STT session
 
 ## Environment Variables
 
@@ -146,7 +148,7 @@ await client.files.delete('file-id');
 await file.delete();
 ```
 
-## Transcriptions API
+## Speech-To-Text API
 
 ### Quick Start with `transcribe()`
 
@@ -154,7 +156,7 @@ The `transcribe()` method is the easiest way to transcribe audio:
 
 ```typescript
 // Transcribe from URL and wait for completion
-const transcription = await client.transcriptions.transcribe({
+const transcription = await client.stt.transcribe({
     model: 'stt-async-v3',
     audio_url: 'https://example.com/audio.mp3',
     wait: true,
@@ -167,7 +169,7 @@ console.log(transcript.text);
 If you want to avoid the "one-of" audio source options, use the convenience wrappers:
 
 ```typescript
-const transcription = await client.transcriptions.transcribeFromUrl(
+const transcription = await client.stt.transcribeFromUrl(
     'https://example.com/audio.mp3',
     { model: 'stt-async-v3', wait: true }
 );
@@ -180,7 +182,7 @@ import { readFile } from 'fs/promises';
 
 const buffer = await readFile('recording.mp3');
 
-const transcription = await client.transcriptions.transcribe({
+const transcription = await client.stt.transcribe({
     model: 'stt-async-v3',
     file: buffer,
     filename: 'recording.mp3',
@@ -193,7 +195,7 @@ console.log(await transcription.getTranscript());
 ### Transcription Options
 
 ```typescript
-const transcription = await client.transcriptions.transcribe({
+const transcription = await client.stt.transcribe({
     model: 'stt-async-v3',
     audio_url: 'https://example.com/audio.mp3',
     
@@ -238,7 +240,7 @@ const transcription = await client.transcriptions.transcribe({
 When using `wait: true` and `fetch_transcript` is not set to `false`, the transcript is automatically fetched and attached to the result before any cleanup runs. This means you can safely use `cleanup: ['file', 'transcription']` and still access the transcript:
 
 ```typescript
-const transcription = await client.transcriptions.transcribe({
+const transcription = await client.stt.transcribe({
     model: 'stt-async-v3',
     file: buffer,
     wait: true,
@@ -257,7 +259,7 @@ for (const segment of transcription.transcript?.segments() ?? []) {
 You can also clean up just the file if you want to keep the transcription record:
 
 ```typescript
-const transcription = await client.transcriptions.transcribe({
+const transcription = await client.stt.transcribe({
     model: 'stt-async-v3',
     file: buffer,
     wait: true,
@@ -284,14 +286,14 @@ This ensures no orphaned resources are left behind, even when something goes wro
 
 ```typescript
 // From URL
-const transcription = await client.transcriptions.create({
+const transcription = await client.stt.create({
     model: 'stt-async-v3',
     audio_url: 'https://example.com/audio.mp3',
 });
 
 // From uploaded file
 const file = await client.files.upload(buffer);
-const transcription = await client.transcriptions.create({
+const transcription = await client.stt.create({
     model: 'stt-async-v3',
     file_id: file.id,
 });
@@ -304,7 +306,7 @@ const completed = await transcription.wait();
 
 ```typescript
 // Get first page
-const result = await client.transcriptions.list({ limit: 50 });
+const result = await client.stt.list({ limit: 50 });
 
 // Iterate through all pages automatically
 for await (const transcription of result) {
@@ -322,7 +324,7 @@ for (const transcription of result.transcriptions) {
 Returns `null` if the transcription doesn't exist:
 
 ```typescript
-const transcription = await client.transcriptions.get('transcription-id');
+const transcription = await client.stt.get('transcription-id');
 if (transcription) {
     console.log(transcription.status);
 }
@@ -333,7 +335,7 @@ if (transcription) {
 Returns `null` if the transcription or transcript doesn't exist:
 
 ```typescript
-const transcript = await client.transcriptions.getTranscript('transcription-id');
+const transcript = await client.stt.getTranscript('transcription-id');
 if (transcript) {
     console.log(transcript.text);
 
@@ -347,7 +349,7 @@ if (transcript) {
 When using `transcribe()` with `wait: true`, the transcript is pre-fetched and cached. Calling `getTranscript()` on the returned transcription returns the cached value without making an HTTP request:
 
 ```typescript
-const transcription = await client.transcriptions.transcribe({
+const transcription = await client.stt.transcribe({
     model: 'stt-async-v3',
     audio_url: 'https://example.com/audio.mp3',
     wait: true,
@@ -365,7 +367,7 @@ const freshTranscript = await transcription.getTranscript({ force: true });
 Group tokens into segments by speaker and language changes:
 
 ```typescript
-const transcript = await client.transcriptions.getTranscript('transcription-id');
+const transcript = await client.stt.getTranscript('transcription-id');
 if (transcript) {
     // Using the method on SonioxTranscript
     const segments = transcript.segments();
@@ -410,7 +412,7 @@ Each segment contains:
 Deletion is idempotent - succeeds even if the transcription doesn't exist:
 
 ```typescript
-await client.transcriptions.delete('transcription-id');
+await client.stt.delete('transcription-id');
 // or
 await transcription.delete();
 ```
@@ -422,7 +424,7 @@ Deletes both transcription and its associated uploaded file. Idempotent - succee
 ```typescript
 await transcription.destroy();
 // or
-await client.transcriptions.destroy('transcription-id');
+await client.stt.destroy('transcription-id');
 ```
 
 ### Wait with AbortController
@@ -447,7 +449,7 @@ try {
 Configure webhooks to receive notifications when transcriptions complete:
 
 ```typescript
-const transcription = await client.transcriptions.transcribe({
+const transcription = await client.stt.transcribe({
     model: 'stt-async-v3',
     audio_url: 'https://example.com/audio.mp3',
     webhook_url: 'https://your-server.com/webhook',

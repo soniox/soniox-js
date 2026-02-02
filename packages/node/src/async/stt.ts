@@ -462,7 +462,7 @@ export class SonioxTranscription {
      *
      * @example
      * ```typescript
-     * const transcription = await client.transcriptions.get('550e8400-e29b-41d4-a716-446655440000');
+     * const transcription = await client.stt.get('550e8400-e29b-41d4-a716-446655440000');
      * await transcription.delete();
      * ```
      */
@@ -488,7 +488,7 @@ export class SonioxTranscription {
      * @example
      * ```typescript
      * // Clean up both transcription and uploaded file
-     * const transcription = await client.transcriptions.transcribe({
+     * const transcription = await client.stt.transcribe({
      *     model: 'stt-async-v3',
      *     file: buffer,
      *     wait: true,
@@ -531,7 +531,7 @@ export class SonioxTranscription {
      *
      * @example
      * ```typescript
-     * const transcription = await client.transcriptions.get('550e8400-e29b-41d4-a716-446655440000');
+     * const transcription = await client.stt.get('550e8400-e29b-41d4-a716-446655440000');
      * if (transcription) {
      *     const transcript = await transcription.getTranscript();
      *     if (transcript) {
@@ -574,7 +574,7 @@ export class SonioxTranscription {
      *
      * @example
      * ```typescript
-     * let transcription = await client.transcriptions.get('550e8400-e29b-41d4-a716-446655440000');
+     * let transcription = await client.stt.get('550e8400-e29b-41d4-a716-446655440000');
      * transcription = await transcription.refresh();
      * console.log(transcription.status);
      * ```
@@ -599,7 +599,7 @@ export class SonioxTranscription {
      *
      * @example
      * ```typescript
-     * const transcription = await client.transcriptions.create({
+     * const transcription = await client.stt.create({
      *     model: 'stt-async-v3',
      *     audio_url: 'https://example.com/audio.mp3',
      * });
@@ -752,7 +752,7 @@ export class TranscriptionListResult implements AsyncIterable<SonioxTranscriptio
     }
 }
 
-export class SonioxTranscriptionsAPI {
+export class SonioxSttApi {
     constructor(
         private http: HttpClient,
         private filesApi: SonioxFilesAPI,
@@ -768,20 +768,20 @@ export class SonioxTranscriptionsAPI {
      * @example
      * ```typescript
      * // Transcribe from URL
-     * const transcription = await client.transcriptions.create({
+     * const transcription = await client.stt.create({
      *     model: 'stt-async-v3',
      *     audio_url: 'https://example.com/audio.mp3',
      * });
      *
      * // Transcribe from uploaded file
      * const file = await client.files.upload(buffer);
-     * const transcription = await client.transcriptions.create({
+     * const transcription = await client.stt.create({
      *     model: 'stt-async-v3',
      *     file_id: file.id,
      * });
      *
      * // With speaker diarization
-     * const transcription = await client.transcriptions.create({
+     * const transcription = await client.stt.create({
      *     model: 'stt-async-v3',
      *     audio_url: 'https://example.com/audio.mp3',
      *     enable_speaker_diarization: true,
@@ -810,7 +810,7 @@ export class SonioxTranscriptionsAPI {
      *
      * @example
      * ```typescript
-     * const result = await client.transcriptions.list();
+     * const result = await client.stt.list();
      *
      * // Automatic paging - iterates through ALL transcriptions across all pages
      * for await (const transcription of result) {
@@ -850,7 +850,7 @@ export class SonioxTranscriptionsAPI {
      *
      * @example
      * ```typescript
-     * const transcription = await client.transcriptions.get('550e8400-e29b-41d4-a716-446655440000');
+     * const transcription = await client.stt.get('550e8400-e29b-41d4-a716-446655440000');
      * if (transcription) {
      *     console.log(transcription.status, transcription.model);
      * }
@@ -882,12 +882,12 @@ export class SonioxTranscriptionsAPI {
      * @example
      * ```typescript
      * // Delete by ID
-     * await client.transcriptions.delete('550e8400-e29b-41d4-a716-446655440000');
+     * await client.stt.delete('550e8400-e29b-41d4-a716-446655440000');
      *
      * // Or delete a transcription instance
-     * const transcription = await client.transcriptions.get('550e8400-e29b-41d4-a716-446655440000');
+     * const transcription = await client.stt.get('550e8400-e29b-41d4-a716-446655440000');
      * if (transcription) {
-     *     await client.transcriptions.delete(transcription);
+     *     await client.stt.delete(transcription);
      * }
      * ```
      */
@@ -915,16 +915,16 @@ export class SonioxTranscriptionsAPI {
      * @example
      * ```typescript
      * // Clean up both transcription and uploaded file
-     * const transcription = await client.transcriptions.transcribe({
+     * const transcription = await client.stt.transcribe({
      *     model: 'stt-async-v3',
      *     file: buffer,
      *     wait: true,
      * });
      * // ... use transcription ...
-     * await client.transcriptions.destroy(transcription); // Deletes both
+     * await client.stt.destroy(transcription); // Deletes both
      *
      * // Or by ID
-     * await client.transcriptions.destroy('550e8400-e29b-41d4-a716-446655440000');
+     * await client.stt.destroy('550e8400-e29b-41d4-a716-446655440000');
      * ```
      */
     async destroy(id: TranscriptionIdentifier): Promise<void> {
@@ -961,7 +961,7 @@ export class SonioxTranscriptionsAPI {
      *
      * @example
      * ```typescript
-     * const transcript = await client.transcriptions.getTranscript('550e8400-e29b-41d4-a716-446655440000');
+     * const transcript = await client.stt.getTranscript('550e8400-e29b-41d4-a716-446655440000');
      * if (transcript) {
      *     console.log(transcript.text);
      *     for (const token of transcript.tokens) {
@@ -998,10 +998,10 @@ export class SonioxTranscriptionsAPI {
      *
      * @example
      * ```typescript
-     * const completed = await client.transcriptions.wait('550e8400-e29b-41d4-a716-446655440000');
+     * const completed = await client.stt.wait('550e8400-e29b-41d4-a716-446655440000');
      *
      * // With progress callback
-     * const completed = await client.transcriptions.wait('id', {
+     * const completed = await client.stt.wait('id', {
      *     interval_ms: 2000,
      *     on_status_change: (status) => console.log(`Status: ${status}`),
      * });
@@ -1072,14 +1072,14 @@ export class SonioxTranscriptionsAPI {
      * @example
      * ```typescript
      * // Transcribe from URL and wait for completion
-     * const result = await client.transcriptions.transcribe({
+     * const result = await client.stt.transcribe({
      *     model: 'stt-async-v3',
      *     audio_url: 'https://example.com/audio.mp3',
      *     wait: true,
      * });
      *
      * // Upload file and transcribe in one call
-     * const result = await client.transcriptions.transcribe({
+     * const result = await client.stt.transcribe({
      *     model: 'stt-async-v3',
      *     file: buffer,  // or Blob, ReadableStream
      *     filename: 'meeting.mp3',
@@ -1088,7 +1088,7 @@ export class SonioxTranscriptionsAPI {
      * });
      *
      * // With wait progress callback
-     * const result = await client.transcriptions.transcribe({
+     * const result = await client.stt.transcribe({
      *     model: 'stt-async-v3',
      *     file: buffer,
      *     wait: true,
@@ -1099,7 +1099,7 @@ export class SonioxTranscriptionsAPI {
      * });
      *
      * // Auto-cleanup uploaded file after transcription
-     * const result = await client.transcriptions.transcribe({
+     * const result = await client.stt.transcribe({
      *     model: 'stt-async-v3',
      *     file: buffer,
      *     wait: true,
@@ -1107,7 +1107,7 @@ export class SonioxTranscriptionsAPI {
      * });
      *
      * // Auto-cleanup everything after transcription
-     * const result = await client.transcriptions.transcribe({
+     * const result = await client.stt.transcribe({
      *     model: 'stt-async-v3',
      *     file: buffer,
      *     wait: true,

@@ -1,16 +1,16 @@
 import { SonioxAuthAPI } from "./async/auth.js";
 import { SonioxFilesAPI } from "./async/files.js";
 import { SonioxModelsAPI } from "./async/models.js";
-import { SonioxTranscriptionsAPI } from "./async/transcriptions.js";
+import { SonioxSttApi } from "./async/stt.js";
 import { SonioxWebhooksAPI } from "./async/webhooks.js";
-import { SONIOX_API_BASE_URL } from "./constants.js";
+import { SONIOX_API_BASE_URL, SONIOX_API_WS_URL } from "./constants.js";
 import { FetchHttpClient } from "./http/fetch-adapter.js";
 import { SonioxRealtimeAPI } from "./realtime/index.js";
 import type { SonioxNodeClientOptions } from "./types/public/index.js";
 
 export class SonioxNodeClient {
   readonly files: SonioxFilesAPI;
-  readonly transcriptions: SonioxTranscriptionsAPI;
+  readonly stt: SonioxSttApi;
   readonly models: SonioxModelsAPI;
   readonly webhooks: SonioxWebhooksAPI;
   readonly auth: SonioxAuthAPI;
@@ -34,11 +34,24 @@ export class SonioxNodeClient {
     });
 
     this.files = new SonioxFilesAPI(http);
-    this.transcriptions = new SonioxTranscriptionsAPI(http, this.files);
+    this.stt = new SonioxSttApi(http, this.files);
     this.models = new SonioxModelsAPI(http);
-    this.webhooks = new SonioxWebhooksAPI(this.transcriptions);
+    this.webhooks = new SonioxWebhooksAPI(this.stt);
     this.auth = new SonioxAuthAPI(http);
 
-    this.realtime = new SonioxRealtimeAPI();
+    // Configure realtime API with user options or defaults
+    const realtimeWsUrl =
+      options.realtime?.baseURL ??
+      process.env['SONIOX_WS_URL'] ??
+      SONIOX_API_WS_URL;
+
+    const realtimeApiKey = options.realtime?.apiKey ?? apiKey;
+    const realtimeDefaultOptions = options.realtime?.defaultSessionOptions;
+
+    this.realtime = new SonioxRealtimeAPI({
+      api_key: realtimeApiKey,
+      base_url: realtimeWsUrl,
+      ...(realtimeDefaultOptions && { default_session_options: realtimeDefaultOptions }),
+    });
   }
 }

@@ -2,9 +2,9 @@ import {
     segmentTranscript,
     SonioxTranscript,
     SonioxTranscription,
-    SonioxTranscriptionsAPI,
+    SonioxSttApi,
     TranscriptionListResult,
-} from '../../src/async/transcriptions';
+} from '../../src/async/stt';
 import { SonioxFile, SonioxFilesAPI } from '../../src/async/files';
 import { SonioxHttpError } from '../../src/http/errors';
 import type { HttpClient } from '../../src/http';
@@ -666,7 +666,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.create({
                 model: 'stt-async-v3',
@@ -691,7 +691,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const result = await api.create({
                 model: 'stt-async-v3',
@@ -715,7 +715,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.list();
 
@@ -734,7 +734,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.list({ limit: 50, cursor: 'my-cursor' });
 
@@ -756,7 +756,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const result = await api.list();
 
@@ -776,7 +776,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.get('test-transcription-id');
 
@@ -794,7 +794,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const existing = new SonioxTranscription(
                 createMockTranscriptionData({ id: 'existing-id' }),
@@ -821,7 +821,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const transcription = await api.get('returned-id');
 
@@ -834,7 +834,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const requestMock = jest.fn().mockRejectedValue(createMock404Error());
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const transcription = await api.get('non-existent-id');
 
@@ -851,7 +851,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.delete('transcription-to-delete');
 
@@ -869,7 +869,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const transcription = new SonioxTranscription(
                 createMockTranscriptionData({ id: 'transcription-instance-id' }),
@@ -888,7 +888,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const requestMock = jest.fn().mockRejectedValue(createMock404Error());
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await expect(api.delete('non-existent-id')).resolves.toBeUndefined();
         });
@@ -911,7 +911,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const deleteMock = jest.fn().mockResolvedValue(undefined);
             const mockFilesApi = createMockFilesAPI();
             mockFilesApi.delete = deleteMock;
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.destroy('transcription-to-destroy');
 
@@ -945,7 +945,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const deleteMock = jest.fn();
             const mockFilesApi = createMockFilesAPI();
             mockFilesApi.delete = deleteMock;
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.destroy('transcription-to-destroy');
 
@@ -967,7 +967,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const requestMock = jest.fn().mockRejectedValue(createMock404Error());
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             // Should not throw - transcription already gone
             await expect(api.destroy('non-existent-id')).resolves.toBeUndefined();
@@ -992,7 +992,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const deleteMock = jest.fn().mockRejectedValue(createMock404Error());
             const mockFilesApi = createMockFilesAPI();
             mockFilesApi.delete = deleteMock;
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             // Should not throw - file already gone
             await expect(api.destroy('transcription-id')).resolves.toBeUndefined();
@@ -1008,7 +1008,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const transcript = await api.getTranscript('transcription-id');
 
@@ -1024,7 +1024,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const requestMock = jest.fn().mockRejectedValue(createMock404Error());
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const transcript = await api.getTranscript('non-existent-id');
 
@@ -1041,7 +1041,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const result = await api.wait('transcription-id');
 
@@ -1062,7 +1062,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const result = await api.transcribe({
                 model: 'stt-async-v3',
@@ -1101,7 +1101,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI(uploadMock);
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const buffer = Buffer.from('test audio data');
             const result = await api.transcribe({
@@ -1146,7 +1146,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const resultPromise = api.transcribe({
                 model: 'stt-async-v3',
@@ -1187,7 +1187,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const resultPromise = api.transcribe({
                 model: 'stt-async-v3',
@@ -1223,7 +1223,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const resultPromise = api.transcribe({
                 model: 'stt-async-v3',
@@ -1264,7 +1264,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const controller = new AbortController();
             const resultPromise = api.transcribe({
@@ -1295,7 +1295,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const result = await api.transcribe({
                 model: 'stt-async-v3',
@@ -1319,7 +1319,7 @@ describe('SonioxTranscriptionsAPI', () => {
             });
             const mockHttp = createMockHttpClient(requestMock);
             const mockFilesApi = createMockFilesAPI();
-            const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.transcribe({
                 model: 'stt-async-v3',
@@ -1346,7 +1346,7 @@ describe('SonioxTranscriptionsAPI', () => {
            it('should throw when no audio source is provided', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1356,7 +1356,7 @@ describe('SonioxTranscriptionsAPI', () => {
             it('should throw when both file and audio_url are provided', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1368,7 +1368,7 @@ describe('SonioxTranscriptionsAPI', () => {
             it('should throw when both file and file_id are provided', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1380,7 +1380,7 @@ describe('SonioxTranscriptionsAPI', () => {
             it('should throw when both audio_url and file_id are provided', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1392,7 +1392,7 @@ describe('SonioxTranscriptionsAPI', () => {
             it('should throw when all three audio sources are provided', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1408,7 +1408,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const requestMock = jest.fn();
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1422,7 +1422,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const requestMock = jest.fn();
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1440,7 +1440,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1461,7 +1461,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1482,7 +1482,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1508,7 +1508,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1534,7 +1534,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const params = new URLSearchParams();
                 params.append('id', '123');
@@ -1564,7 +1564,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1590,7 +1590,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1615,7 +1615,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1637,7 +1637,7 @@ describe('SonioxTranscriptionsAPI', () => {
             it('should throw when audio_url is not a valid HTTP/HTTPS URL', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1648,7 +1648,7 @@ describe('SonioxTranscriptionsAPI', () => {
             it('should throw when audio_url contains whitespace', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1659,7 +1659,7 @@ describe('SonioxTranscriptionsAPI', () => {
             it('should throw when audio_url is empty string', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -1675,7 +1675,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1693,7 +1693,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1719,7 +1719,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     created_at: new Date().toISOString(),
                 });
                 const mockFilesApi = createMockFilesAPI(uploadMock);
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const controller = new AbortController();
                 await api.transcribe({
@@ -1744,7 +1744,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const controller = new AbortController();
                 await api.transcribe({
@@ -1768,7 +1768,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     });
                 });
                 const mockFilesApi = createMockFilesAPI(uploadMock);
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const controller = new AbortController();
                 const promise = api.transcribe({
@@ -1789,7 +1789,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
                     model: 'stt-async-v3',
@@ -1817,7 +1817,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     });
                 });
                 const mockFilesApi = createMockFilesAPI(uploadMock);
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 // Use a very short timeout
                 await expect(api.transcribe({
@@ -1847,7 +1847,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const controller = new AbortController();
                 const result = await api.transcribe({
@@ -1864,7 +1864,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 it('should throw when timeout_ms is NaN', async () => {
                     const mockHttp = createMockHttpClient();
                     const mockFilesApi = createMockFilesAPI();
-                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                    const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     await expect(api.transcribe({
                         model: 'stt-async-v3',
@@ -1876,7 +1876,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 it('should throw when timeout_ms is Infinity', async () => {
                     const mockHttp = createMockHttpClient();
                     const mockFilesApi = createMockFilesAPI();
-                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                    const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     await expect(api.transcribe({
                         model: 'stt-async-v3',
@@ -1888,7 +1888,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 it('should throw when timeout_ms is negative', async () => {
                     const mockHttp = createMockHttpClient();
                     const mockFilesApi = createMockFilesAPI();
-                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                    const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     await expect(api.transcribe({
                         model: 'stt-async-v3',
@@ -1900,7 +1900,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 it('should throw when timeout_ms is zero', async () => {
                     const mockHttp = createMockHttpClient();
                     const mockFilesApi = createMockFilesAPI();
-                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                    const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     await expect(api.transcribe({
                         model: 'stt-async-v3',
@@ -1933,7 +1933,7 @@ describe('SonioxTranscriptionsAPI', () => {
                         });
                     });
                     const mockFilesApi = createMockFilesAPI(uploadMock);
-                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                    const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     const controller = new AbortController();
                     await expect(api.transcribe({
@@ -1966,7 +1966,7 @@ describe('SonioxTranscriptionsAPI', () => {
                         });
                     });
                     const mockFilesApi = createMockFilesAPI(uploadMock);
-                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                    const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     const controller = new AbortController();
                     const promise = api.transcribe({
@@ -1990,7 +1990,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     });
                     const mockHttp = createMockHttpClient(requestMock);
                     const mockFilesApi = createMockFilesAPI();
-                    const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                    const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     const controller = new AbortController();
                     const result = await api.transcribe({
@@ -2009,7 +2009,7 @@ describe('SonioxTranscriptionsAPI', () => {
             it('should throw when cleanup is used without wait=true', async () => {
                 const mockHttp = createMockHttpClient();
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -2041,7 +2041,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const deleteMock = jest.fn().mockResolvedValue(undefined);
                 const mockFilesApi = createMockFilesAPI();
                 mockFilesApi.delete = deleteMock;
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
                     model: 'stt-async-v3',
@@ -2085,7 +2085,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     });
                 const mockHttp = createMockHttpClient(requestMock);
                 const mockFilesApi = createMockFilesAPI();
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
                     model: 'stt-async-v3',
@@ -2135,7 +2135,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const deleteMock = jest.fn().mockResolvedValue(undefined);
                 const mockFilesApi = createMockFilesAPI();
                 mockFilesApi.delete = deleteMock;
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
                     model: 'stt-async-v3',
@@ -2181,7 +2181,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const deleteMock = jest.fn();
                 const mockFilesApi = createMockFilesAPI();
                 mockFilesApi.delete = deleteMock;
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
                     model: 'stt-async-v3',
@@ -2219,7 +2219,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const deleteMock = jest.fn().mockResolvedValue(undefined);
                 const mockFilesApi = createMockFilesAPI(uploadMock);
                 mockFilesApi.delete = deleteMock;
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -2254,7 +2254,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const deleteMock = jest.fn().mockResolvedValue(undefined);
                 const mockFilesApi = createMockFilesAPI();
                 mockFilesApi.delete = deleteMock;
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
                     model: 'stt-async-v3',
@@ -2300,7 +2300,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const deleteMock = jest.fn().mockResolvedValue(undefined);
                 const mockFilesApi = createMockFilesAPI();
                 mockFilesApi.delete = deleteMock;
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
                     model: 'stt-async-v3',
@@ -2346,7 +2346,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const deleteMock = jest.fn();
                 const mockFilesApi = createMockFilesAPI();
                 mockFilesApi.delete = deleteMock;
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
                     model: 'stt-async-v3',
@@ -2389,7 +2389,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const deleteMock = jest.fn().mockRejectedValue(new Error('File delete failed'));
                 const mockFilesApi = createMockFilesAPI();
                 mockFilesApi.delete = deleteMock;
-                const api = new SonioxTranscriptionsAPI(mockHttp, mockFilesApi);
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
                     model: 'stt-async-v3',

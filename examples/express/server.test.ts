@@ -160,7 +160,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
 
         it('transcribes from file and waits for completion', async () => {
             const buffer = readFileSync(AUDIO_FILE_SHORT);
-            const transcription = await client.transcriptions.transcribeFromFile(buffer, {
+            const transcription = await client.stt.transcribeFromFile(buffer, {
                 model: 'stt-async-v3',
                 filename: 'test-audio.mp3',
                 wait: true,
@@ -173,7 +173,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
 
         it('gets transcript', async () => {
             expect(transcriptionId).toBeDefined();
-            const transcript = await client.transcriptions.getTranscript(transcriptionId);
+            const transcript = await client.stt.getTranscript(transcriptionId);
 
             expect(transcript).not.toBeNull();
             expect(transcript?.text).toBeDefined();
@@ -182,14 +182,14 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
 
         it('gets transcription by id', async () => {
             expect(transcriptionId).toBeDefined();
-            const transcription = await client.transcriptions.get(transcriptionId);
+            const transcription = await client.stt.get(transcriptionId);
 
             expect(transcription).not.toBeNull();
             expect(transcription?.id).toBe(transcriptionId);
         });
 
         it('lists transcriptions', async () => {
-            const result = await client.transcriptions.list({ limit: 10 });
+            const result = await client.stt.list({ limit: 10 });
 
             expect(result.transcriptions).toBeDefined();
             expect(Array.isArray(result.transcriptions)).toBe(true);
@@ -197,9 +197,9 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
 
         it('deletes transcription', async () => {
             expect(transcriptionId).toBeDefined();
-            await client.transcriptions.delete(transcriptionId);
+            await client.stt.delete(transcriptionId);
 
-            const transcription = await client.transcriptions.get(transcriptionId);
+            const transcription = await client.stt.get(transcriptionId);
             expect(transcription).toBeNull();
         });
     });
@@ -207,7 +207,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
     describe('Transcriptions with options', () => {
         it('transcribes with speaker diarization', async () => {
             const buffer = readFileSync(AUDIO_FILE_DIALOG);
-            const transcription = await client.transcriptions.transcribeFromFile(buffer, {
+            const transcription = await client.stt.transcribeFromFile(buffer, {
                 model: 'stt-async-v3',
                 filename: 'test-audio.mp3',
                 enable_speaker_diarization: true,
@@ -217,12 +217,12 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
             expect(transcription.status).toBe('completed');
             expect(transcription.enable_speaker_diarization).toBe(true);
 
-            await client.transcriptions.destroy(transcription.id);
+            await client.stt.destroy(transcription.id);
         }, 60000);
 
         it('transcribes with language identification', async () => {
             const buffer = readFileSync(AUDIO_FILE_DIALOG);
-            const transcription = await client.transcriptions.transcribeFromFile(buffer, {
+            const transcription = await client.stt.transcribeFromFile(buffer, {
                 model: 'stt-async-v3',
                 filename: 'test-audio.mp3',
                 enable_language_identification: true,
@@ -232,14 +232,14 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
             expect(transcription.status).toBe('completed');
             expect(transcription.enable_language_identification).toBe(true);
 
-            await client.transcriptions.destroy(transcription.id);
+            await client.stt.destroy(transcription.id);
         }, 60000);
     });
 
     describe('Transcription cleanup', () => {
         it('destroy() removes both transcription and uploaded file', async () => {
             const buffer = readFileSync(AUDIO_FILE_SHORT);
-            const transcription = await client.transcriptions.transcribeFromFile(buffer, {
+            const transcription = await client.stt.transcribeFromFile(buffer, {
                 model: 'stt-async-v3',
                 filename: 'test-cleanup.mp3',
                 wait: true,
@@ -253,10 +253,10 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
             expect(fileBefore).not.toBeNull();
 
             // Destroy transcription (should also delete the file)
-            await client.transcriptions.destroy(transcription.id);
+            await client.stt.destroy(transcription.id);
 
             // Verify transcription is removed
-            const transcriptionAfter = await client.transcriptions.get(transcription.id);
+            const transcriptionAfter = await client.stt.get(transcription.id);
             expect(transcriptionAfter).toBeNull();
 
             // Verify file is also removed

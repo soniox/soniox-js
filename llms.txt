@@ -9,7 +9,7 @@ Create client:
   // or set SONIOX_API_KEY
 
 Transcribe (recommended wrappers to avoid one-of errors):
-  const t = await client.transcriptions.transcribeFromUrl(
+  const t = await client.stt.transcribeFromUrl(
     'https://example.com/audio.mp3',
     { model: 'stt-async-v3', wait: true }
   );
@@ -17,14 +17,14 @@ Transcribe (recommended wrappers to avoid one-of errors):
   console.log(transcript?.text);
 
 Transcribe from file (Buffer/Uint8Array/Blob/ReadableStream):
-  const t = await client.transcriptions.transcribeFromFile(file, {
+  const t = await client.stt.transcribeFromFile(file, {
     model: 'stt-async-v3',
     filename: 'audio.mp3',
     wait: true,
   });
 
 Transcribe from uploaded file id:
-  const t = await client.transcriptions.transcribeFromFileId(fileId, {
+  const t = await client.stt.transcribeFromFileId(fileId, {
     model: 'stt-async-v3',
     wait: true,
   });
@@ -35,13 +35,13 @@ Core APIs:
   client.files.get(id)
   client.files.delete(id)
 
-  client.transcriptions.create(options)
-  client.transcriptions.list(options?)
-  client.transcriptions.get(id)
-  client.transcriptions.getTranscript(id)
-  client.transcriptions.wait(id, options?)
-  client.transcriptions.delete(id)
-  client.transcriptions.destroy(id)
+  client.stt.create(options)
+  client.stt.list(options?)
+  client.stt.get(id)
+  client.stt.getTranscript(id)
+  client.stt.wait(id, options?)
+  client.stt.delete(id)
+  client.stt.destroy(id)
 
   client.models.list()
   client.auth.createTemporaryKey({ usage_type: 'transcribe_websocket', expires_in_seconds })

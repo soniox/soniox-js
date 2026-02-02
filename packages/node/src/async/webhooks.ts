@@ -16,7 +16,7 @@ import type {
     WebhookHeaders,
 } from '../types/public/webhooks.js';
 
-import type { SonioxTranscriptionsAPI } from './transcriptions.js';
+import type { SonioxSttApi } from './stt.js';
 
 export type {
     ExpressLikeRequest,
@@ -577,24 +577,24 @@ export async function handleWebhookHono(
  * When used via the client, results include lazy fetch helpers for transcripts.
  */
 export class SonioxWebhooksAPI {
-    private transcriptions: SonioxTranscriptionsAPI | undefined;
+    private stt: SonioxSttApi | undefined;
 
     /**
      * @internal
      */
-    constructor(transcriptions?: SonioxTranscriptionsAPI) {
-        this.transcriptions = transcriptions;
+    constructor(stt?: SonioxSttApi) {
+        this.stt = stt;
     }
 
     /**
      * Enhance a webhook result with fetch helpers
      */
     private withFetchHelpers(result: WebhookHandlerResult): WebhookHandlerResultWithFetch {
-        const transcriptions = this.transcriptions;
+        const stt = this.stt;
         const event = result.event;
 
-        // If no transcriptions API or no event, return result without fetch helpers
-        if (!transcriptions || !event) {
+        // If no stt API or no event, return result without fetch helpers
+        if (!stt || !event) {
             return {
                 ...result,
                 fetchTranscript: undefined,
@@ -607,9 +607,9 @@ export class SonioxWebhooksAPI {
         return {
             ...result,
             fetchTranscript: event.status === 'completed'
-                ? () => transcriptions.getTranscript(transcriptionId)
+                ? () => stt.getTranscript(transcriptionId)
                 : undefined,
-            fetchTranscription: () => transcriptions.get(transcriptionId),
+            fetchTranscription: () => stt.get(transcriptionId),
         };
     }
 
