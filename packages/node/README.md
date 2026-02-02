@@ -76,7 +76,7 @@ const client = new SonioxNodeClient({
 - `client.auth.createTemporaryKey(request)`
 
 **Realtime** ([full documentation](./REALTIME.md))
-- `client.realtime.stt(config, options?)` - Create realtime STT session
+- `client.realtime.stt(config, options?)` - Create realtime Speech-To-Text session
 
 ## Environment Variables
 
