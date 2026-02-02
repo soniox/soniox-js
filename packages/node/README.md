@@ -344,6 +344,22 @@ if (transcript) {
 }
 ```
 
+When using `transcribe()` with `wait: true`, the transcript is pre-fetched and cached. Calling `getTranscript()` on the returned transcription returns the cached value without making an HTTP request:
+
+```typescript
+const transcription = await client.transcriptions.transcribe({
+    model: 'stt-async-v3',
+    audio_url: 'https://example.com/audio.mp3',
+    wait: true,
+});
+
+// Returns cached transcript - no HTTP request
+const transcript = await transcription.getTranscript();
+
+// Force re-fetch from API
+const freshTranscript = await transcription.getTranscript({ force: true });
+```
+
 ### Segment Transcript by Speaker/Language
 
 Group tokens into segments by speaker and language changes:

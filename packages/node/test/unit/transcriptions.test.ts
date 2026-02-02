@@ -249,6 +249,86 @@ describe('SonioxTranscription', () => {
 
             expect(transcript).toBeNull();
         });
+
+        it('should return cached transcript without making HTTP request', async () => {
+            const requestMock = jest.fn();
+            const mockHttp = createMockHttpClient(requestMock);
+            const cachedTranscript = new SonioxTranscript({ id: 'trans-id', text: 'Cached text', tokens: [] });
+            const transcription = new SonioxTranscription(createMockTranscriptionData(), mockHttp, cachedTranscript);
+
+            const transcript = await transcription.getTranscript();
+
+            expect(requestMock).not.toHaveBeenCalled();
+            expect(transcript).toBe(cachedTranscript);
+            expect(transcript?.text).toBe('Cached text');
+        });
+
+        it('should return null without making HTTP request when cached transcript is null', async () => {
+            const requestMock = jest.fn();
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(createMockTranscriptionData(), mockHttp, null);
+
+            const transcript = await transcription.getTranscript();
+
+            expect(requestMock).not.toHaveBeenCalled();
+            expect(transcript).toBeNull();
+        });
+
+        it('should make HTTP request when transcript is undefined', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 200,
+                headers: {},
+                data: { id: 'trans-id', text: 'Fetched text', tokens: [] },
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(createMockTranscriptionData(), mockHttp);
+
+            const transcript = await transcription.getTranscript();
+
+            expect(requestMock).toHaveBeenCalledWith({
+                method: 'GET',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000/transcript',
+            });
+            expect(transcript?.text).toBe('Fetched text');
+        });
+
+        it('should bypass cache and make HTTP request when force is true', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 200,
+                headers: {},
+                data: { id: 'trans-id', text: 'Fresh text', tokens: [] },
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const cachedTranscript = new SonioxTranscript({ id: 'trans-id', text: 'Cached text', tokens: [] });
+            const transcription = new SonioxTranscription(createMockTranscriptionData(), mockHttp, cachedTranscript);
+
+            const transcript = await transcription.getTranscript({ force: true });
+
+            expect(requestMock).toHaveBeenCalledWith({
+                method: 'GET',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000/transcript',
+            });
+            expect(transcript?.text).toBe('Fresh text');
+        });
+
+        it('should pass signal option to HTTP request', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 200,
+                headers: {},
+                data: { id: 'trans-id', text: 'Hello world', tokens: [] },
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const transcription = new SonioxTranscription(createMockTranscriptionData(), mockHttp);
+            const controller = new AbortController();
+
+            await transcription.getTranscript({ signal: controller.signal });
+
+            expect(requestMock).toHaveBeenCalledWith({
+                method: 'GET',
+                path: '/v1/transcriptions/550e8400-e29b-41d4-a716-446655440000/transcript',
+                signal: controller.signal,
+            });
+        });
     });
 
     describe('wait()', () => {

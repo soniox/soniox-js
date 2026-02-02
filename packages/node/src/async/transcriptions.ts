@@ -520,6 +520,12 @@ export class SonioxTranscription {
      * Retrieves the full transcript text and tokens for this transcription.
      * Only available for successfully completed transcriptions.
      *
+     * Returns cached transcript if available (when using `transcribe()` with `wait: true`).
+     * Use `force: true` to bypass the cache and fetch fresh data from the API.
+     *
+     * @param options - Optional settings
+     * @param options.force - If true, bypasses cached transcript and fetches from API
+     * @param options.signal - Optional AbortSignal for request cancellation
      * @returns The transcript with text and detailed tokens, or null if not found.
      * @throws {SonioxHttpError} On API errors (except 404).
      *
@@ -532,9 +538,19 @@ export class SonioxTranscription {
      *         console.log(transcript.text);
      *     }
      * }
+     *
+     * // Force re-fetch from API
+     * const freshTranscript = await transcription.getTranscript({ force: true });
      * ```
      */
-    async getTranscript(signal?: AbortSignal): Promise<SonioxTranscript | null> {
+    async getTranscript(options?: { force?: boolean; signal?: AbortSignal }): Promise<SonioxTranscript | null> {
+        const { force, signal } = options ?? {};
+
+        // Return cached transcript if available (null means transcription failed, undefined means not fetched)
+        if (!force && this.transcript !== undefined) {
+            return this.transcript;
+        }
+
         try {
             const response = await this._http.request<TranscriptResponse>({
                 method: 'GET',
@@ -1242,7 +1258,9 @@ export class SonioxTranscriptionsAPI {
                 let transcript: SonioxTranscript | null | undefined;
                 if (completed.status === 'completed') {
                     if (shouldFetchTranscript) {
-                        transcript = await completed.getTranscript(combinedSignal);
+                        transcript = await completed.getTranscript(
+                            combinedSignal ? { signal: combinedSignal } : undefined
+                        );
                     }
                 } else {
                     transcript = null;
