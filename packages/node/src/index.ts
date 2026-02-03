@@ -23,6 +23,9 @@ export { segmentTranscript, SonioxTranscript, SonioxTranscription, Transcription
 export {
   SonioxRealtimeApi,
   RealtimeSttSession,
+  segmentRealtimeTokens,
+  RealtimeSegmentBuffer,
+  RealtimeUtteranceBuffer,
   RealtimeError,
   AuthError,
   BadRequestError,

@@ -52,6 +52,11 @@ export class SonioxRealtimeApi {
 // Re-export session class
 export { RealtimeSttSession } from './stt.js';
 
+// Re-export helpers
+export { segmentRealtimeTokens } from './segments.js';
+export { RealtimeSegmentBuffer } from './segment-buffer.js';
+export { RealtimeUtteranceBuffer } from './utterance-buffer.js';
+
 // Re-export errors
 export {
   RealtimeError,

@@ -77,6 +77,9 @@ const client = new SonioxNodeClient({
 
 **Realtime**
 - `client.realtime.stt(config, options?)` - Create realtime Speech-To-Text session
+- `segmentRealtimeTokens(tokens, options?)` - Group realtime tokens into segments
+- `new RealtimeSegmentBuffer(options?)` - Rolling buffer for stable segments
+- `new RealtimeUtteranceBuffer(options?)` - Collect segments into utterances
 
 **Realtime Session**
 - `session.connect()` - Connect to WebSocket
@@ -730,6 +733,82 @@ session.on('state_change', ({ old_state, new_state }) => {
 session.on('error', (error) => console.error('Error:', error));
 ```
 
+### Segment Realtime Tokens
+
+Group realtime tokens into segments by speaker/language changes:
+
+```typescript
+import { segmentRealtimeTokens } from '@soniox/node';
+
+session.on('result', (result) => {
+    const segments = segmentRealtimeTokens(result.tokens, { finalOnly: true });
+
+    for (const seg of segments) {
+        console.log(`[Speaker ${seg.speaker}] ${seg.text}`);
+    }
+});
+```
+
+Important notes:
+- Set `finalOnly: true` to avoid partial tokens
+- Use `groupBy: ['speaker']`, `['language']`, or `[]` to control grouping
+- `start_ms`/`end_ms` may be undefined if timing is missing
+
+### Rolling Segment Buffer
+
+If you want stable segments during live transcription, use the rolling buffer:
+
+```typescript
+import { RealtimeSegmentBuffer } from '@soniox/node';
+
+const buffer = new RealtimeSegmentBuffer({
+    finalOnly: true,
+    maxTokens: 2000,
+    maxMs: 60000,
+});
+
+session.on('result', (result) => {
+    const stableSegments = buffer.add(result);
+    for (const seg of stableSegments) {
+        console.log(`[Speaker ${seg.speaker}] ${seg.text}`);
+    }
+});
+```
+
+Notes:
+- The buffer is bounded by `maxTokens` (default 2000) and/or `maxMs`
+- Stable segments are emitted when their end time is finalized
+- Call `buffer.reset()` to drop all buffered tokens
+
+### Utterance Buffer
+
+Collect segments into utterances for endpoint-driven workflows:
+
+```typescript
+import { RealtimeUtteranceBuffer } from '@soniox/node';
+
+const buffer = new RealtimeUtteranceBuffer({
+    finalOnly: true,
+    maxTokens: 2000,
+});
+
+session.on('result', (result) => {
+    buffer.addResult(result);
+});
+
+session.on('endpoint', () => {
+    const utterance = buffer.markEndpoint();
+    if (!utterance) {
+        return;
+    }
+    console.log(utterance.text);
+});
+```
+
+Notes:
+- `markEndpoint()` flushes buffered tokens into a single utterance
+- For a more conservative boundary, call `markEndpoint()` on `finalized`
+
 ### Async Iterator Consumption
 
 ```typescript
@@ -910,16 +989,16 @@ const session = client.realtime.stt({
     enable_endpoint_detection: true,
 });
 
-let currentUtterance = '';
+const utteranceBuffer = new RealtimeUtteranceBuffer({ finalOnly: true });
 
 session.on('result', (result) => {
-    currentUtterance = result.tokens.map(t => t.text).join('');
+    utteranceBuffer.addResult(result);
 });
 
 session.on('endpoint', async () => {
     // User stopped speaking - process the utterance
-    const userInput = currentUtterance.trim();
-    currentUtterance = '';
+    const utterance = utteranceBuffer.markEndpoint();
+    const userInput = utterance?.text.trim() ?? '';
 
     if (userInput) {
         // Pause while processing

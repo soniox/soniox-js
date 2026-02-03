@@ -4,7 +4,6 @@ import type {
     CreateTranscriptionOptions,
     ListTranscriptionsOptions,
     ListTranscriptionsResponse,
-    SegmentGroupKey,
     SegmentTranscriptOptions,
     SonioxTranscriptionData,
     TranscribeFromFileIdOptions,
@@ -22,6 +21,7 @@ import type {
 } from "../types/public/index.js";
 
 import type { SonioxFilesAPI } from "./files.js";
+import { segmentTokens } from "./segments.js";
 
 /**
  * Checks if an error is a 404 Not Found error
@@ -144,15 +144,8 @@ function createTimeoutSignal(
 }
 
 /**
- * Default grouping keys for segmentation
- */
-const DEFAULT_GROUP_BY: SegmentGroupKey[] = ['speaker', 'language'];
-
-/**
  * Groups contiguous tokens into segments based on specified grouping keys.
- *
- * A new segment starts when any of the `groupBy` fields changes.
- * Tokens are concatenated with a single space between them.
+ * A new segment starts when any of the `groupBy` fields changes
  *
  * @param tokens - Array of transcript tokens to segment
  * @param options - Segmentation options
@@ -181,38 +174,7 @@ export function segmentTranscript(
     tokens: TranscriptToken[],
     options: SegmentTranscriptOptions = {}
 ): TranscriptSegment[] {
-    if (tokens.length === 0) {
-        return [];
-    }
-
-    const groupBy = options.groupBy ?? DEFAULT_GROUP_BY;
-    const groupBySpeaker = groupBy.includes('speaker');
-    const groupByLanguage = groupBy.includes('language');
-
-    const segments: TranscriptSegment[] = [];
-    let currentTokens: TranscriptToken[] = [];
-    let currentSpeaker: string | undefined;
-    let currentLanguage: string | undefined;
-
-    for (const token of tokens) {
-        const speakerChanged = groupBySpeaker && token.speaker !== currentSpeaker;
-        const languageChanged = groupByLanguage && token.language !== currentLanguage;
-
-        if (currentTokens.length > 0 && (speakerChanged || languageChanged)) {
-            segments.push(buildSegment(currentTokens, currentSpeaker, currentLanguage));
-            currentTokens = [];
-        }
-
-        currentTokens.push(token);
-        currentSpeaker = token.speaker;
-        currentLanguage = token.language;
-    }
-
-    if (currentTokens.length > 0) {
-        segments.push(buildSegment(currentTokens, currentSpeaker, currentLanguage));
-    }
-
-    return segments;
+    return segmentTokens(tokens, options, buildSegment);
 }
 
 /**

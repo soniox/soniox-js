@@ -418,16 +418,6 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       const hasEndpoint = result.tokens.some((t) => t.text === '<end>');
       const hasFinalized = result.tokens.some((t) => t.text === '<fin>');
 
-      if (hasEndpoint) {
-        this.emitter.emit('endpoint');
-        this.eventQueue.push({ kind: 'endpoint' });
-      }
-
-      if (hasFinalized) {
-        this.emitter.emit('finalized');
-        this.eventQueue.push({ kind: 'finalized' });
-      }
-
       // Filter special tokens for user-facing events
       const userTokens = filterSpecialTokens(result.tokens);
 
@@ -443,6 +433,16 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       };
       this.emitter.emit('result', filteredResult);
       this.eventQueue.push({ kind: 'result', data: filteredResult });
+
+      if (hasEndpoint) {
+        this.emitter.emit('endpoint');
+        this.eventQueue.push({ kind: 'endpoint' });
+      }
+
+      if (hasFinalized) {
+        this.emitter.emit('finalized');
+        this.eventQueue.push({ kind: 'finalized' });
+      }
 
       // Check for finished
       if (result.finished) {

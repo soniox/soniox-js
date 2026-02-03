@@ -1,7 +1,7 @@
-import type { TranscriptionContext, TranslationConfig } from './transcriptions.js';
+import type { SegmentGroupKey, TranscriptionContext, TranslationConfig } from './transcriptions.js';
 
 // Re-export for convenience
-export type { TranscriptionContext, TranslationConfig };
+export type { SegmentGroupKey, TranscriptionContext, TranslationConfig };
 
 // =============================================================================
 // Audio Format
@@ -196,6 +196,164 @@ export type RealtimeToken = {
    * Source language for translated tokens.
    */
   source_language?: string | undefined;
+};
+
+/**
+ * A segment of contiguous realtime tokens grouped by speaker/language.
+ */
+export type RealtimeSegment = {
+  /**
+   * Concatenated text of all tokens in this segment.
+   */
+  text: string;
+
+  /**
+   * Start time of the segment in milliseconds (from first token).
+   */
+  start_ms?: number | undefined;
+
+  /**
+   * End time of the segment in milliseconds (from last token).
+   */
+  end_ms?: number | undefined;
+
+  /**
+   * Speaker identifier (if diarization enabled).
+   */
+  speaker?: string | undefined;
+
+  /**
+   * Detected language code (if language identification enabled).
+   */
+  language?: string | undefined;
+
+  /**
+   * Original tokens in this segment.
+   */
+  tokens: RealtimeToken[];
+};
+
+/**
+ * Options for segmenting realtime tokens.
+ */
+export type RealtimeSegmentOptions = {
+  /**
+   * Fields to group by. A new segment starts when any of these fields changes
+   * @default ['speaker', 'language']
+   */
+  groupBy?: SegmentGroupKey[] | undefined;
+
+  /**
+   * When true, only tokens marked as final are included.
+   * @default false
+   */
+  finalOnly?: boolean | undefined;
+};
+
+/**
+ * Options for rolling realtime segmentation buffers.
+ */
+export type RealtimeSegmentBufferOptions = {
+  /**
+   * Fields to group by. A new segment starts when any of these fields changes
+   * @default ['speaker', 'language']
+   */
+  groupBy?: SegmentGroupKey[] | undefined;
+
+  /**
+   * When true, only tokens marked as final are buffered.
+   * @default true
+   */
+  finalOnly?: boolean | undefined;
+
+  /**
+   * Maximum number of tokens to keep in the buffer.
+   * @default 2000
+   */
+  maxTokens?: number | undefined;
+
+  /**
+   * Maximum time window to keep in milliseconds (requires token timings).
+   */
+  maxMs?: number | undefined;
+};
+
+/**
+ * A single utterance built from realtime segments.
+ */
+export type RealtimeUtterance = {
+  /**
+   * Concatenated text of all segments in this utterance.
+   */
+  text: string;
+
+  /**
+   * Segments included in this utterance.
+   */
+  segments: RealtimeSegment[];
+
+  /**
+   * Tokens included in this utterance.
+   */
+  tokens: RealtimeToken[];
+
+  /**
+   * Start time of the utterance in milliseconds (from first segment).
+   */
+  start_ms?: number | undefined;
+
+  /**
+   * End time of the utterance in milliseconds (from last segment).
+   */
+  end_ms?: number | undefined;
+
+  /**
+   * Speaker identifier when consistent across segments.
+   */
+  speaker?: string | undefined;
+
+  /**
+   * Detected language code when consistent across segments.
+   */
+  language?: string | undefined;
+
+  /**
+   * Milliseconds of audio that have been finalized at flush time.
+   */
+  final_audio_proc_ms?: number | undefined;
+
+  /**
+   * Total milliseconds of audio processed at flush time.
+   */
+  total_audio_proc_ms?: number | undefined;
+};
+
+/**
+ * Options for buffering realtime utterances.
+ */
+export type RealtimeUtteranceBufferOptions = {
+  /**
+   * Fields to group by. A new segment starts when any of these fields changes
+   * @default ['speaker', 'language']
+   */
+  groupBy?: SegmentGroupKey[] | undefined;
+
+  /**
+   * When true, only tokens marked as final are buffered.
+   * @default true
+   */
+  finalOnly?: boolean | undefined;
+
+  /**
+   * Maximum number of tokens to keep in the buffer.
+   * @default 2000
+   */
+  maxTokens?: number | undefined;
+
+  /**
+   * Maximum time window to keep in milliseconds (requires token timings).
+   */
+  maxMs?: number | undefined;
 };
 
 /**
