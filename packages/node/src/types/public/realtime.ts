@@ -1,0 +1,343 @@
+import type { TranscriptionContext, TranslationConfig } from './transcriptions.js';
+
+// Re-export for convenience
+export type { TranscriptionContext, TranslationConfig };
+
+// =============================================================================
+// Audio Format
+// =============================================================================
+
+/**
+ * Supported audio formats for realtime transcription.
+ */
+export type AudioFormat =
+  | 'pcm_s8'
+  | 'pcm_s8le'
+  | 'pcm_s8be'
+  | 'pcm_s16le'
+  | 'pcm_s16be'
+  | 'pcm_s24le'
+  | 'pcm_s24be'
+  | 'pcm_s32le'
+  | 'pcm_s32be'
+  | 'pcm_u8'
+  | 'pcm_u8le'
+  | 'pcm_u8be'
+  | 'pcm_u16le'
+  | 'pcm_u16be'
+  | 'pcm_u24le'
+  | 'pcm_u24be'
+  | 'pcm_u32le'
+  | 'pcm_u32be'
+  | 'pcm_f32le'
+  | 'pcm_f32be'
+  | 'pcm_f64le'
+  | 'pcm_f64be'
+  | 'mulaw'
+  | 'alaw'
+  | 'aac'
+  | 'aiff'
+  | 'amr'
+  | 'asf'
+  | 'wav'
+  | 'mp3'
+  | 'flac'
+  | 'ogg'
+  | 'webm';
+
+// =============================================================================
+// Session Configuration (sent to server)
+// =============================================================================
+
+/**
+ * Configuration sent to the Soniox WebSocket API when starting a session.
+ */
+export type SttSessionConfig = {
+  /**
+   * Speech-to-text model to use.
+   */
+  model: string;
+
+  /**
+   * Audio format. Use 'auto' for automatic detection of container formats.
+   * For raw PCM formats, also set sample_rate and num_channels.
+   * @default 'auto'
+   */
+  audio_format?: 'auto' | AudioFormat | undefined;
+
+  /**
+   * Sample rate in Hz (required for PCM formats).
+   */
+  sample_rate?: number | undefined;
+
+  /**
+   * Number of audio channels (required for raw audio formats).
+   */
+  num_channels?: number | undefined;
+
+  /**
+   * Expected languages in the audio (ISO language codes).
+   */
+  language_hints?: string[] | undefined;
+
+  /**
+   * When true, recognition is strongly biased toward language hints.
+   * Best-effort only, not a hard guarantee.
+   */
+  language_hints_strict?: boolean | undefined;
+
+  /**
+   * Enable speaker identification.
+   */
+  enable_speaker_diarization?: boolean | undefined;
+
+  /**
+   * Enable automatic language detection.
+   */
+  enable_language_identification?: boolean | undefined;
+
+  /**
+   * Enable endpoint detection for utterance boundaries.
+   * Useful for voice AI agents.
+   */
+  enable_endpoint_detection?: boolean | undefined;
+
+  /**
+   * Optional tracking identifier (max 256 chars).
+   */
+  client_reference_id?: string | undefined;
+
+  /**
+   * Additional context to improve transcription accuracy.
+   */
+  context?: TranscriptionContext | undefined;
+
+  /**
+   * Translation configuration.
+   */
+  translation?: TranslationConfig | undefined;
+};
+
+// =============================================================================
+// Session Options (SDK-level, not sent to server)
+// =============================================================================
+
+/**
+ * SDK-level session options (not sent to the server).
+ */
+export type SttSessionOptions = {
+  /**
+   * AbortSignal for cancellation.
+   */
+  signal?: AbortSignal | undefined;
+
+  /**
+   * When true, sends keepalive messages while connected (not only when paused).
+   * @default false
+   */
+  keepalive?: boolean | undefined;
+
+  /**
+   * Interval for sending keepalive messages while connected or paused (milliseconds).
+   * @default 5000
+   */
+  keepalive_interval_ms?: number | undefined;
+};
+
+// =============================================================================
+// Result Types
+// =============================================================================
+
+/**
+ * A single token from the realtime transcription.
+ */
+export type RealtimeToken = {
+  /**
+   * The transcribed text.
+   */
+  text: string;
+
+  /**
+   * Start time in milliseconds relative to audio start.
+   */
+  start_ms?: number | undefined;
+
+  /**
+   * End time in milliseconds relative to audio start.
+   */
+  end_ms?: number | undefined;
+
+  /**
+   * Confidence score (0.0 to 1.0).
+   */
+  confidence: number;
+
+  /**
+   * Whether this is a finalized token.
+   */
+  is_final: boolean;
+
+  /**
+   * Speaker identifier (if diarization enabled).
+   */
+  speaker?: string | undefined;
+
+  /**
+   * Detected language code (if language identification enabled).
+   */
+  language?: string | undefined;
+
+  /**
+   * Translation status of this token.
+   */
+  translation_status?: 'none' | 'original' | 'translation' | undefined;
+
+  /**
+   * Source language for translated tokens.
+   */
+  source_language?: string | undefined;
+};
+
+/**
+ * A result message from the realtime WebSocket.
+ */
+export type RealtimeResult = {
+  /**
+   * Tokens in this result.
+   */
+  tokens: RealtimeToken[];
+
+  /**
+   * Milliseconds of audio that have been finalized.
+   */
+  final_audio_proc_ms: number;
+
+  /**
+   * Total milliseconds of audio processed.
+   */
+  total_audio_proc_ms: number;
+
+  /**
+   * Whether this is the final result (session ending).
+   */
+  finished?: boolean | undefined;
+};
+
+// =============================================================================
+// Event Types
+// =============================================================================
+
+/**
+ * Typed event for async iterator consumption.
+ */
+export type RealtimeEvent =
+  | { kind: 'result'; data: RealtimeResult }
+  | { kind: 'endpoint' }
+  | { kind: 'finalized' }
+  | { kind: 'finished' };
+
+// =============================================================================
+// Session State
+// =============================================================================
+
+/**
+ * Session lifecycle states.
+ */
+export type SttSessionState =
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'finishing'
+  | 'finished'
+  | 'canceled'
+  | 'closed'
+  | 'error';
+
+// =============================================================================
+// Session Events
+// =============================================================================
+
+/**
+ * Event handlers for the STT session.
+ */
+export type SttSessionEvents = {
+  /**
+   * Parsed result received.
+   */
+  result: (result: RealtimeResult) => void;
+
+  /**
+   * Individual token received.
+   */
+  token: (token: RealtimeToken) => void;
+
+  /**
+   * Error occurred.
+   */
+  error: (error: Error) => void;
+
+  /**
+   * Endpoint detected (<end> token).
+   */
+  endpoint: () => void;
+
+  /**
+   * Finalization complete (<fin> token).
+   */
+  finalized: () => void;
+
+  /**
+   * Session finished (server signaled end of stream).
+   */
+  finished: () => void;
+
+  /**
+   * Session connected and ready.
+   */
+  connected: () => void;
+
+  /**
+   * Session disconnected.
+   */
+  disconnected: (reason?: string) => void;
+
+  /**
+   * Session state transition.
+   */
+  state_change: (update: { old_state: SttSessionState; new_state: SttSessionState }) => void;
+};
+
+// =============================================================================
+// Audio Data Types
+// =============================================================================
+
+/**
+ * Audio data types accepted by sendAudio.
+ */
+export type AudioData = Buffer | Uint8Array | ArrayBuffer;
+
+// =============================================================================
+// Realtime Client Options
+// =============================================================================
+
+/**
+ * Realtime API configuration options for the client.
+ */
+export type RealtimeClientOptions = {
+  /**
+   * API key for realtime sessions.
+   */
+  apiKey: string;
+
+  /**
+   * WebSocket base URL for realtime connections.
+   * @default 'wss://stt-rt.soniox.com/transcribe-websocket'
+   */
+  wsBaseUrl: string;
+
+  /**
+   * Default session options applied to all realtime sessions.
+   * Can be overridden per-session.
+   */
+  defaultSessionOptions?: SttSessionOptions | undefined;
+};

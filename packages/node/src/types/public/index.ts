@@ -1,5 +1,6 @@
 // Import and re-export HTTP types
 import type { HttpClient } from './http.js';
+import type { SttSessionOptions } from './realtime.js';
 
 export type {
     HttpClient,
@@ -81,6 +82,20 @@ export type {
     WebhookHeaders,
 } from './webhooks.js';
 
+// Import and re-export Realtime types
+export type {
+    AudioData,
+    AudioFormat,
+    RealtimeClientOptions,
+    RealtimeEvent,
+    RealtimeResult,
+    RealtimeToken,
+    SttSessionConfig,
+    SttSessionEvents,
+    SttSessionOptions,
+    SttSessionState,
+} from './realtime.js';
+
 export type TemporaryApiKeyUsageType = 'transcribe_websocket';
 
 export type TemporaryApiKeyRequest = {
@@ -116,22 +131,45 @@ export type TemporaryApiKeyResponse = {
     expires_at: string;
 }
 
+/**
+ * Realtime configuration options for the main client.
+ */
+export type RealtimeOptions = {
+    /**
+     * WebSocket base URL for realtime connections.
+     * Falls back to SONIOX_WS_URL environment variable,
+     * then to 'wss://stt-rt.soniox.com/transcribe-websocket'.
+     */
+    wsBaseUrl?: string | undefined;
+
+    /**
+     * Default session options applied to all realtime sessions.
+     * Can be overridden per-session.
+     */
+    defaultSessionOptions?: SttSessionOptions | undefined;
+};
+
 export type SonioxNodeClientOptions = {
     /**
-     * API key for authentication
-     * Falls back to SONIOX_API_KEY environment variable if not provided
+     * API key for authentication.
+     * Falls back to SONIOX_API_KEY environment variable if not provided.
      */
     apiKey?: string;
 
     /**
-     * Base URL for the API
+     * Base URL for the REST API.
      * Falls back to SONIOX_API_BASE_URL environment variable,
      * then to 'https://api.soniox.com'.
      */
     baseURL?: string;
 
     /**
-     * Custom HTTP client implementation
+     * Custom HTTP client implementation.
      */
     httpClient?: HttpClient;
+
+    /**
+     * Realtime API configuration options.
+     */
+    realtime?: RealtimeOptions;
 }

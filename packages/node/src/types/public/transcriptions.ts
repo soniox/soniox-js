@@ -212,7 +212,7 @@ export type SonioxTranscriptionData = {
     /**
      * Additional context provided for the transcription.
      */
-    context?: string | null | undefined;
+    context?: TranscriptionContext | string | null | undefined;
 }
 
 /**
@@ -260,7 +260,7 @@ export type CreateTranscriptionOptions = {
     /**
      * Additional context to improve transcription accuracy and formatting of specialized terms.
      */
-    context?: TranscriptionContext | undefined;
+    context?: TranscriptionContext | string | undefined;
 
     /**
      * Translation configuration.
@@ -353,7 +353,7 @@ export type TranscribeBaseOptions = {
     /**
      * Additional context to improve transcription accuracy and formatting of specialized terms.
      */
-    context?: TranscriptionContext | undefined;
+    context?: TranscriptionContext | string | undefined;
 
     /**
      * Translation configuration.
@@ -586,6 +586,11 @@ export type TranscriptToken = {
      * Translation status for this token.
      */
     translation_status?: 'none' | 'original' | 'translation' | undefined;
+
+    /**
+     * Whether this token represents an audio event.
+     */
+    is_audio_event?: boolean | null | undefined;
 
     /**
      * Source language code (for translated tokens).

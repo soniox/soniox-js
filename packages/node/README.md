@@ -12,7 +12,7 @@ Official Soniox SDK for Node.js - Speech-to-Text API
 - [Speech-To-Text API](#speech-to-text-api)
 - [Webhooks](#webhooks)
 - [Models API](#models-api)
-- [Realtime API](./REALTIME.md) - WebSocket streaming transcription
+- [Realtime API](#realtime-api)
 
 ## Installation
 
@@ -75,8 +75,19 @@ const client = new SonioxNodeClient({
 **Auth**
 - `client.auth.createTemporaryKey(request)`
 
-**Realtime** ([full documentation](./REALTIME.md))
+**Realtime**
 - `client.realtime.stt(config, options?)` - Create realtime Speech-To-Text session
+
+**Realtime Session**
+- `session.connect()` - Connect to WebSocket
+- `session.sendAudio(data)` - Send audio data
+- `session.finish()` - Gracefully end session
+- `session.close()` - Close immediately
+- `session.finalize(options?)` - Request finalization
+- `session.keepAlive()` - Send keepalive
+- `session.pause()` / `session.resume()` - Pause/resume with auto-keepalive
+- `session.on(event, handler)` / `session.off()` / `session.once()` - Event handlers
+- `for await (const event of session)` - Async iteration
 
 ## Environment Variables
 
@@ -86,6 +97,7 @@ The SDK supports the following environment variables:
 | --- | --- | --- |
 | `SONIOX_API_KEY` | API key for authentication. Used when `apiKey` is not provided in client options. | — |
 | `SONIOX_API_BASE_URL` | Base URL for API requests. Used when `baseURL` is not provided in client options. | `https://api.soniox.com` |
+| `SONIOX_WS_URL` | WebSocket URL for realtime API. Used when `realtime.wsBaseUrl` is not provided. | `wss://stt-rt.soniox.com/transcribe-websocket` |
 | `SONIOX_API_WEBHOOK_HEADER` | Header name for webhook authentication. Used by webhook handlers when `auth` is not provided. | — |
 | `SONIOX_API_WEBHOOK_SECRET` | Header value for webhook authentication. Used by webhook handlers when `auth` is not provided. | — |
 
@@ -157,7 +169,7 @@ The `transcribe()` method is the easiest way to transcribe audio:
 ```typescript
 // Transcribe from URL and wait for completion
 const transcription = await client.stt.transcribe({
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     audio_url: 'https://example.com/audio.mp3',
     wait: true,
 });
@@ -171,7 +183,7 @@ If you want to avoid the "one-of" audio source options, use the convenience wrap
 ```typescript
 const transcription = await client.stt.transcribeFromUrl(
     'https://example.com/audio.mp3',
-    { model: 'stt-async-v3', wait: true }
+    { model: 'stt-async-v4', wait: true }
 );
 ```
 
@@ -183,7 +195,7 @@ import { readFile } from 'fs/promises';
 const buffer = await readFile('recording.mp3');
 
 const transcription = await client.stt.transcribe({
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     file: buffer,
     filename: 'recording.mp3',
     wait: true,
@@ -196,7 +208,7 @@ console.log(await transcription.getTranscript());
 
 ```typescript
 const transcription = await client.stt.transcribe({
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     audio_url: 'https://example.com/audio.mp3',
     
     // Enable speaker diarization
@@ -241,7 +253,7 @@ When using `wait: true` and `fetch_transcript` is not set to `false`, the transc
 
 ```typescript
 const transcription = await client.stt.transcribe({
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     file: buffer,
     wait: true,
     cleanup: ['file', 'transcription'],  // Both are deleted after transcript is fetched
@@ -260,7 +272,7 @@ You can also clean up just the file if you want to keep the transcription record
 
 ```typescript
 const transcription = await client.stt.transcribe({
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     file: buffer,
     wait: true,
     cleanup: ['file'],  // Only delete the uploaded file
@@ -287,14 +299,14 @@ This ensures no orphaned resources are left behind, even when something goes wro
 ```typescript
 // From URL
 const transcription = await client.stt.create({
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     audio_url: 'https://example.com/audio.mp3',
 });
 
 // From uploaded file
 const file = await client.files.upload(buffer);
 const transcription = await client.stt.create({
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     file_id: file.id,
 });
 
@@ -350,7 +362,7 @@ When using `transcribe()` with `wait: true`, the transcript is pre-fetched and c
 
 ```typescript
 const transcription = await client.stt.transcribe({
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     audio_url: 'https://example.com/audio.mp3',
     wait: true,
 });
@@ -450,7 +462,7 @@ Configure webhooks to receive notifications when transcriptions complete:
 
 ```typescript
 const transcription = await client.stt.transcribe({
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     audio_url: 'https://example.com/audio.mp3',
     webhook_url: 'https://your-server.com/webhook',
     // Both auth headers must be provided together (or neither)
@@ -601,4 +613,326 @@ const models = await client.models.list();
 for (const model of models) {
     console.log(model.id, model.name);
 }
+```
+
+## Realtime API
+WebSocket-based streaming transcription for real-time audio processing
+
+### Quick Start
+
+```typescript
+const session = client.realtime.stt({
+    model: 'stt-rt-v3',
+    audio_format: 'pcm_s16le',
+    sample_rate: 16000,
+});
+
+session.on('result', (result) => {
+    const text = result.tokens.map(t => t.text).join('');
+    console.log(text);
+});
+
+session.on('endpoint', () => {
+    console.log('--- speaker paused ---');
+});
+
+await session.connect();
+
+for (const chunk of audioChunks) {
+    session.sendAudio(chunk);
+}
+
+await session.finish();
+```
+
+### Session Configuration
+
+```typescript
+const session = client.realtime.stt({
+    // Required
+    model: 'stt-rt-v3',
+    
+    // Audio format (default: 'auto')
+    audio_format: 'pcm_s16le',  // or 'auto', 'mp3', 'wav', 'webm', 'ogg', 'flac', 'aac', 'aiff', etc.
+    sample_rate: 16000,         // Required for PCM formats
+    num_channels: 1,
+    
+    // Language settings
+    language_hints: ['en', 'es'],
+    language_hints_strict: false,
+    
+    // Features
+    enable_speaker_diarization: true,
+    enable_language_identification: true,
+    enable_endpoint_detection: true,  // Emits 'endpoint' events
+    
+    // Context for improved accuracy
+    context: {
+        text: 'Customer support call about billing',
+        terms: ['invoice', 'refund', 'subscription'],
+    },
+    
+    // Translation
+    translation: {
+        target_languages: ['es'],
+    },
+    
+    // Tracking
+    client_reference_id: 'call-123',
+}, {
+    // SDK options
+    signal: abortController.signal,
+    keepalive: true,
+    keepalive_interval_ms: 5000,
+});
+```
+
+### Event-Based Consumption
+
+```typescript
+// Transcription results
+session.on('result', (result) => {
+    for (const token of result.tokens) {
+        console.log(token.text, token.confidence, token.is_final);
+    }
+});
+
+// Individual tokens
+session.on('token', (token) => {
+    process.stdout.write(token.text);
+});
+
+// Endpoint detection
+session.on('endpoint', () => {
+    console.log('\n[endpoint detected]');
+});
+
+// Finalization complete
+session.on('finalized', () => {
+    console.log('[segment finalized]');
+});
+
+// Session finished
+session.on('finished', () => {
+    console.log('[session finished]');
+});
+
+// Connection events
+session.on('connected', () => console.log('Connected'));
+session.on('disconnected', (reason) => console.log('Disconnected:', reason));
+
+// State transitions
+session.on('state_change', ({ old_state, new_state }) => {
+    console.log(`State: ${old_state} -> ${new_state}`);
+});
+
+// Errors
+session.on('error', (error) => console.error('Error:', error));
+```
+
+### Async Iterator Consumption
+
+```typescript
+await session.connect();
+
+// Start sending audio in background
+sendAudioInBackground(session);
+
+// Consume events with for-await-of
+for await (const event of session) {
+    switch (event.kind) {
+        case 'result':
+            console.log(event.data.tokens.map(t => t.text).join(''));
+            break;
+        case 'endpoint':
+            console.log('--- endpoint ---');
+            break;
+        case 'finalized':
+            console.log('--- finalized ---');
+            break;
+        case 'finished':
+            console.log('Session complete');
+            break;
+    }
+}
+```
+
+### Session Lifecycle
+
+```typescript
+// Create session (state: 'idle')
+const session = client.realtime.stt({ model: 'stt-rt-v3' });
+
+// Connect (state: 'connecting' → 'connected')
+await session.connect();
+
+// Send audio
+session.sendAudio(audioChunk);
+
+// Graceful finish (state: 'finishing' → 'finished')
+await session.finish();  // Waits for server to confirm
+
+// Or immediate close/cancel (state: 'canceled')
+session.close();  // Doesn't wait
+
+// Check state anytime
+console.log(session.state);  // 'idle' | 'connecting' | 'connected' | 'finishing' | 'finished' | 'canceled' | 'closed' | 'error'
+```
+
+### Pause and Resume
+
+Pause audio transmission while keeping the connection alive:
+IMPORTANT: You are still charged for the full stream duration even when audio is paused, not just for the audio processed
+
+To send keepalive continuously while connected (not only when paused), set `keepalive: true`.
+
+```typescript
+// Pause - stops sending audio, starts automatic keepalive
+session.pause();
+console.log(session.paused);  // true
+
+// Audio sent while paused is silently dropped
+session.sendAudio(chunk);  // No-op
+
+// Resume - stops keepalive, resumes normal operation
+session.resume();
+```
+
+### Manual Control Messages
+
+```typescript
+// Request finalization of current segment
+session.finalize();
+session.finalize({ trailing_silence_ms: 300 });
+
+// Send keepalive (automatic during pause)
+session.keepAlive();
+```
+
+### Cancellation with AbortSignal
+
+```typescript
+const controller = new AbortController();
+
+const session = client.realtime.stt(
+    { model: 'stt-rt-v3' },
+    { signal: controller.signal }
+);
+
+// Cancel anytime
+controller.abort();
+
+// Operations throw AbortError when cancelled
+try {
+    await session.connect();
+} catch (error) {
+    if (error instanceof AbortError) {
+        console.log('Connection cancelled');
+    }
+}
+```
+
+### Error Handling
+
+```typescript
+import {
+    RealtimeError,
+    AuthError,
+    BadRequestError,
+    QuotaError,
+    ConnectionError,
+    NetworkError,
+    AbortError,
+    StateError,
+} from '@soniox/node';
+
+session.on('error', (error) => {
+    if (error instanceof AuthError) {
+        console.error('Invalid API key');
+    } else if (error instanceof QuotaError) {
+        console.error('Rate limit exceeded');
+    } else if (error instanceof ConnectionError) {
+        console.error('WebSocket connection failed');
+    } else if (error instanceof NetworkError) {
+        console.error('Server error:', error.code);  // 408, 500, 503
+    } else if (error instanceof AbortError) {
+        console.error('Cancelled');
+    } else if (error instanceof StateError) {
+        console.error('Invalid operation for current state');
+    }
+});
+```
+
+### WebSocket Proxy Example
+
+Forward browser WebSocket connections through your server:
+
+```typescript
+import { WebSocketServer } from 'ws';
+
+const wss = new WebSocketServer({ port: 8080 });
+
+wss.on('connection', async (clientWs) => {
+    const session = client.realtime.stt({
+        model: 'stt-rt-v3',
+        enable_endpoint_detection: true,
+    });
+
+    session.on('result', (result) => {
+        clientWs.send(JSON.stringify(result));
+    });
+
+    session.on('endpoint', () => {
+        clientWs.send(JSON.stringify({ type: 'endpoint' }));
+    });
+
+    await session.connect();
+
+    clientWs.on('message', (data) => {
+        if (data instanceof Buffer) {
+            session.sendAudio(data);
+        }
+    });
+
+    clientWs.on('close', () => {
+        session.close();
+    });
+});
+```
+
+### AI Voice Agent Example
+
+Handle turn-based conversation with endpoint detection:
+
+```typescript
+const session = client.realtime.stt({
+    model: 'stt-rt-v3',
+    enable_endpoint_detection: true,
+});
+
+let currentUtterance = '';
+
+session.on('result', (result) => {
+    currentUtterance = result.tokens.map(t => t.text).join('');
+});
+
+session.on('endpoint', async () => {
+    // User stopped speaking - process the utterance
+    const userInput = currentUtterance.trim();
+    currentUtterance = '';
+
+    if (userInput) {
+        // Pause while processing
+        session.pause();
+        
+        const response = await processWithLLM(userInput);
+        await playAudioResponse(response);
+        
+        // Resume listening
+        session.resume();
+    }
+});
+
+await session.connect();
+startMicrophoneCapture(session);
 ```

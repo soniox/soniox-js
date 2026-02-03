@@ -11,21 +11,21 @@ Create client:
 Transcribe (recommended wrappers to avoid one-of errors):
   const t = await client.stt.transcribeFromUrl(
     'https://example.com/audio.mp3',
-    { model: 'stt-async-v3', wait: true }
+    { model: 'stt-async-v4', wait: true }
   );
   const transcript = await t.getTranscript();
   console.log(transcript?.text);
 
 Transcribe from file (Buffer/Uint8Array/Blob/ReadableStream):
   const t = await client.stt.transcribeFromFile(file, {
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     filename: 'audio.mp3',
     wait: true,
   });
 
 Transcribe from uploaded file id:
   const t = await client.stt.transcribeFromFileId(fileId, {
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     wait: true,
   });
 

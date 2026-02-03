@@ -33,7 +33,7 @@ const createMockTranscriptionData = (
 ): SonioxTranscriptionData => ({
     id: '550e8400-e29b-41d4-a716-446655440000',
     status: 'queued',
-    model: 'stt-async-v3',
+    model: 'stt-async-v4',
     created_at: '2024-11-26T00:00:00Z',
     filename: 'test-audio.mp3',
     enable_speaker_diarization: false,
@@ -66,7 +66,7 @@ describe('SonioxTranscription', () => {
 
         expect(transcription.id).toBe('550e8400-e29b-41d4-a716-446655440000');
         expect(transcription.status).toBe('queued');
-        expect(transcription.model).toBe('stt-async-v3');
+        expect(transcription.model).toBe('stt-async-v4');
         expect(transcription.created_at).toBe('2024-11-26T00:00:00Z');
         expect(transcription.audio_url).toBe('https://example.com/audio.mp3');
         expect(transcription.client_reference_id).toBe('my-ref-123');
@@ -669,7 +669,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.create({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 audio_url: 'https://example.com/audio.mp3',
             });
 
@@ -677,7 +677,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'POST',
                 path: '/v1/transcriptions',
                 body: {
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                 },
             });
@@ -694,7 +694,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const result = await api.create({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 audio_url: 'https://example.com/audio.mp3',
             });
 
@@ -1065,7 +1065,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const result = await api.transcribe({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 audio_url: 'https://example.com/audio.mp3',
             });
 
@@ -1075,7 +1075,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'POST',
                 path: '/v1/transcriptions',
                 body: expect.objectContaining({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                 }),
             });
@@ -1105,7 +1105,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
             const buffer = Buffer.from('test audio data');
             const result = await api.transcribe({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 file: buffer,
                 filename: 'audio.mp3',
             });
@@ -1118,7 +1118,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'POST',
                 path: '/v1/transcriptions',
                 body: expect.objectContaining({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     file_id: 'uploaded-file-id',
                 }),
             });
@@ -1149,7 +1149,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const resultPromise = api.transcribe({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 audio_url: 'https://example.com/audio.mp3',
                 wait: true,
             });
@@ -1190,7 +1190,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const resultPromise = api.transcribe({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 audio_url: 'https://example.com/audio.mp3',
                 wait: true,
                 fetch_transcript: false,
@@ -1226,7 +1226,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const resultPromise = api.transcribe({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 audio_url: 'https://example.com/audio.mp3',
                 wait: true,
             });
@@ -1268,7 +1268,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
             const controller = new AbortController();
             const resultPromise = api.transcribe({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 audio_url: 'https://example.com/audio.mp3',
                 wait: true,
                 signal: controller.signal,
@@ -1298,7 +1298,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             const result = await api.transcribe({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 audio_url: 'https://example.com/audio.mp3',
             });
 
@@ -1322,7 +1322,7 @@ describe('SonioxTranscriptionsAPI', () => {
             const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
             await api.transcribe({
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 audio_url: 'https://example.com/audio.mp3',
                 webhook_url: 'https://example.com/webhook',
                 webhook_auth_header_name: 'X-Webhook-Auth',
@@ -1333,7 +1333,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 method: 'POST',
                 path: '/v1/transcriptions',
                 body: expect.objectContaining({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_auth_header_name: 'X-Webhook-Auth',
@@ -1349,7 +1349,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                 } as TranscribeOptions)).rejects.toThrow('One of file, file_id, or audio_url must be provided');
             });
 
@@ -1359,7 +1359,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     file: Buffer.from('test'),
                     audio_url: 'https://example.com/audio.mp3',
                 } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
@@ -1371,7 +1371,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     file: Buffer.from('test'),
                     file_id: 'existing-file-id',
                 } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
@@ -1383,7 +1383,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     file_id: 'existing-file-id',
                 } as unknown as TranscribeOptions)).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
@@ -1395,7 +1395,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     file: Buffer.from('test'),
                     audio_url: 'https://example.com/audio.mp3',
                     file_id: 'existing-file-id',
@@ -1411,7 +1411,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_auth_header_name: 'X-Webhook-Secret',
@@ -1425,7 +1425,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_auth_header_value: 'secret-token',
@@ -1443,7 +1443,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_auth_header_name: 'X-Webhook-Secret',
@@ -1464,7 +1464,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                 });
@@ -1485,7 +1485,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_query: { transcription_id: 'abc123', user_id: '456' },
@@ -1511,7 +1511,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_query: 'key=value&other=data',
@@ -1541,7 +1541,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 params.append('type', 'test');
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                     webhook_query: params,
@@ -1567,7 +1567,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook?existing=param',
                     webhook_query: { new: 'value' },
@@ -1593,7 +1593,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
                 });
@@ -1618,7 +1618,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_query: { ignored: 'value' },
                 });
@@ -1640,7 +1640,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'ftp://example.com/audio.mp3',
                 })).rejects.toThrow('audio_url must be a valid HTTP or HTTPS URL');
             });
@@ -1651,7 +1651,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio file.mp3',
                 })).rejects.toThrow('audio_url must be a valid HTTP or HTTPS URL');
             });
@@ -1662,7 +1662,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: '',
                 })).rejects.toThrow('audio_url must be a valid HTTP or HTTPS URL');
             });
@@ -1678,7 +1678,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'http://example.com/audio.mp3',
                 });
 
@@ -1696,7 +1696,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/path/to/audio.mp3?token=abc123',
                 });
 
@@ -1723,7 +1723,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
                 const controller = new AbortController();
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     file: Buffer.from('test'),
                     signal: controller.signal,
                 });
@@ -1748,7 +1748,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
                 const controller = new AbortController();
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     signal: controller.signal,
                 });
@@ -1772,7 +1772,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
                 const controller = new AbortController();
                 const promise = api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     file: Buffer.from('test'),
                     signal: controller.signal,
                 });
@@ -1792,7 +1792,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     timeout_ms: 30000,
                 });
@@ -1821,7 +1821,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
                 // Use a very short timeout
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     file: Buffer.from('test'),
                     timeout_ms: 10,
                 })).rejects.toThrow();
@@ -1851,7 +1851,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
                 const controller = new AbortController();
                 const result = await api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     wait: true,
                     signal: controller.signal,
@@ -1867,7 +1867,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     await expect(api.transcribe({
-                        model: 'stt-async-v3',
+                        model: 'stt-async-v4',
                         audio_url: 'https://example.com/audio.mp3',
                         timeout_ms: NaN,
                     })).rejects.toThrow('timeout_ms must be a finite positive number');
@@ -1879,7 +1879,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     await expect(api.transcribe({
-                        model: 'stt-async-v3',
+                        model: 'stt-async-v4',
                         audio_url: 'https://example.com/audio.mp3',
                         timeout_ms: Infinity,
                     })).rejects.toThrow('timeout_ms must be a finite positive number');
@@ -1891,7 +1891,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     await expect(api.transcribe({
-                        model: 'stt-async-v3',
+                        model: 'stt-async-v4',
                         audio_url: 'https://example.com/audio.mp3',
                         timeout_ms: -1000,
                     })).rejects.toThrow('timeout_ms must be a finite positive number');
@@ -1903,7 +1903,7 @@ describe('SonioxTranscriptionsAPI', () => {
                     const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                     await expect(api.transcribe({
-                        model: 'stt-async-v3',
+                        model: 'stt-async-v4',
                         audio_url: 'https://example.com/audio.mp3',
                         timeout_ms: 0,
                     })).rejects.toThrow('timeout_ms must be a finite positive number');
@@ -1937,7 +1937,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
                     const controller = new AbortController();
                     await expect(api.transcribe({
-                        model: 'stt-async-v3',
+                        model: 'stt-async-v4',
                         file: Buffer.from('test'),
                         timeout_ms: 50,
                         signal: controller.signal,
@@ -1970,7 +1970,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
                     const controller = new AbortController();
                     const promise = api.transcribe({
-                        model: 'stt-async-v3',
+                        model: 'stt-async-v4',
                         file: Buffer.from('test'),
                         timeout_ms: 10000,
                         signal: controller.signal,
@@ -1994,7 +1994,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
                     const controller = new AbortController();
                     const result = await api.transcribe({
-                        model: 'stt-async-v3',
+                        model: 'stt-async-v4',
                         audio_url: 'https://example.com/audio.mp3',
                         timeout_ms: 30000,
                         signal: controller.signal,
@@ -2012,7 +2012,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     cleanup: ['file'],
                 })).rejects.toThrow('cleanup can only be used when wait=true');
@@ -2044,7 +2044,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     wait: true,
                     cleanup: ['file'],
@@ -2088,7 +2088,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     wait: true,
                     cleanup: ['transcription'],
@@ -2138,7 +2138,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     wait: true,
                     cleanup: ['file', 'transcription'],
@@ -2184,7 +2184,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     wait: true,
                     cleanup: ['file'],
@@ -2222,7 +2222,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     file: Buffer.from('test'),
                     wait: true,
                     cleanup: ['file', 'transcription'],
@@ -2257,7 +2257,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 await expect(api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     wait: true,
                     cleanup: ['file', 'transcription'],
@@ -2303,7 +2303,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     wait: true,
                     cleanup: ['file', 'transcription'],
@@ -2349,7 +2349,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     wait: true,
                     cleanup: [],
@@ -2392,7 +2392,7 @@ describe('SonioxTranscriptionsAPI', () => {
                 const api = new SonioxSttApi(mockHttp, mockFilesApi);
 
                 const resultPromise = api.transcribe({
-                    model: 'stt-async-v3',
+                    model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     wait: true,
                     cleanup: ['file', 'transcription'],
