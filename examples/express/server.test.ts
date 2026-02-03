@@ -161,7 +161,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
         it('transcribes from file and waits for completion', async () => {
             const buffer = readFileSync(AUDIO_FILE_SHORT);
             const transcription = await client.stt.transcribeFromFile(buffer, {
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 filename: 'test-audio.mp3',
                 wait: true,
             });
@@ -208,7 +208,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
         it('transcribes with speaker diarization', async () => {
             const buffer = readFileSync(AUDIO_FILE_DIALOG);
             const transcription = await client.stt.transcribeFromFile(buffer, {
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 filename: 'test-audio.mp3',
                 enable_speaker_diarization: true,
                 wait: true,
@@ -223,7 +223,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
         it('transcribes with language identification', async () => {
             const buffer = readFileSync(AUDIO_FILE_DIALOG);
             const transcription = await client.stt.transcribeFromFile(buffer, {
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 filename: 'test-audio.mp3',
                 enable_language_identification: true,
                 wait: true,
@@ -240,7 +240,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
         it('destroy() removes both transcription and uploaded file', async () => {
             const buffer = readFileSync(AUDIO_FILE_SHORT);
             const transcription = await client.stt.transcribeFromFile(buffer, {
-                model: 'stt-async-v3',
+                model: 'stt-async-v4',
                 filename: 'test-cleanup.mp3',
                 wait: true,
             });

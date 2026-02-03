@@ -9,10 +9,13 @@
   },
   "dependencies": {
     "@soniox/node": "^1.0.0",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "openai": "^4.77.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.21.0"
   }
 }

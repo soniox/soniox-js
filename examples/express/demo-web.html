@@ -3,10 +3,842 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soniox Web SDK Demo</title>
+    <title>Soniox Realtime Demo</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            line-height: 1.5;
+        }
+
+        body {
+            margin: 2rem;
+            max-width: 1000px;
+        }
+
+        h1 {
+            margin-bottom: 0.25rem;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin: 1.5rem 0 0 0;
+            border-bottom: 2px solid #ccc;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            color: #666;
+        }
+
+        .tab:hover {
+            color: #333;
+        }
+
+        .tab.active {
+            color: #0b5cff;
+            border-bottom-color: #0b5cff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+            align-items: end;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            font-weight: 600;
+        }
+
+        input[type="text"], select, textarea {
+            padding: 0.5rem 0.6rem;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        button {
+            padding: 0.65rem 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .status {
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .panel {
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .panel pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        .partial {
+            color: #0b5cff;
+        }
+
+        .muted {
+            color: #666;
+        }
+
+        .segment {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(128, 128, 128, 0.1);
+            border-radius: 4px;
+        }
+
+        .segment-meta {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        .segment-text {
+            font-size: 1rem;
+        }
+
+        .buffer-info {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .checkbox-row {
+            flex-direction: row !important;
+            align-items: center;
+            gap: 0.5rem !important;
+        }
+
+        /* Agent-specific styles */
+        .agent-status {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(128, 128, 128, 0.05);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #999;
+        }
+
+        .status-indicator.active {
+            background: #22c55e;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .status-indicator.paused {
+            background: #f59e0b;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chat-container {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            max-width: 85%;
+        }
+
+        .chat-message.user {
+            background: #0b5cff;
+            color: white;
+            margin-left: auto;
+        }
+
+        .chat-message.assistant {
+            background: rgba(128, 128, 128, 0.1);
+            margin-right: auto;
+        }
+
+        .chat-message .role {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            opacity: 0.7;
+        }
+
+        .chat-message.user .role {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .chat-message .content {
+            white-space: pre-wrap;
+        }
+
+        .streaming-cursor::after {
+            content: '▊';
+            animation: blink 0.7s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .agent-partial {
+            padding: 0.5rem 1rem;
+            background: rgba(11, 92, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            min-height: 2rem;
+        }
+
+        .event-log {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
 </head>
 <body>
-    <h1>Soniox Web SDK Demo</h1>
-    <p>Coming soon...</p>
+    <h1>Soniox Realtime Demo</h1>
+    <p class="muted">
+        Stream microphone audio to the Express server with Soniox realtime STT.
+    </p>
+
+    <div class="tabs">
+        <button class="tab active" data-tab="transcription">Transcription</button>
+        <button class="tab" data-tab="agent">Voice Agent</button>
+    </div>
+
+    <!-- Transcription Tab -->
+    <div id="transcription-tab" class="tab-content active">
+        <div class="controls">
+            <label>
+                Model
+                <input id="model" type="text" value="stt-rt-v3">
+            </label>
+            <label>
+                Language hint
+                <input id="language" type="text" placeholder="en">
+            </label>
+            <label>
+                Segment Mode
+                <select id="segmentMode">
+                    <option value="raw">Raw tokens</option>
+                    <option value="segments">Segments (stateless)</option>
+                    <option value="buffer">Buffer (rolling)</option>
+                </select>
+            </label>
+            <label>
+                Group By
+                <select id="groupBy">
+                    <option value="speaker,language">Speaker + Language</option>
+                    <option value="speaker">Speaker only</option>
+                    <option value="language">Language only</option>
+                    <option value="">No grouping</option>
+                </select>
+            </label>
+            <label class="checkbox-row">
+                <input id="endpoint" type="checkbox" checked>
+                <span>Endpoint</span>
+            </label>
+            <label class="checkbox-row">
+                <input id="diarization" type="checkbox">
+                <span>Diarization</span>
+            </label>
+            <label class="checkbox-row">
+                <input id="languageId" type="checkbox">
+                <span>Language ID</span>
+            </label>
+            <button id="start">Start</button>
+            <button id="stop" disabled>Stop</button>
+        </div>
+
+        <div class="status">Status: <span id="status">idle</span></div>
+
+        <div class="panel">
+            <div class="muted">Live partial <span id="bufferInfo" class="buffer-info"></span></div>
+            <pre id="partial" class="partial"></pre>
+        </div>
+
+        <div class="panel">
+            <div class="muted">Final transcript / Segments</div>
+            <div id="final"></div>
+        </div>
+
+        <div class="panel">
+            <div class="muted">Log</div>
+            <pre id="log"></pre>
+        </div>
+    </div>
+
+    <!-- Agent Tab -->
+    <div id="agent-tab" class="tab-content">
+        <div class="controls">
+            <label>
+                STT Model
+                <input id="agent-model" type="text" value="stt-rt-v3">
+            </label>
+            <label>
+                Language
+                <input id="agent-language" type="text" placeholder="en">
+            </label>
+            <label>
+                LLM Model
+                <select id="agent-llm">
+                    <option value="gpt-4o-mini">gpt-4o-mini</option>
+                    <option value="gpt-4o">gpt-4o</option>
+                    <option value="gpt-4-turbo">gpt-4-turbo</option>
+                    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                </select>
+            </label>
+            <button id="agent-start">Start Agent</button>
+            <button id="agent-stop" disabled>Stop</button>
+            <button id="agent-clear" disabled>Clear History</button>
+        </div>
+
+        <div class="controls" style="margin-top: 0;">
+            <label style="grid-column: 1 / -1;">
+                System Prompt
+                <textarea id="agent-system-prompt">You are a helpful voice assistant. Keep responses concise and conversational.</textarea>
+            </label>
+        </div>
+
+        <div class="agent-status">
+            <div class="status-item">
+                <span class="status-indicator" id="agent-state-indicator"></span>
+                <span>State: <strong id="agent-state">idle</strong></span>
+            </div>
+            <div class="status-item">
+                <span class="status-indicator" id="agent-stt-indicator"></span>
+                <span>STT: <strong id="agent-stt-status">inactive</strong></span>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="muted">You are saying...</div>
+            <div id="agent-partial" class="agent-partial partial"></div>
+        </div>
+
+        <div class="chat-container" id="agent-chat"></div>
+
+        <div class="panel">
+            <div class="muted">Event Log</div>
+            <pre id="agent-log" class="event-log"></pre>
+        </div>
+    </div>
+
+    <script>
+        // ====================================================================
+        // Tab Switching
+        // ====================================================================
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.dataset.tab + '-tab';
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+
+        // ====================================================================
+        // Shared Audio Utilities
+        // ====================================================================
+        const targetSampleRate = 16000;
+
+        function floatTo16BitPCM(float32) {
+            const buffer = new Int16Array(float32.length);
+            for (let i = 0; i < float32.length; i++) {
+                const sample = Math.max(-1, Math.min(1, float32[i]));
+                buffer[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+            }
+            return buffer;
+        }
+
+        function downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
+            if (outputSampleRate === inputSampleRate) {
+                return floatTo16BitPCM(buffer);
+            }
+            if (outputSampleRate > inputSampleRate) {
+                return floatTo16BitPCM(buffer);
+            }
+            const sampleRateRatio = inputSampleRate / outputSampleRate;
+            const newLength = Math.round(buffer.length / sampleRateRatio);
+            const result = new Int16Array(newLength);
+            let offsetResult = 0;
+            let offsetBuffer = 0;
+            while (offsetResult < result.length) {
+                const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+                let accum = 0, count = 0;
+                for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+                    accum += buffer[i];
+                    count++;
+                }
+                const sample = accum / count;
+                const clamped = Math.max(-1, Math.min(1, sample));
+                result[offsetResult] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
+                offsetResult++;
+                offsetBuffer = nextOffsetBuffer;
+            }
+            return result;
+        }
+
+        // ====================================================================
+        // Transcription Mode
+        // ====================================================================
+        const startButton = document.getElementById('start');
+        const stopButton = document.getElementById('stop');
+        const statusEl = document.getElementById('status');
+        const partialEl = document.getElementById('partial');
+        const finalEl = document.getElementById('final');
+        const logEl = document.getElementById('log');
+        const bufferInfoEl = document.getElementById('bufferInfo');
+        const modelInput = document.getElementById('model');
+        const languageInput = document.getElementById('language');
+        const endpointInput = document.getElementById('endpoint');
+        const diarizationInput = document.getElementById('diarization');
+        const languageIdInput = document.getElementById('languageId');
+        const segmentModeSelect = document.getElementById('segmentMode');
+        const groupBySelect = document.getElementById('groupBy');
+
+        let ws, audioContext, micStream, processor, sourceNode, gainNode;
+        let currentSegmentMode = 'raw';
+
+        function log(message) {
+            logEl.textContent = `[${new Date().toLocaleTimeString()}] ${message}\n` + logEl.textContent;
+        }
+
+        function setStatus(text) {
+            statusEl.textContent = text;
+        }
+
+        function buildWsUrl() {
+            const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+            const url = new URL(`${protocol}://${location.host}/realtime`);
+            url.searchParams.set('model', modelInput.value.trim() || 'stt-rt-v3');
+            const language = languageInput.value.trim();
+            if (language) url.searchParams.set('language', language);
+            url.searchParams.set('endpoint', endpointInput.checked ? 'true' : 'false');
+            url.searchParams.set('diarization', diarizationInput.checked ? 'true' : 'false');
+            url.searchParams.set('languageId', languageIdInput.checked ? 'true' : 'false');
+            url.searchParams.set('segmentMode', segmentModeSelect.value);
+            url.searchParams.set('groupBy', groupBySelect.value);
+            return url.toString();
+        }
+
+        function formatTime(ms) {
+            if (ms === undefined) return '?';
+            return `${(ms / 1000).toFixed(2)}s`;
+        }
+
+        function renderSegment(segment) {
+            const div = document.createElement('div');
+            div.className = 'segment';
+            const meta = document.createElement('div');
+            meta.className = 'segment-meta';
+            const parts = [];
+            if (segment.speaker) parts.push(`Speaker: ${segment.speaker}`);
+            if (segment.language) parts.push(`Lang: ${segment.language}`);
+            if (segment.start_ms !== undefined || segment.end_ms !== undefined) {
+                parts.push(`${formatTime(segment.start_ms)} - ${formatTime(segment.end_ms)}`);
+            }
+            meta.textContent = parts.join(' | ') || 'No metadata';
+            const text = document.createElement('div');
+            text.className = 'segment-text';
+            text.textContent = segment.text;
+            div.appendChild(meta);
+            div.appendChild(text);
+            return div;
+        }
+
+        function handleResult(message) {
+            const result = message.result || {};
+            const segments = message.segments || [];
+            if (currentSegmentMode === 'buffer' && message.bufferSize !== undefined) {
+                bufferInfoEl.textContent = `(buffer: ${message.bufferSize} tokens)`;
+            } else {
+                bufferInfoEl.textContent = '';
+            }
+            const partialText = (result.tokens || []).map((token) => token.text).join('');
+            if (partialText) partialEl.textContent = partialText;
+            if (currentSegmentMode !== 'raw' && segments.length > 0) {
+                for (const segment of segments) {
+                    finalEl.appendChild(renderSegment(segment));
+                    log(`Segment: "${segment.text.substring(0, 30)}..." (speaker=${segment.speaker || '-'})`);
+                }
+            }
+            if (result.finished) {
+                flushPartial();
+                log('Session finished');
+            }
+        }
+
+        function flushPartial() {
+            const partial = partialEl.textContent.trim();
+            if (!partial) return;
+            if (currentSegmentMode === 'raw') {
+                const pre = document.createElement('pre');
+                pre.textContent = partial;
+                finalEl.appendChild(pre);
+            }
+            partialEl.textContent = '';
+        }
+
+        async function start() {
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            partialEl.textContent = '';
+            finalEl.innerHTML = '';
+            logEl.textContent = '';
+            bufferInfoEl.textContent = '';
+            currentSegmentMode = segmentModeSelect.value;
+            setStatus('connecting');
+
+            ws = new WebSocket(buildWsUrl());
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = () => {
+                setStatus('connected');
+                log('WebSocket connected');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'result') handleResult(message);
+                    else if (message.type === 'endpoint') {
+                        flushPartial();
+                        log('Endpoint detected');
+                    } else if (message.type === 'error') {
+                        log(`Error: ${message.error?.message || 'unknown error'}`);
+                    } else if (message.type === 'connected') {
+                        const mode = message.segmentMode || 'raw';
+                        const groupBy = message.groupBy?.join(',') || 'none';
+                        log(`Connected - mode: ${mode}, groupBy: ${groupBy}`);
+                    }
+                } catch { log('Received non-JSON message'); }
+            };
+
+            ws.onclose = (event) => {
+                setStatus(`closed (${event.code})`);
+                log(`WebSocket closed: ${event.reason || 'no reason'}`);
+            };
+
+            ws.onerror = () => {
+                setStatus('error');
+                log('WebSocket error');
+            };
+
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch {
+                setStatus('mic error');
+                log('Microphone permission denied');
+                stop();
+                return;
+            }
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            sourceNode = audioContext.createMediaStreamSource(micStream);
+            processor = audioContext.createScriptProcessor(4096, 1, 1);
+            gainNode = audioContext.createGain();
+            gainNode.gain.value = 0;
+
+            processor.onaudioprocess = (event) => {
+                if (!ws || ws.readyState !== WebSocket.OPEN) return;
+                const input = event.inputBuffer.getChannelData(0);
+                const pcm = downsampleBuffer(input, audioContext.sampleRate, targetSampleRate);
+                if (pcm.length > 0) ws.send(pcm.buffer);
+            };
+
+            sourceNode.connect(processor);
+            processor.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+        }
+
+        function stop() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'finish' }));
+                ws.close(1000, 'client stopped');
+            }
+            ws = null;
+            if (processor) { processor.disconnect(); processor.onaudioprocess = null; processor = null; }
+            if (sourceNode) { sourceNode.disconnect(); sourceNode = null; }
+            if (gainNode) { gainNode.disconnect(); gainNode = null; }
+            if (audioContext) { audioContext.close(); audioContext = null; }
+            if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
+            setStatus('idle');
+            startButton.disabled = false;
+            stopButton.disabled = true;
+        }
+
+        startButton.addEventListener('click', () => start().catch((e) => { log(`Failed: ${e?.message || e}`); stop(); }));
+        stopButton.addEventListener('click', stop);
+
+        // ====================================================================
+        // Agent Mode
+        // ====================================================================
+        const agentStartBtn = document.getElementById('agent-start');
+        const agentStopBtn = document.getElementById('agent-stop');
+        const agentClearBtn = document.getElementById('agent-clear');
+        const agentModelInput = document.getElementById('agent-model');
+        const agentLanguageInput = document.getElementById('agent-language');
+        const agentLlmSelect = document.getElementById('agent-llm');
+        const agentSystemPrompt = document.getElementById('agent-system-prompt');
+        const agentStateEl = document.getElementById('agent-state');
+        const agentStateIndicator = document.getElementById('agent-state-indicator');
+        const agentSttStatus = document.getElementById('agent-stt-status');
+        const agentSttIndicator = document.getElementById('agent-stt-indicator');
+        const agentPartialEl = document.getElementById('agent-partial');
+        const agentChatEl = document.getElementById('agent-chat');
+        const agentLogEl = document.getElementById('agent-log');
+
+        let agentWs, agentAudioCtx, agentMicStream, agentProcessor, agentSourceNode, agentGainNode;
+        let currentAssistantMsgEl = null;
+
+        function agentLog(message) {
+            agentLogEl.textContent = `[${new Date().toLocaleTimeString()}] ${message}\n` + agentLogEl.textContent;
+        }
+
+        function setAgentState(state) {
+            agentStateEl.textContent = state;
+            agentStateIndicator.className = 'status-indicator';
+            if (state === 'listening') agentStateIndicator.classList.add('active');
+            else if (state !== 'idle') agentStateIndicator.classList.add('paused');
+        }
+
+        function setSttStatus(active) {
+            agentSttStatus.textContent = active ? 'active' : 'paused';
+            agentSttIndicator.className = 'status-indicator';
+            if (active) agentSttIndicator.classList.add('active');
+            else agentSttIndicator.classList.add('paused');
+        }
+
+        function buildAgentWsUrl() {
+            const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+            const url = new URL(`${protocol}://${location.host}/agent`);
+            url.searchParams.set('model', agentModelInput.value.trim() || 'stt-rt-v3');
+            const lang = agentLanguageInput.value.trim();
+            if (lang) url.searchParams.set('language', lang);
+            url.searchParams.set('llmModel', agentLlmSelect.value);
+            url.searchParams.set('systemPrompt', agentSystemPrompt.value);
+            return url.toString();
+        }
+
+        function addChatMessage(role, content, isStreaming = false) {
+            const div = document.createElement('div');
+            div.className = `chat-message ${role}`;
+            const roleEl = document.createElement('div');
+            roleEl.className = 'role';
+            roleEl.textContent = role === 'user' ? 'You' : 'Assistant';
+            const contentEl = document.createElement('div');
+            contentEl.className = 'content' + (isStreaming ? ' streaming-cursor' : '');
+            contentEl.textContent = content;
+            div.appendChild(roleEl);
+            div.appendChild(contentEl);
+            agentChatEl.appendChild(div);
+            agentChatEl.scrollTop = agentChatEl.scrollHeight;
+            return div;
+        }
+
+        function handleAgentMessage(message) {
+            switch (message.type) {
+                case 'state':
+                    setAgentState(message.state);
+                    agentLog(`State: ${message.state}`);
+                    break;
+                case 'stt_paused':
+                    setSttStatus(false);
+                    agentLog('STT paused');
+                    break;
+                case 'stt_resumed':
+                    setSttStatus(true);
+                    agentLog('STT resumed');
+                    break;
+                case 'partial':
+                    agentPartialEl.textContent = message.text;
+                    break;
+                case 'user_message':
+                    agentPartialEl.textContent = '';
+                    addChatMessage('user', message.text);
+                    agentLog(`User: "${message.text.substring(0, 50)}..."`);
+                    break;
+                case 'assistant_chunk':
+                    if (!currentAssistantMsgEl) {
+                        currentAssistantMsgEl = addChatMessage('assistant', '', true);
+                    }
+                    const contentEl = currentAssistantMsgEl.querySelector('.content');
+                    contentEl.textContent += message.text;
+                    agentChatEl.scrollTop = agentChatEl.scrollHeight;
+                    break;
+                case 'assistant_done':
+                    if (currentAssistantMsgEl) {
+                        currentAssistantMsgEl.querySelector('.content').classList.remove('streaming-cursor');
+                    }
+                    currentAssistantMsgEl = null;
+                    agentLog(`Assistant: "${message.text.substring(0, 50)}..."`);
+                    break;
+                case 'connected':
+                    agentLog(`Connected - STT: ${message.config?.sttModel}, LLM: ${message.config?.llmModel}`);
+                    break;
+                case 'history_cleared':
+                    agentChatEl.innerHTML = '';
+                    agentLog('Conversation history cleared');
+                    break;
+                case 'error':
+                    agentLog(`Error: ${message.error?.message || 'unknown'}`);
+                    break;
+                case 'disconnected':
+                    agentLog(`Disconnected: ${message.reason || 'unknown'}`);
+                    break;
+            }
+        }
+
+        async function startAgent() {
+            agentStartBtn.disabled = true;
+            agentStopBtn.disabled = false;
+            agentClearBtn.disabled = false;
+            agentPartialEl.textContent = '';
+            agentLogEl.textContent = '';
+            currentAssistantMsgEl = null;
+            setAgentState('connecting');
+            setSttStatus(false);
+
+            agentWs = new WebSocket(buildAgentWsUrl());
+            agentWs.binaryType = 'arraybuffer';
+
+            agentWs.onopen = () => agentLog('WebSocket connected');
+
+            agentWs.onmessage = (event) => {
+                try {
+                    handleAgentMessage(JSON.parse(event.data));
+                } catch { agentLog('Received non-JSON message'); }
+            };
+
+            agentWs.onclose = (event) => {
+                setAgentState('idle');
+                setSttStatus(false);
+                agentLog(`WebSocket closed: ${event.reason || event.code}`);
+                stopAgent(true);
+            };
+
+            agentWs.onerror = () => {
+                agentLog('WebSocket error');
+            };
+
+            try {
+                agentMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch {
+                agentLog('Microphone permission denied');
+                stopAgent();
+                return;
+            }
+
+            agentAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            agentSourceNode = agentAudioCtx.createMediaStreamSource(agentMicStream);
+            agentProcessor = agentAudioCtx.createScriptProcessor(4096, 1, 1);
+            agentGainNode = agentAudioCtx.createGain();
+            agentGainNode.gain.value = 0;
+
+            agentProcessor.onaudioprocess = (event) => {
+                if (!agentWs || agentWs.readyState !== WebSocket.OPEN) return;
+                const input = event.inputBuffer.getChannelData(0);
+                const pcm = downsampleBuffer(input, agentAudioCtx.sampleRate, targetSampleRate);
+                if (pcm.length > 0) agentWs.send(pcm.buffer);
+            };
+
+            agentSourceNode.connect(agentProcessor);
+            agentProcessor.connect(agentGainNode);
+            agentGainNode.connect(agentAudioCtx.destination);
+        }
+
+        function stopAgent(skipWsClose = false) {
+            if (!skipWsClose && agentWs && agentWs.readyState === WebSocket.OPEN) {
+                agentWs.send(JSON.stringify({ type: 'finish' }));
+                agentWs.close(1000, 'client stopped');
+            }
+            agentWs = null;
+            if (agentProcessor) { agentProcessor.disconnect(); agentProcessor.onaudioprocess = null; agentProcessor = null; }
+            if (agentSourceNode) { agentSourceNode.disconnect(); agentSourceNode = null; }
+            if (agentGainNode) { agentGainNode.disconnect(); agentGainNode = null; }
+            if (agentAudioCtx) { agentAudioCtx.close(); agentAudioCtx = null; }
+            if (agentMicStream) { agentMicStream.getTracks().forEach((t) => t.stop()); agentMicStream = null; }
+            setAgentState('idle');
+            setSttStatus(false);
+            agentStartBtn.disabled = false;
+            agentStopBtn.disabled = true;
+            agentClearBtn.disabled = true;
+        }
+
+        function clearAgentHistory() {
+            if (agentWs && agentWs.readyState === WebSocket.OPEN) {
+                agentWs.send(JSON.stringify({ type: 'clear_history' }));
+            }
+        }
+
+        agentStartBtn.addEventListener('click', () => startAgent().catch((e) => { agentLog(`Failed: ${e?.message || e}`); stopAgent(); }));
+        agentStopBtn.addEventListener('click', () => stopAgent());
+        agentClearBtn.addEventListener('click', clearAgentHistory);
+    </script>
 </body>
 </html>
