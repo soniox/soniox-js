@@ -4,390 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Soniox Realtime Demo</title>
-    <style>
-        :root {
-            color-scheme: light dark;
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-            line-height: 1.5;
-        }
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { h, render } from 'https://esm.sh/preact@10.19.3';
+        import { useState, useRef, useEffect, useCallback } from 'https://esm.sh/preact@10.19.3/hooks';
+        import htm from 'https://esm.sh/htm@3.1.1';
 
-        body {
-            margin: 2rem;
-            max-width: 1000px;
-        }
-
-        h1 {
-            margin-bottom: 0.25rem;
-        }
-
-        /* Tabs */
-        .tabs {
-            display: flex;
-            gap: 0;
-            margin: 1.5rem 0 0 0;
-            border-bottom: 2px solid #ccc;
-        }
-
-        .tab {
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            background: none;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            color: #666;
-        }
-
-        .tab:hover {
-            color: #333;
-        }
-
-        .tab.active {
-            color: #0b5cff;
-            border-bottom-color: #0b5cff;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 1rem;
-            margin: 1.5rem 0;
-            align-items: end;
-        }
-
-        label {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-            font-weight: 600;
-        }
-
-        input[type="text"], select, textarea {
-            padding: 0.5rem 0.6rem;
-            font-size: 1rem;
-            font-family: inherit;
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 60px;
-        }
-
-        button {
-            padding: 0.65rem 1rem;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        button:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        .status {
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-
-        .panel {
-            padding: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            margin-top: 1rem;
-        }
-
-        .panel pre {
-            margin: 0;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        }
-
-        .partial {
-            color: #0b5cff;
-        }
-
-        .muted {
-            color: #666;
-        }
-
-        .segment {
-            margin-bottom: 0.5rem;
-            padding: 0.5rem;
-            background: rgba(128, 128, 128, 0.1);
-            border-radius: 4px;
-        }
-
-        .segment-meta {
-            font-size: 0.85rem;
-            color: #666;
-            margin-bottom: 0.25rem;
-        }
-
-        .segment-text {
-            font-size: 1rem;
-        }
-
-        .buffer-info {
-            font-size: 0.85rem;
-            color: #666;
-            margin-top: 0.5rem;
-        }
-
-        .checkbox-row {
-            flex-direction: row !important;
-            align-items: center;
-            gap: 0.5rem !important;
-        }
-
-        /* Agent-specific styles */
-        .agent-status {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-            padding: 1rem;
-            background: rgba(128, 128, 128, 0.05);
-            border-radius: 8px;
-            margin-bottom: 1rem;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #999;
-        }
-
-        .status-indicator.active {
-            background: #22c55e;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .status-indicator.paused {
-            background: #f59e0b;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .chat-container {
-            max-height: 400px;
-            overflow-y: auto;
-            padding: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            margin-top: 1rem;
-        }
-
-        .chat-message {
-            margin-bottom: 1rem;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            max-width: 85%;
-        }
-
-        .chat-message.user {
-            background: #0b5cff;
-            color: white;
-            margin-left: auto;
-        }
-
-        .chat-message.assistant {
-            background: rgba(128, 128, 128, 0.1);
-            margin-right: auto;
-        }
-
-        .chat-message .role {
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            opacity: 0.7;
-        }
-
-        .chat-message.user .role {
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .chat-message .content {
-            white-space: pre-wrap;
-        }
-
-        .streaming-cursor::after {
-            content: '▊';
-            animation: blink 0.7s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        .agent-partial {
-            padding: 0.5rem 1rem;
-            background: rgba(11, 92, 255, 0.1);
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            min-height: 2rem;
-        }
-
-        .event-log {
-            max-height: 200px;
-            overflow-y: auto;
-        }
-    </style>
-</head>
-<body>
-    <h1>Soniox Realtime Demo</h1>
-    <p class="muted">
-        Stream microphone audio to the Express server with Soniox realtime STT.
-    </p>
-
-    <div class="tabs">
-        <button class="tab active" data-tab="transcription">Transcription</button>
-        <button class="tab" data-tab="agent">Voice Agent</button>
-    </div>
-
-    <!-- Transcription Tab -->
-    <div id="transcription-tab" class="tab-content active">
-        <div class="controls">
-            <label>
-                Model
-                <input id="model" type="text" value="stt-rt-v3">
-            </label>
-            <label>
-                Language hint
-                <input id="language" type="text" placeholder="en">
-            </label>
-            <label>
-                Segment Mode
-                <select id="segmentMode">
-                    <option value="raw">Raw tokens</option>
-                    <option value="segments">Segments (stateless)</option>
-                    <option value="buffer">Buffer (rolling)</option>
-                </select>
-            </label>
-            <label>
-                Group By
-                <select id="groupBy">
-                    <option value="speaker,language">Speaker + Language</option>
-                    <option value="speaker">Speaker only</option>
-                    <option value="language">Language only</option>
-                    <option value="">No grouping</option>
-                </select>
-            </label>
-            <label class="checkbox-row">
-                <input id="endpoint" type="checkbox" checked>
-                <span>Endpoint</span>
-            </label>
-            <label class="checkbox-row">
-                <input id="diarization" type="checkbox">
-                <span>Diarization</span>
-            </label>
-            <button id="start">Start</button>
-            <button id="stop" disabled>Stop</button>
-        </div>
-
-        <div class="status">Status: <span id="status">idle</span></div>
-
-        <div class="panel">
-            <div class="muted">Live partial <span id="bufferInfo" class="buffer-info"></span></div>
-            <pre id="partial" class="partial"></pre>
-        </div>
-
-        <div class="panel">
-            <div class="muted">Final transcript / Segments</div>
-            <div id="final"></div>
-        </div>
-
-        <div class="panel">
-            <div class="muted">Log</div>
-            <pre id="log"></pre>
-        </div>
-    </div>
-
-    <!-- Agent Tab -->
-    <div id="agent-tab" class="tab-content">
-        <div class="controls">
-            <label>
-                STT Model
-                <input id="agent-model" type="text" value="stt-rt-v3">
-            </label>
-            <label>
-                Language
-                <input id="agent-language" type="text" placeholder="en">
-            </label>
-            <button id="agent-start">Start Agent</button>
-            <button id="agent-stop" disabled>Stop</button>
-            <button id="agent-clear" disabled>Clear History</button>
-        </div>
-        <p class="muted" style="margin-top: 0;">
-            This demo uses a simulated agent that echoes your speech. Replace the backend logic with your own LLM/agent.
-        </p>
-
-        <div class="agent-status">
-            <div class="status-item">
-                <span class="status-indicator" id="agent-state-indicator"></span>
-                <span>State: <strong id="agent-state">idle</strong></span>
-            </div>
-            <div class="status-item">
-                <span class="status-indicator" id="agent-stt-indicator"></span>
-                <span>STT: <strong id="agent-stt-status">inactive</strong></span>
-            </div>
-        </div>
-
-        <div class="panel">
-            <div class="muted">You are saying...</div>
-            <div id="agent-partial" class="agent-partial partial"></div>
-        </div>
-
-        <div class="chat-container" id="agent-chat"></div>
-
-        <div class="panel">
-            <div class="muted">Event Log</div>
-            <pre id="agent-log" class="event-log"></pre>
-        </div>
-    </div>
-
-    <script>
-        // ====================================================================
-        // Tab Switching
-        // ====================================================================
-        const tabs = document.querySelectorAll('.tab');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const targetId = tab.dataset.tab + '-tab';
-                tabs.forEach(t => t.classList.remove('active'));
-                tabContents.forEach(tc => tc.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(targetId).classList.add('active');
-            });
-        });
+        const html = htm.bind(h);
 
         // ====================================================================
-        // Shared Audio Utilities
+        // Audio Utilities
         // ====================================================================
-        const targetSampleRate = 16000;
+        const TARGET_SAMPLE_RATE = 16000;
 
         function floatTo16BitPCM(float32) {
             const buffer = new Int16Array(float32.length);
@@ -399,424 +27,530 @@
         }
 
         function downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {
-            if (outputSampleRate === inputSampleRate) {
+            if (outputSampleRate >= inputSampleRate) {
                 return floatTo16BitPCM(buffer);
             }
-            if (outputSampleRate > inputSampleRate) {
-                return floatTo16BitPCM(buffer);
-            }
-            const sampleRateRatio = inputSampleRate / outputSampleRate;
-            const newLength = Math.round(buffer.length / sampleRateRatio);
+            const ratio = inputSampleRate / outputSampleRate;
+            const newLength = Math.round(buffer.length / ratio);
             const result = new Int16Array(newLength);
-            let offsetResult = 0;
-            let offsetBuffer = 0;
+            let offsetResult = 0, offsetBuffer = 0;
             while (offsetResult < result.length) {
-                const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+                const nextOffset = Math.round((offsetResult + 1) * ratio);
                 let accum = 0, count = 0;
-                for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+                for (let i = offsetBuffer; i < nextOffset && i < buffer.length; i++) {
                     accum += buffer[i];
                     count++;
                 }
-                const sample = accum / count;
-                const clamped = Math.max(-1, Math.min(1, sample));
-                result[offsetResult] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
+                const sample = Math.max(-1, Math.min(1, accum / count));
+                result[offsetResult] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
                 offsetResult++;
-                offsetBuffer = nextOffsetBuffer;
+                offsetBuffer = nextOffset;
             }
             return result;
         }
 
         // ====================================================================
-        // Transcription Mode
+        // Shared Components
         // ====================================================================
-        const startButton = document.getElementById('start');
-        const stopButton = document.getElementById('stop');
-        const statusEl = document.getElementById('status');
-        const partialEl = document.getElementById('partial');
-        const finalEl = document.getElementById('final');
-        const logEl = document.getElementById('log');
-        const bufferInfoEl = document.getElementById('bufferInfo');
-        const modelInput = document.getElementById('model');
-        const languageInput = document.getElementById('language');
-        const endpointInput = document.getElementById('endpoint');
-        const diarizationInput = document.getElementById('diarization');
-        const segmentModeSelect = document.getElementById('segmentMode');
-        const groupBySelect = document.getElementById('groupBy');
-
-        let ws, audioContext, micStream, processor, sourceNode, gainNode;
-        let currentSegmentMode = 'raw';
-
-        function log(message) {
-            logEl.textContent = `[${new Date().toLocaleTimeString()}] ${message}\n` + logEl.textContent;
+        function Input({ label, value, onChange, placeholder, className = '' }) {
+            return html`
+                <label class="flex flex-col gap-1 font-semibold ${className}">
+                    ${label}
+                    <input
+                        type="text"
+                        class="px-3 py-2 text-base font-normal border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value=${value}
+                        onInput=${(e) => onChange(e.target.value)}
+                        placeholder=${placeholder}
+                    />
+                </label>
+            `;
         }
 
-        function setStatus(text) {
-            statusEl.textContent = text;
+        function Select({ label, value, onChange, options, className = '' }) {
+            return html`
+                <label class="flex flex-col gap-1 font-semibold ${className}">
+                    ${label}
+                    <select
+                        class="px-3 py-2 text-base font-normal border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value=${value}
+                        onChange=${(e) => onChange(e.target.value)}
+                    >
+                        ${options.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
+                    </select>
+                </label>
+            `;
         }
 
-        function buildWsUrl() {
-            const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-            const url = new URL(`${protocol}://${location.host}/realtime`);
-            url.searchParams.set('model', modelInput.value.trim() || 'stt-rt-v3');
-            const language = languageInput.value.trim();
-            if (language) url.searchParams.set('language', language);
-            url.searchParams.set('endpoint', endpointInput.checked ? 'true' : 'false');
-            url.searchParams.set('diarization', diarizationInput.checked ? 'true' : 'false');
-            url.searchParams.set('languageId', 'true');
-            url.searchParams.set('segmentMode', segmentModeSelect.value);
-            url.searchParams.set('groupBy', groupBySelect.value);
-            return url.toString();
+        function Checkbox({ label, checked, onChange }) {
+            return html`
+                <label class="flex items-center gap-2 font-semibold cursor-pointer">
+                    <input
+                        type="checkbox"
+                        class="w-4 h-4"
+                        checked=${checked}
+                        onChange=${(e) => onChange(e.target.checked)}
+                    />
+                    <span>${label}</span>
+                </label>
+            `;
+        }
+
+        function Button({ children, onClick, disabled, variant = 'primary' }) {
+            const base = 'px-4 py-2 text-base font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+            const variants = {
+                primary: 'bg-blue-600 text-white hover:bg-blue-700',
+                secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
+            };
+            return html`
+                <button class="${base} ${variants[variant]}" onClick=${onClick} disabled=${disabled}>
+                    ${children}
+                </button>
+            `;
+        }
+
+        function Panel({ title, children }) {
+            return html`
+                <div class="mt-4 p-4 border border-gray-300 rounded-lg">
+                    ${title && html`<div class="text-sm text-gray-500 mb-2">${title}</div>`}
+                    ${children}
+                </div>
+            `;
         }
 
         function formatTime(ms) {
-            if (ms === undefined) return '?';
-            return `${(ms / 1000).toFixed(2)}s`;
+            return ms === undefined ? '?' : (ms / 1000).toFixed(2) + 's';
         }
 
-        function renderSegment(segment) {
-            const div = document.createElement('div');
-            div.className = 'segment';
-            const meta = document.createElement('div');
-            meta.className = 'segment-meta';
-            const parts = [];
-            if (segment.speaker) parts.push(`Speaker: ${segment.speaker}`);
-            if (segment.language) parts.push(`Lang: ${segment.language}`);
-            if (segment.start_ms !== undefined || segment.end_ms !== undefined) {
-                parts.push(`${formatTime(segment.start_ms)} - ${formatTime(segment.end_ms)}`);
-            }
-            meta.textContent = parts.join(' | ') || 'No metadata';
-            const text = document.createElement('div');
-            text.className = 'segment-text';
-            text.textContent = segment.text;
-            div.appendChild(meta);
-            div.appendChild(text);
-            return div;
-        }
+        // ====================================================================
+        // Transcription Tab
+        // ====================================================================
+        function TranscriptionTab() {
+            const [model, setModel] = useState('stt-rt-v3');
+            const [language, setLanguage] = useState('');
+            const [segmentMode, setSegmentMode] = useState('raw');
+            const [groupBy, setGroupBy] = useState('speaker,language');
+            const [endpoint, setEndpoint] = useState(true);
+            const [diarization, setDiarization] = useState(false);
+            const [status, setStatus] = useState('idle');
+            const [partial, setPartial] = useState('');
+            const [segments, setSegments] = useState([]);
+            const [logs, setLogs] = useState([]);
 
-        function handleResult(message) {
-            const result = message.result || {};
-            const segments = message.segments || [];
-            if (currentSegmentMode === 'buffer' && message.bufferSize !== undefined) {
-                bufferInfoEl.textContent = `(buffer: ${message.bufferSize} tokens)`;
-            } else {
-                bufferInfoEl.textContent = '';
-            }
-            const partialText = (result.tokens || []).map((token) => token.text).join('');
-            if (partialText) partialEl.textContent = partialText;
-            if (currentSegmentMode !== 'raw' && segments.length > 0) {
-                for (const segment of segments) {
-                    finalEl.appendChild(renderSegment(segment));
-                    log(`Segment: "${segment.text.substring(0, 30)}..." (speaker=${segment.speaker || '-'})`);
-                }
-            }
-            if (result.finished) {
-                flushPartial();
-                log('Session finished');
-            }
-        }
+            const wsRef = useRef(null);
+            const audioRef = useRef({ ctx: null, stream: null, processor: null, source: null, gain: null });
+            const modeRef = useRef('raw');
 
-        function flushPartial() {
-            const partial = partialEl.textContent.trim();
-            if (!partial) return;
-            if (currentSegmentMode === 'raw') {
-                const pre = document.createElement('pre');
-                pre.textContent = partial;
-                finalEl.appendChild(pre);
-            }
-            partialEl.textContent = '';
-        }
+            const log = useCallback((msg) => {
+                setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 99)]);
+            }, []);
 
-        async function start() {
-            startButton.disabled = true;
-            stopButton.disabled = false;
-            partialEl.textContent = '';
-            finalEl.innerHTML = '';
-            logEl.textContent = '';
-            bufferInfoEl.textContent = '';
-            currentSegmentMode = segmentModeSelect.value;
-            setStatus('connecting');
+            const flushPartial = useCallback(() => {
+                setPartial(prev => {
+                    if (prev.trim() && modeRef.current === 'raw') {
+                        setSegments(segs => [...segs, { text: prev, isRaw: true }]);
+                    }
+                    return '';
+                });
+            }, []);
 
-            ws = new WebSocket(buildWsUrl());
-            ws.binaryType = 'arraybuffer';
-
-            ws.onopen = () => {
-                setStatus('connected');
-                log('WebSocket connected');
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const message = JSON.parse(event.data);
-                    if (message.type === 'result') handleResult(message);
-                    else if (message.type === 'endpoint') {
+            const handleMessage = useCallback((data) => {
+                const msg = JSON.parse(data);
+                if (msg.type === 'result') {
+                    const result = msg.result || {};
+                    const text = (result.tokens || []).map(t => t.text).join('');
+                    if (text) setPartial(text);
+                    if (modeRef.current !== 'raw' && msg.segments?.length) {
+                        setSegments(prev => [...prev, ...msg.segments]);
+                        msg.segments.forEach(s => log(`Segment: "${s.text.substring(0, 30)}..." (speaker=${s.speaker || '-'})`));
+                    }
+                    if (result.finished) {
                         flushPartial();
-                        log('Endpoint detected');
-                    } else if (message.type === 'error') {
-                        log(`Error: ${message.error?.message || 'unknown error'}`);
-                    } else if (message.type === 'connected') {
-                        const mode = message.segmentMode || 'raw';
-                        const groupBy = message.groupBy?.join(',') || 'none';
-                        log(`Connected - mode: ${mode}, groupBy: ${groupBy}`);
+                        log('Session finished');
                     }
-                } catch { log('Received non-JSON message'); }
-            };
+                } else if (msg.type === 'endpoint') {
+                    flushPartial();
+                    log('Endpoint detected');
+                } else if (msg.type === 'error') {
+                    log(`Error: ${msg.error?.message || 'unknown'}`);
+                } else if (msg.type === 'connected') {
+                    log(`Connected - mode: ${msg.segmentMode || 'raw'}, groupBy: ${msg.groupBy?.join(',') || 'none'}`);
+                }
+            }, [log, flushPartial]);
 
-            ws.onclose = (event) => {
-                setStatus(`closed (${event.code})`);
-                log(`WebSocket closed: ${event.reason || 'no reason'}`);
-            };
+            const start = useCallback(async () => {
+                setPartial('');
+                setSegments([]);
+                setLogs([]);
+                modeRef.current = segmentMode;
+                setStatus('connecting');
 
-            ws.onerror = () => {
-                setStatus('error');
-                log('WebSocket error');
-            };
+                const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+                const url = new URL(`${protocol}://${location.host}/realtime`);
+                url.searchParams.set('model', model.trim() || 'stt-rt-v3');
+                if (language.trim()) url.searchParams.set('language', language.trim());
+                url.searchParams.set('endpoint', endpoint ? 'true' : 'false');
+                url.searchParams.set('diarization', diarization ? 'true' : 'false');
+                url.searchParams.set('languageId', 'true');
+                url.searchParams.set('segmentMode', segmentMode);
+                url.searchParams.set('groupBy', groupBy);
 
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            } catch {
-                setStatus('mic error');
-                log('Microphone permission denied');
-                stop();
-                return;
-            }
+                const ws = new WebSocket(url.toString());
+                ws.binaryType = 'arraybuffer';
+                wsRef.current = ws;
 
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            sourceNode = audioContext.createMediaStreamSource(micStream);
-            processor = audioContext.createScriptProcessor(4096, 1, 1);
-            gainNode = audioContext.createGain();
-            gainNode.gain.value = 0;
+                ws.onopen = () => { setStatus('connected'); log('WebSocket connected'); };
+                ws.onmessage = (e) => { try { handleMessage(e.data); } catch { log('Non-JSON message'); } };
+                ws.onclose = (e) => { setStatus(`closed (${e.code})`); log(`WebSocket closed: ${e.reason || 'no reason'}`); };
+                ws.onerror = () => { setStatus('error'); log('WebSocket error'); };
 
-            processor.onaudioprocess = (event) => {
-                if (!ws || ws.readyState !== WebSocket.OPEN) return;
-                const input = event.inputBuffer.getChannelData(0);
-                const pcm = downsampleBuffer(input, audioContext.sampleRate, targetSampleRate);
-                if (pcm.length > 0) ws.send(pcm.buffer);
-            };
-
-            sourceNode.connect(processor);
-            processor.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-        }
-
-        function stop() {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'finish' }));
-                ws.close(1000, 'client stopped');
-            }
-            ws = null;
-            if (processor) { processor.disconnect(); processor.onaudioprocess = null; processor = null; }
-            if (sourceNode) { sourceNode.disconnect(); sourceNode = null; }
-            if (gainNode) { gainNode.disconnect(); gainNode = null; }
-            if (audioContext) { audioContext.close(); audioContext = null; }
-            if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
-            setStatus('idle');
-            startButton.disabled = false;
-            stopButton.disabled = true;
-        }
-
-        startButton.addEventListener('click', () => start().catch((e) => { log(`Failed: ${e?.message || e}`); stop(); }));
-        stopButton.addEventListener('click', stop);
-
-        // ====================================================================
-        // Agent Mode
-        // ====================================================================
-        const agentStartBtn = document.getElementById('agent-start');
-        const agentStopBtn = document.getElementById('agent-stop');
-        const agentClearBtn = document.getElementById('agent-clear');
-        const agentModelInput = document.getElementById('agent-model');
-        const agentLanguageInput = document.getElementById('agent-language');
-        const agentStateEl = document.getElementById('agent-state');
-        const agentStateIndicator = document.getElementById('agent-state-indicator');
-        const agentSttStatus = document.getElementById('agent-stt-status');
-        const agentSttIndicator = document.getElementById('agent-stt-indicator');
-        const agentPartialEl = document.getElementById('agent-partial');
-        const agentChatEl = document.getElementById('agent-chat');
-        const agentLogEl = document.getElementById('agent-log');
-
-        let agentWs, agentAudioCtx, agentMicStream, agentProcessor, agentSourceNode, agentGainNode;
-        let currentAssistantMsgEl = null;
-
-        function agentLog(message) {
-            agentLogEl.textContent = `[${new Date().toLocaleTimeString()}] ${message}\n` + agentLogEl.textContent;
-        }
-
-        function setAgentState(state) {
-            agentStateEl.textContent = state;
-            agentStateIndicator.className = 'status-indicator';
-            if (state === 'listening') agentStateIndicator.classList.add('active');
-            else if (state !== 'idle') agentStateIndicator.classList.add('paused');
-        }
-
-        function setSttStatus(active) {
-            agentSttStatus.textContent = active ? 'active' : 'paused';
-            agentSttIndicator.className = 'status-indicator';
-            if (active) agentSttIndicator.classList.add('active');
-            else agentSttIndicator.classList.add('paused');
-        }
-
-        function buildAgentWsUrl() {
-            const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-            const url = new URL(`${protocol}://${location.host}/agent`);
-            url.searchParams.set('model', agentModelInput.value.trim() || 'stt-rt-v3');
-            const lang = agentLanguageInput.value.trim();
-            if (lang) url.searchParams.set('language', lang);
-            return url.toString();
-        }
-
-        function addChatMessage(role, content, isStreaming = false) {
-            const div = document.createElement('div');
-            div.className = `chat-message ${role}`;
-            const roleEl = document.createElement('div');
-            roleEl.className = 'role';
-            roleEl.textContent = role === 'user' ? 'You' : 'Assistant';
-            const contentEl = document.createElement('div');
-            contentEl.className = 'content' + (isStreaming ? ' streaming-cursor' : '');
-            contentEl.textContent = content;
-            div.appendChild(roleEl);
-            div.appendChild(contentEl);
-            agentChatEl.appendChild(div);
-            agentChatEl.scrollTop = agentChatEl.scrollHeight;
-            return div;
-        }
-
-        function handleAgentMessage(message) {
-            switch (message.type) {
-                case 'state':
-                    setAgentState(message.state);
-                    agentLog(`State: ${message.state}`);
-                    break;
-                case 'stt_paused':
-                    setSttStatus(false);
-                    agentLog('STT paused');
-                    break;
-                case 'stt_resumed':
-                    setSttStatus(true);
-                    agentLog('STT resumed');
-                    break;
-                case 'partial':
-                    agentPartialEl.textContent = message.text;
-                    break;
-                case 'user_message':
-                    agentPartialEl.textContent = '';
-                    addChatMessage('user', message.text);
-                    agentLog(`User: "${message.text.substring(0, 50)}..."`);
-                    break;
-                case 'assistant_chunk':
-                    if (!currentAssistantMsgEl) {
-                        currentAssistantMsgEl = addChatMessage('assistant', '', true);
-                    }
-                    const contentEl = currentAssistantMsgEl.querySelector('.content');
-                    contentEl.textContent += message.text;
-                    agentChatEl.scrollTop = agentChatEl.scrollHeight;
-                    break;
-                case 'assistant_done':
-                    if (currentAssistantMsgEl) {
-                        currentAssistantMsgEl.querySelector('.content').classList.remove('streaming-cursor');
-                    }
-                    currentAssistantMsgEl = null;
-                    agentLog(`Assistant: "${message.text.substring(0, 50)}..."`);
-                    break;
-                case 'connected':
-                    agentLog(`Connected - STT: ${message.config?.sttModel}`);
-                    break;
-                case 'history_cleared':
-                    agentChatEl.innerHTML = '';
-                    agentLog('Conversation history cleared');
-                    break;
-                case 'error':
-                    agentLog(`Error: ${message.error?.message || 'unknown'}`);
-                    break;
-                case 'disconnected':
-                    agentLog(`Disconnected: ${message.reason || 'unknown'}`);
-                    break;
-            }
-        }
-
-        async function startAgent() {
-            agentStartBtn.disabled = true;
-            agentStopBtn.disabled = false;
-            agentClearBtn.disabled = false;
-            agentPartialEl.textContent = '';
-            agentLogEl.textContent = '';
-            currentAssistantMsgEl = null;
-            setAgentState('connecting');
-            setSttStatus(false);
-
-            agentWs = new WebSocket(buildAgentWsUrl());
-            agentWs.binaryType = 'arraybuffer';
-
-            agentWs.onopen = () => agentLog('WebSocket connected');
-
-            agentWs.onmessage = (event) => {
                 try {
-                    handleAgentMessage(JSON.parse(event.data));
-                } catch { agentLog('Received non-JSON message'); }
-            };
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = ctx.createMediaStreamSource(stream);
+                    const processor = ctx.createScriptProcessor(4096, 1, 1);
+                    const gain = ctx.createGain();
+                    gain.gain.value = 0;
 
-            agentWs.onclose = (event) => {
+                    processor.onaudioprocess = (e) => {
+                        if (wsRef.current?.readyState === WebSocket.OPEN) {
+                            const pcm = downsampleBuffer(e.inputBuffer.getChannelData(0), ctx.sampleRate, TARGET_SAMPLE_RATE);
+                            if (pcm.length > 0) wsRef.current.send(pcm.buffer);
+                        }
+                    };
+
+                    source.connect(processor);
+                    processor.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    audioRef.current = { ctx, stream, processor, source, gain };
+                } catch {
+                    setStatus('mic error');
+                    log('Microphone permission denied');
+                    stop();
+                }
+            }, [model, language, segmentMode, groupBy, endpoint, diarization, log, handleMessage]);
+
+            const stop = useCallback(() => {
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({ type: 'finish' }));
+                    wsRef.current.close(1000, 'client stopped');
+                }
+                wsRef.current = null;
+                const { ctx, stream, processor, source, gain } = audioRef.current;
+                processor?.disconnect();
+                source?.disconnect();
+                gain?.disconnect();
+                ctx?.close();
+                stream?.getTracks().forEach(t => t.stop());
+                audioRef.current = { ctx: null, stream: null, processor: null, source: null, gain: null };
+                setStatus('idle');
+            }, []);
+
+            const isRunning = status !== 'idle' && status !== 'error' && !status.startsWith('closed');
+
+            return html`
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mt-6 items-end">
+                    <${Input} label="Model" value=${model} onChange=${setModel} />
+                    <${Input} label="Language hint" value=${language} onChange=${setLanguage} placeholder="en" />
+                    <${Select} label="Segment Mode" value=${segmentMode} onChange=${setSegmentMode} options=${[
+                        { value: 'raw', label: 'Raw tokens' },
+                        { value: 'segments', label: 'Segments (stateless)' },
+                        { value: 'buffer', label: 'Buffer (rolling)' },
+                    ]} />
+                    <${Select} label="Group By" value=${groupBy} onChange=${setGroupBy} options=${[
+                        { value: 'speaker,language', label: 'Speaker + Language' },
+                        { value: 'speaker', label: 'Speaker only' },
+                        { value: 'language', label: 'Language only' },
+                        { value: '', label: 'No grouping' },
+                    ]} />
+                    <${Checkbox} label="Endpoint" checked=${endpoint} onChange=${setEndpoint} />
+                    <${Checkbox} label="Diarization" checked=${diarization} onChange=${setDiarization} />
+                </div>
+
+                <div class="flex gap-3 mt-4">
+                    <${Button} onClick=${start} disabled=${isRunning}>Start<//>
+                    <${Button} onClick=${stop} disabled=${!isRunning} variant="secondary">Stop<//>
+                </div>
+
+                <div class="mt-4 font-semibold">Status: <span class="text-blue-600">${status}</span></div>
+
+                <${Panel} title="Live partial">
+                    <pre class="whitespace-pre-wrap break-words font-mono text-blue-600">${partial}</pre>
+                <//>
+
+                <${Panel} title="Final transcript / Segments">
+                    <div class="space-y-2">
+                        ${segments.map((seg, i) => seg.isRaw
+                            ? html`<pre key=${i} class="whitespace-pre-wrap break-words font-mono">${seg.text}</pre>`
+                            : html`
+                                <div key=${i} class="p-2 bg-gray-100 rounded">
+                                    <div class="text-xs text-gray-500 mb-1">
+                                        ${[
+                                            seg.speaker && `Speaker: ${seg.speaker}`,
+                                            seg.language && `Lang: ${seg.language}`,
+                                            (seg.start_ms !== undefined || seg.end_ms !== undefined) && `${formatTime(seg.start_ms)} - ${formatTime(seg.end_ms)}`
+                                        ].filter(Boolean).join(' | ') || 'No metadata'}
+                                    </div>
+                                    <div>${seg.text}</div>
+                                </div>
+                            `
+                        )}
+                    </div>
+                <//>
+
+                <${Panel} title="Log">
+                    <pre class="whitespace-pre-wrap break-words font-mono text-sm max-h-48 overflow-y-auto">${logs.join('\n')}</pre>
+                <//>
+            `;
+        }
+
+        // ====================================================================
+        // Agent Tab
+        // ====================================================================
+        function AgentTab() {
+            const [model, setModel] = useState('stt-rt-v3');
+            const [language, setLanguage] = useState('');
+            const [agentState, setAgentState] = useState('idle');
+            const [sttActive, setSttActive] = useState(false);
+            const [partial, setPartial] = useState('');
+            const [messages, setMessages] = useState([]);
+            const [logs, setLogs] = useState([]);
+            const [streamingContent, setStreamingContent] = useState('');
+
+            const wsRef = useRef(null);
+            const audioRef = useRef({ ctx: null, stream: null, processor: null, source: null, gain: null });
+            const chatRef = useRef(null);
+
+            const log = useCallback((msg) => {
+                setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 99)]);
+            }, []);
+
+            const handleMessage = useCallback((data) => {
+                const msg = JSON.parse(data);
+                switch (msg.type) {
+                    case 'state':
+                        setAgentState(msg.state);
+                        log(`State: ${msg.state}`);
+                        break;
+                    case 'stt_paused':
+                        setSttActive(false);
+                        log('STT paused');
+                        break;
+                    case 'stt_resumed':
+                        setSttActive(true);
+                        log('STT resumed');
+                        break;
+                    case 'partial':
+                        setPartial(msg.text);
+                        break;
+                    case 'user_message':
+                        setPartial('');
+                        setMessages(prev => [...prev, { role: 'user', content: msg.text }]);
+                        log(`User: "${msg.text.substring(0, 50)}..."`);
+                        break;
+                    case 'assistant_chunk':
+                        setStreamingContent(prev => prev + msg.text);
+                        break;
+                    case 'assistant_done':
+                        setMessages(prev => [...prev, { role: 'assistant', content: msg.text }]);
+                        setStreamingContent('');
+                        log(`Assistant: "${msg.text.substring(0, 50)}..."`);
+                        break;
+                    case 'connected':
+                        log(`Connected - STT: ${msg.config?.sttModel}`);
+                        break;
+                    case 'history_cleared':
+                        setMessages([]);
+                        log('Conversation history cleared');
+                        break;
+                    case 'error':
+                        log(`Error: ${msg.error?.message || 'unknown'}`);
+                        break;
+                    case 'disconnected':
+                        log(`Disconnected: ${msg.reason || 'unknown'}`);
+                        break;
+                }
+            }, [log]);
+
+            useEffect(() => {
+                if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+            }, [messages, streamingContent]);
+
+            const start = useCallback(async () => {
+                setPartial('');
+                setLogs([]);
+                setStreamingContent('');
+                setAgentState('connecting');
+                setSttActive(false);
+
+                const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+                const url = new URL(`${protocol}://${location.host}/agent`);
+                url.searchParams.set('model', model.trim() || 'stt-rt-v3');
+                if (language.trim()) url.searchParams.set('language', language.trim());
+
+                const ws = new WebSocket(url.toString());
+                ws.binaryType = 'arraybuffer';
+                wsRef.current = ws;
+
+                ws.onopen = () => log('WebSocket connected');
+                ws.onmessage = (e) => { try { handleMessage(e.data); } catch { log('Non-JSON message'); } };
+                ws.onclose = (e) => {
+                    setAgentState('idle');
+                    setSttActive(false);
+                    log(`WebSocket closed: ${e.reason || e.code}`);
+                    stop(true);
+                };
+                ws.onerror = () => log('WebSocket error');
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const source = ctx.createMediaStreamSource(stream);
+                    const processor = ctx.createScriptProcessor(4096, 1, 1);
+                    const gain = ctx.createGain();
+                    gain.gain.value = 0;
+
+                    processor.onaudioprocess = (e) => {
+                        if (wsRef.current?.readyState === WebSocket.OPEN) {
+                            const pcm = downsampleBuffer(e.inputBuffer.getChannelData(0), ctx.sampleRate, TARGET_SAMPLE_RATE);
+                            if (pcm.length > 0) wsRef.current.send(pcm.buffer);
+                        }
+                    };
+
+                    source.connect(processor);
+                    processor.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    audioRef.current = { ctx, stream, processor, source, gain };
+                } catch {
+                    log('Microphone permission denied');
+                    stop();
+                }
+            }, [model, language, log, handleMessage]);
+
+            const stop = useCallback((skipWsClose = false) => {
+                if (!skipWsClose && wsRef.current?.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({ type: 'finish' }));
+                    wsRef.current.close(1000, 'client stopped');
+                }
+                wsRef.current = null;
+                const { ctx, stream, processor, source, gain } = audioRef.current;
+                processor?.disconnect();
+                source?.disconnect();
+                gain?.disconnect();
+                ctx?.close();
+                stream?.getTracks().forEach(t => t.stop());
+                audioRef.current = { ctx: null, stream: null, processor: null, source: null, gain: null };
                 setAgentState('idle');
-                setSttStatus(false);
-                agentLog(`WebSocket closed: ${event.reason || event.code}`);
-                stopAgent(true);
-            };
+                setSttActive(false);
+            }, []);
 
-            agentWs.onerror = () => {
-                agentLog('WebSocket error');
-            };
+            const clearHistory = useCallback(() => {
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                    wsRef.current.send(JSON.stringify({ type: 'clear_history' }));
+                }
+            }, []);
 
-            try {
-                agentMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            } catch {
-                agentLog('Microphone permission denied');
-                stopAgent();
-                return;
-            }
+            const isRunning = agentState !== 'idle';
 
-            agentAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            agentSourceNode = agentAudioCtx.createMediaStreamSource(agentMicStream);
-            agentProcessor = agentAudioCtx.createScriptProcessor(4096, 1, 1);
-            agentGainNode = agentAudioCtx.createGain();
-            agentGainNode.gain.value = 0;
+            return html`
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 items-end">
+                    <${Input} label="STT Model" value=${model} onChange=${setModel} />
+                    <${Input} label="Language" value=${language} onChange=${setLanguage} placeholder="en" />
+                    <${Button} onClick=${start} disabled=${isRunning}>Start Agent<//>
+                    <div class="flex gap-2">
+                        <${Button} onClick=${() => stop()} disabled=${!isRunning} variant="secondary">Stop<//>
+                        <${Button} onClick=${clearHistory} disabled=${!isRunning} variant="secondary">Clear<//>
+                    </div>
+                </div>
 
-            agentProcessor.onaudioprocess = (event) => {
-                if (!agentWs || agentWs.readyState !== WebSocket.OPEN) return;
-                const input = event.inputBuffer.getChannelData(0);
-                const pcm = downsampleBuffer(input, agentAudioCtx.sampleRate, targetSampleRate);
-                if (pcm.length > 0) agentWs.send(pcm.buffer);
-            };
+                <p class="text-sm text-gray-500 mt-2">
+                    This demo uses a simulated agent that echoes your speech. Replace the backend logic with your own LLM/agent.
+                </p>
 
-            agentSourceNode.connect(agentProcessor);
-            agentProcessor.connect(agentGainNode);
-            agentGainNode.connect(agentAudioCtx.destination);
+                <div class="flex gap-8 items-center p-4 bg-gray-50 rounded-lg mt-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full ${agentState === 'listening' ? 'bg-green-500 animate-pulse' : agentState !== 'idle' ? 'bg-amber-500' : 'bg-gray-400'}"></span>
+                        <span>State: <strong>${agentState}</strong></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full ${sttActive ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}"></span>
+                        <span>STT: <strong>${sttActive ? 'active' : 'paused'}</strong></span>
+                    </div>
+                </div>
+
+                <${Panel} title="You are saying...">
+                    <div class="min-h-8 p-2 bg-blue-50 rounded text-blue-600">${partial}</div>
+                <//>
+
+                <div ref=${chatRef} class="max-h-96 overflow-y-auto p-4 border border-gray-300 rounded-lg mt-4 space-y-3">
+                    ${messages.map((msg, i) => html`
+                        <div key=${i} class="p-3 rounded-lg max-w-[85%] ${msg.role === 'user' ? 'bg-blue-600 text-white ml-auto' : 'bg-gray-100 mr-auto'}">
+                            <div class="text-xs font-semibold mb-1 ${msg.role === 'user' ? 'text-blue-200' : 'text-gray-500'}">
+                                ${msg.role === 'user' ? 'You' : 'Assistant'}
+                            </div>
+                            <div class="whitespace-pre-wrap">${msg.content}</div>
+                        </div>
+                    `)}
+                    ${streamingContent && html`
+                        <div class="p-3 rounded-lg max-w-[85%] bg-gray-100 mr-auto">
+                            <div class="text-xs font-semibold mb-1 text-gray-500">Assistant</div>
+                            <div class="whitespace-pre-wrap">${streamingContent}<span class="animate-pulse">▊</span></div>
+                        </div>
+                    `}
+                </div>
+
+                <${Panel} title="Event Log">
+                    <pre class="whitespace-pre-wrap break-words font-mono text-sm max-h-48 overflow-y-auto">${logs.join('\n')}</pre>
+                <//>
+            `;
         }
 
-        function stopAgent(skipWsClose = false) {
-            if (!skipWsClose && agentWs && agentWs.readyState === WebSocket.OPEN) {
-                agentWs.send(JSON.stringify({ type: 'finish' }));
-                agentWs.close(1000, 'client stopped');
-            }
-            agentWs = null;
-            if (agentProcessor) { agentProcessor.disconnect(); agentProcessor.onaudioprocess = null; agentProcessor = null; }
-            if (agentSourceNode) { agentSourceNode.disconnect(); agentSourceNode = null; }
-            if (agentGainNode) { agentGainNode.disconnect(); agentGainNode = null; }
-            if (agentAudioCtx) { agentAudioCtx.close(); agentAudioCtx = null; }
-            if (agentMicStream) { agentMicStream.getTracks().forEach((t) => t.stop()); agentMicStream = null; }
-            setAgentState('idle');
-            setSttStatus(false);
-            agentStartBtn.disabled = false;
-            agentStopBtn.disabled = true;
-            agentClearBtn.disabled = true;
+        // ====================================================================
+        // Main App
+        // ====================================================================
+        function App() {
+            const [activeTab, setActiveTab] = useState('transcription');
+
+            return html`
+                <div class="max-w-4xl mx-auto p-6">
+                    <h1 class="text-3xl font-bold">Soniox Realtime Demo</h1>
+                    <p class="text-gray-500 mt-1">Stream microphone audio to the Express server with Soniox realtime STT.</p>
+
+                    <div class="flex mt-6 border-b-2 border-gray-300">
+                        <button
+                            class="px-6 py-3 font-semibold -mb-0.5 border-b-2 transition-colors ${activeTab === 'transcription' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'}"
+                            onClick=${() => setActiveTab('transcription')}
+                        >
+                            Transcription
+                        </button>
+                        <button
+                            class="px-6 py-3 font-semibold -mb-0.5 border-b-2 transition-colors ${activeTab === 'agent' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'}"
+                            onClick=${() => setActiveTab('agent')}
+                        >
+                            Voice Agent
+                        </button>
+                    </div>
+
+                    ${activeTab === 'transcription' ? html`<${TranscriptionTab} />` : html`<${AgentTab} />`}
+                </div>
+            `;
         }
 
-        function clearAgentHistory() {
-            if (agentWs && agentWs.readyState === WebSocket.OPEN) {
-                agentWs.send(JSON.stringify({ type: 'clear_history' }));
-            }
-        }
-
-        agentStartBtn.addEventListener('click', () => startAgent().catch((e) => { agentLog(`Failed: ${e?.message || e}`); stopAgent(); }));
-        agentStopBtn.addEventListener('click', () => stopAgent());
-        agentClearBtn.addEventListener('click', clearAgentHistory);
+        render(html`<${App} />`, document.getElementById('app'));
     </script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-900">
+    <div id="app"></div>
 </body>
 </html>
