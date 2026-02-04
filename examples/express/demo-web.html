@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soniox Realtime Demo</title>
+    <title>Soniox SDK Demo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         import { h, render } from 'https://esm.sh/preact@10.19.3';
@@ -140,6 +140,11 @@
             const wsRef = useRef(null);
             const audioRef = useRef({ ctx: null, stream: null, processor: null, source: null, gain: null });
             const modeRef = useRef('raw');
+            const segmentsRef = useRef(null);
+
+            useEffect(() => {
+                if (segmentsRef.current) segmentsRef.current.scrollTop = segmentsRef.current.scrollHeight;
+            }, [segments]);
 
             const log = useCallback((msg) => {
                 setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 99)]);
@@ -280,7 +285,7 @@
                 <//>
 
                 <${Panel} title="Final transcript / Segments">
-                    <div class="space-y-2">
+                    <div ref=${segmentsRef} class="space-y-2 max-h-64 overflow-y-auto">
                         ${segments.map((seg, i) => seg.isRaw
                             ? html`<pre key=${i} class="whitespace-pre-wrap break-words font-mono">${seg.text}</pre>`
                             : html`
@@ -508,32 +513,346 @@
         }
 
         // ====================================================================
+        // Async Tab
+        // ====================================================================
+        function AsyncTab() {
+            const [audioUrl, setAudioUrl] = useState('');
+            const [selectedFile, setSelectedFile] = useState(null);
+            const [diarization, setDiarization] = useState(false);
+            const [languageId, setLanguageId] = useState(true);
+            const [waitForCompletion, setWaitForCompletion] = useState(true);
+            const [loading, setLoading] = useState(false);
+            const [transcriptions, setTranscriptions] = useState([]);
+            const [selectedTranscription, setSelectedTranscription] = useState(null);
+            const [transcript, setTranscript] = useState(null);
+            const [logs, setLogs] = useState([]);
+
+            const fileInputRef = useRef(null);
+
+            const log = useCallback((msg) => {
+                setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 99)]);
+            }, []);
+
+            const fetchTranscriptions = useCallback(async () => {
+                try {
+                    const res = await fetch('/transcriptions?limit=20');
+                    const data = await res.json();
+                    setTranscriptions(data.transcriptions || []);
+                    log(`Loaded ${data.transcriptions?.length || 0} transcriptions`);
+                } catch (err) {
+                    log(`Error loading transcriptions: ${err.message}`);
+                }
+            }, [log]);
+
+            useEffect(() => {
+                fetchTranscriptions();
+            }, []);
+
+            const transcribeFromUrl = useCallback(async () => {
+                if (!audioUrl.trim()) {
+                    log('Please enter an audio URL');
+                    return;
+                }
+                setLoading(true);
+                log(`Starting transcription from URL: ${audioUrl}`);
+                try {
+                    const res = await fetch('/transcriptions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            audio_url: audioUrl.trim(),
+                            wait: waitForCompletion,
+                            enable_speaker_diarization: diarization,
+                            enable_language_identification: languageId,
+                        }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Request failed');
+                    log(`Transcription created: ${data.id} (status: ${data.status})`);
+                    setSelectedTranscription(data);
+                    fetchTranscriptions();
+                } catch (err) {
+                    log(`Error: ${err.message}`);
+                } finally {
+                    setLoading(false);
+                }
+            }, [audioUrl, waitForCompletion, diarization, languageId, log, fetchTranscriptions]);
+
+            const transcribeFromFile = useCallback(async () => {
+                if (!selectedFile) {
+                    log('Please select a file');
+                    return;
+                }
+                setLoading(true);
+                log(`Uploading file: ${selectedFile.name}`);
+                try {
+                    // First upload the file
+                    const uploadRes = await fetch('/files', {
+                        method: 'POST',
+                        headers: { 'X-Filename': selectedFile.name },
+                        body: selectedFile,
+                    });
+                    const file = await uploadRes.json();
+                    if (!uploadRes.ok) throw new Error(file.error || 'Upload failed');
+                    log(`File uploaded: ${file.id}`);
+
+                    // Then create transcription from file_id
+                    const res = await fetch('/transcriptions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            file_id: file.id,
+                            wait: waitForCompletion,
+                            enable_speaker_diarization: diarization,
+                            enable_language_identification: languageId,
+                        }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Request failed');
+                    log(`Transcription created: ${data.id} (status: ${data.status})`);
+                    setSelectedTranscription(data);
+                    fetchTranscriptions();
+                } catch (err) {
+                    log(`Error: ${err.message}`);
+                } finally {
+                    setLoading(false);
+                }
+            }, [selectedFile, waitForCompletion, diarization, languageId, log, fetchTranscriptions]);
+
+            const viewTranscript = useCallback(async (id) => {
+                log(`Loading transcript for ${id}...`);
+                try {
+                    const res = await fetch(`/transcriptions/${id}/transcript`);
+                    if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(err.error || 'Not found');
+                    }
+                    const data = await res.json();
+                    setTranscript(data);
+                    log(`Transcript loaded: ${data.parsed?.length || 0} segments`);
+                } catch (err) {
+                    log(`Error: ${err.message}`);
+                    setTranscript(null);
+                }
+            }, [log]);
+
+            const waitForTranscription = useCallback(async (id) => {
+                log(`Waiting for transcription ${id}...`);
+                try {
+                    const res = await fetch(`/transcriptions/${id}/wait`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ timeout_ms: 60000 }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Wait failed');
+                    log(`Transcription ${id} status: ${data.status}`);
+                    setSelectedTranscription(data);
+                    fetchTranscriptions();
+                    if (data.status === 'completed') {
+                        viewTranscript(id);
+                    }
+                } catch (err) {
+                    log(`Error: ${err.message}`);
+                }
+            }, [log, fetchTranscriptions, viewTranscript]);
+
+            const deleteTranscription = useCallback(async (id) => {
+                log(`Deleting transcription ${id}...`);
+                try {
+                    const res = await fetch(`/transcriptions/${id}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error('Delete failed');
+                    log(`Transcription ${id} deleted`);
+                    if (selectedTranscription?.id === id) {
+                        setSelectedTranscription(null);
+                        setTranscript(null);
+                    }
+                    fetchTranscriptions();
+                } catch (err) {
+                    log(`Error: ${err.message}`);
+                }
+            }, [log, selectedTranscription, fetchTranscriptions]);
+
+            const selectTranscription = useCallback(async (t) => {
+                setSelectedTranscription(t);
+                setTranscript(null);
+                if (t.status === 'completed') {
+                    viewTranscript(t.id);
+                }
+            }, [viewTranscript]);
+
+            return html`
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <!-- Left column: Create transcription -->
+                    <div>
+                        <h3 class="font-semibold text-lg mb-3">Create Transcription</h3>
+
+                        <${Panel} title="From URL">
+                            <div class="space-y-3">
+                                <input
+                                    type="text"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    placeholder="https://example.com/audio.mp3"
+                                    value=${audioUrl}
+                                    onInput=${(e) => setAudioUrl(e.target.value)}
+                                />
+                                <${Button} onClick=${transcribeFromUrl} disabled=${loading || !audioUrl.trim()}>
+                                    ${loading ? 'Processing...' : 'Transcribe URL'}
+                                <//>
+                            </div>
+                        <//>
+
+                        <${Panel} title="From File">
+                            <div class="space-y-3">
+                                <input
+                                    ref=${fileInputRef}
+                                    type="file"
+                                    accept="audio/*,video/*"
+                                    class="w-full"
+                                    onChange=${(e) => setSelectedFile(e.target.files[0] || null)}
+                                />
+                                <${Button} onClick=${transcribeFromFile} disabled=${loading || !selectedFile}>
+                                    ${loading ? 'Processing...' : 'Upload & Transcribe'}
+                                <//>
+                            </div>
+                        <//>
+
+                        <${Panel} title="Options">
+                            <div class="flex flex-wrap gap-4">
+                                <${Checkbox} label="Speaker Diarization" checked=${diarization} onChange=${setDiarization} />
+                                <${Checkbox} label="Language ID" checked=${languageId} onChange=${setLanguageId} />
+                                <${Checkbox} label="Wait for completion" checked=${waitForCompletion} onChange=${setWaitForCompletion} />
+                            </div>
+                        <//>
+
+                        <${Panel} title="Log">
+                            <pre class="whitespace-pre-wrap break-words font-mono text-sm max-h-32 overflow-y-auto">${logs.join('\n')}</pre>
+                        <//>
+                    </div>
+
+                    <!-- Right column: Transcriptions list -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-semibold text-lg">Transcriptions</h3>
+                            <${Button} onClick=${fetchTranscriptions} variant="secondary">Refresh<//>
+                        </div>
+
+                        <div class="border border-gray-300 rounded-lg max-h-64 overflow-y-auto">
+                            ${transcriptions.length === 0 ? html`
+                                <div class="p-4 text-gray-500 text-center">No transcriptions</div>
+                            ` : transcriptions.map(t => html`
+                                <div
+                                    key=${t.id}
+                                    class="p-3 border-b border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 ${selectedTranscription?.id === t.id ? 'bg-blue-50' : ''}"
+                                    onClick=${() => selectTranscription(t)}
+                                >
+                                    <div class="flex justify-between items-start">
+                                        <div class="truncate flex-1 mr-2">
+                                            <div class="font-mono text-xs text-gray-500">${t.id.substring(0, 8)}...</div>
+                                            <div class="text-sm truncate">${t.filename || t.audio_url || 'Unknown source'}</div>
+                                        </div>
+                                        <span class="px-2 py-0.5 text-xs rounded-full ${
+                                            t.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                            t.status === 'error' ? 'bg-red-100 text-red-700' :
+                                            'bg-yellow-100 text-yellow-700'
+                                        }">
+                                            ${t.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            `)}
+                        </div>
+
+                        ${selectedTranscription && html`
+                            <${Panel} title="Selected Transcription">
+                                <div class="space-y-2 text-sm">
+                                    <div><strong>ID:</strong> <span class="font-mono">${selectedTranscription.id}</span></div>
+                                    <div><strong>Status:</strong> ${selectedTranscription.status}</div>
+                                    <div><strong>Model:</strong> ${selectedTranscription.model}</div>
+                                    ${selectedTranscription.duration_ms && html`
+                                        <div><strong>Duration:</strong> ${(selectedTranscription.duration_ms / 1000).toFixed(1)}s</div>
+                                    `}
+                                    ${selectedTranscription.enable_speaker_diarization && html`<div>✓ Speaker Diarization</div>`}
+                                    ${selectedTranscription.enable_language_identification && html`<div>✓ Language ID</div>`}
+                                    <div class="flex gap-2 pt-2">
+                                        ${selectedTranscription.status !== 'completed' && html`
+                                            <${Button} onClick=${() => waitForTranscription(selectedTranscription.id)} variant="secondary">
+                                                Wait
+                                            <//>
+                                        `}
+                                        ${selectedTranscription.status === 'completed' && html`
+                                            <${Button} onClick=${() => viewTranscript(selectedTranscription.id)} variant="secondary">
+                                                View Transcript
+                                            <//>
+                                        `}
+                                        <${Button} onClick=${() => deleteTranscription(selectedTranscription.id)} variant="secondary">
+                                            Delete
+                                        <//>
+                                    </div>
+                                </div>
+                            <//>
+                        `}
+                    </div>
+                </div>
+
+                ${transcript && html`
+                    <${Panel} title="Transcript">
+                        <div class="mb-3 p-3 bg-gray-50 rounded">
+                            <div class="text-sm text-gray-500 mb-1">Full Text</div>
+                            <div class="whitespace-pre-wrap">${transcript.text}</div>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-2">Segments (${transcript.parsed?.length || 0})</div>
+                        <div class="space-y-2 max-h-64 overflow-y-auto">
+                            ${(transcript.parsed || []).map((seg, i) => html`
+                                <div key=${i} class="p-2 bg-gray-100 rounded">
+                                    <div class="text-xs text-gray-500 mb-1">
+                                        ${[
+                                            seg.speaker && `Speaker: ${seg.speaker}`,
+                                            seg.language && `Lang: ${seg.language}`,
+                                            (seg.start_ms !== undefined || seg.end_ms !== undefined) && `${formatTime(seg.start_ms)} - ${formatTime(seg.end_ms)}`
+                                        ].filter(Boolean).join(' | ') || 'No metadata'}
+                                    </div>
+                                    <div>${seg.text}</div>
+                                </div>
+                            `)}
+                        </div>
+                    <//>
+                `}
+            `;
+        }
+
+        // ====================================================================
         // Main App
         // ====================================================================
         function App() {
-            const [activeTab, setActiveTab] = useState('transcription');
+            const [activeTab, setActiveTab] = useState('realtime');
+
+            const tabs = [
+                { id: 'realtime', label: 'Realtime' },
+                { id: 'async', label: 'Async' },
+                { id: 'agent', label: 'Voice Agent' },
+            ];
 
             return html`
                 <div class="max-w-4xl mx-auto p-6">
-                    <h1 class="text-3xl font-bold">Soniox Realtime Demo</h1>
-                    <p class="text-gray-500 mt-1">Stream microphone audio to the Express server with Soniox realtime STT.</p>
+                    <h1 class="text-3xl font-bold">Soniox SDK Demo</h1>
+                    <p class="text-gray-500 mt-1">Explore Soniox speech-to-text capabilities.</p>
 
                     <div class="flex mt-6 border-b-2 border-gray-300">
-                        <button
-                            class="px-6 py-3 font-semibold -mb-0.5 border-b-2 transition-colors ${activeTab === 'transcription' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'}"
-                            onClick=${() => setActiveTab('transcription')}
-                        >
-                            Transcription
-                        </button>
-                        <button
-                            class="px-6 py-3 font-semibold -mb-0.5 border-b-2 transition-colors ${activeTab === 'agent' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'}"
-                            onClick=${() => setActiveTab('agent')}
-                        >
-                            Voice Agent
-                        </button>
+                        ${tabs.map(tab => html`
+                            <button
+                                key=${tab.id}
+                                class="px-6 py-3 font-semibold -mb-0.5 border-b-2 transition-colors ${activeTab === tab.id ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'}"
+                                onClick=${() => setActiveTab(tab.id)}
+                            >
+                                ${tab.label}
+                            </button>
+                        `)}
                     </div>
 
-                    ${activeTab === 'transcription' ? html`<${TranscriptionTab} />` : html`<${AgentTab} />`}
+                    ${activeTab === 'realtime' && html`<${TranscriptionTab} />`}
+                    ${activeTab === 'async' && html`<${AsyncTab} />`}
+                    ${activeTab === 'agent' && html`<${AgentTab} />`}
                 </div>
             `;
         }
