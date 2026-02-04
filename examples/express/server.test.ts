@@ -4,6 +4,17 @@ import path from 'path';
 import { SonioxNodeClient } from '@soniox/node';
 import request from 'supertest';
 
+// Mock OpenAI before importing server (server instantiates OpenAI at module load)
+jest.mock('openai', () => {
+    return jest.fn().mockImplementation(() => ({
+        chat: {
+            completions: {
+                create: jest.fn(),
+            },
+        },
+    }));
+});
+
 import { app } from './server';
 
 const AUDIO_FILE_SHORT = path.join(__dirname, '../../audio_samples/audio_short.mp3');
