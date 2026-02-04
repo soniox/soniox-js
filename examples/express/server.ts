@@ -10,14 +10,12 @@ import {
     type SegmentGroupKey,
 } from '@soniox/node';
 import express from 'express';
-import OpenAI from 'openai';
 import { WebSocketServer, WebSocket } from 'ws';
 
 const app = express();
 app.use(express.json());
 
 const soniox = new SonioxNodeClient();
-const openai = new OpenAI(); // Uses OPENAI_API_KEY env var
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 const agentWss = new WebSocketServer({ noServer: true });
@@ -428,8 +426,6 @@ type AgentState = 'listening' | 'endpoint_detected' | 'processing' | 'responding
 type AgentQueryParams = {
     model: string;
     language: string | undefined;
-    llmModel: string;
-    systemPrompt: string;
 };
 
 function parseAgentQueryParams(req: http.IncomingMessage): AgentQueryParams {
@@ -437,9 +433,34 @@ function parseAgentQueryParams(req: http.IncomingMessage): AgentQueryParams {
     return {
         model: url.searchParams.get('model') || DEFAULT_RT_MODEL,
         language: url.searchParams.get('language') || undefined,
-        llmModel: url.searchParams.get('llmModel') || 'gpt-4o-mini',
-        systemPrompt: url.searchParams.get('systemPrompt') || 'You are a helpful voice assistant. Keep responses concise and conversational.',
     };
+}
+
+// Simulated agent responses for demo purposes
+// In a real application, replace this with your LLM/agent of choice
+const SIMULATED_RESPONSES = [
+    'I heard you say: "{utterance}". This is a simulated response to demonstrate the voice agent workflow.',
+    'You said: "{utterance}". In a real application, this would be processed by your AI backend.',
+    'Got it! You mentioned: "{utterance}". Replace this mock with your actual agent logic.',
+];
+
+async function simulateAgentResponse(
+    userText: string,
+    onChunk: (text: string) => void
+): Promise<string> {
+    // Pick a random response template
+    const template = SIMULATED_RESPONSES[Math.floor(Math.random() * SIMULATED_RESPONSES.length)];
+    const response = template.replace('{utterance}', userText);
+
+    // Simulate streaming with random delays (50-150ms per word)
+    const words = response.split(' ');
+    for (let i = 0; i < words.length; i++) {
+        const chunk = i === 0 ? words[i] : ' ' + words[i];
+        await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 100));
+        onChunk(chunk);
+    }
+
+    return response;
 }
 
 agentWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
@@ -449,7 +470,7 @@ agentWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
     (async () => {
         try {
             const params = parseAgentQueryParams(req);
-            console.log('[Agent] Params:', { model: params.model, llmModel: params.llmModel });
+            console.log('[Agent] Params:', { model: params.model });
 
             // STT session config - endpoint detection is required for agent mode
             const sttConfig = {
@@ -511,29 +532,12 @@ agentWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
             conversationHistory.push({ role: 'user', content: userText });
 
             sendState('processing');
-
-            // Call OpenAI with conversation history
-            const completion = await openai.chat.completions.create({
-                model: params.llmModel,
-                messages: [
-                    { role: 'system', content: params.systemPrompt },
-                    ...conversationHistory,
-                ],
-                stream: true,
-            });
-
             sendState('responding');
 
-            let fullResponse = '';
-
-            // Stream the response
-            for await (const chunk of completion) {
-                const content = chunk.choices[0]?.delta?.content;
-                if (content) {
-                    fullResponse += content;
-                    sendJson({ type: 'assistant_chunk', text: content });
-                }
-            }
+            // Simulate agent response (replace with your LLM/agent in production)
+            const fullResponse = await simulateAgentResponse(userText, (chunk) => {
+                sendJson({ type: 'assistant_chunk', text: chunk });
+            });
 
             // Store assistant response in history
             conversationHistory.push({ role: 'assistant', content: fullResponse });
@@ -630,7 +634,6 @@ agentWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
         type: 'connected',
         config: {
             sttModel: params.model,
-            llmModel: params.llmModel,
             language: params.language,
         },
     });

@@ -302,10 +302,6 @@
                 <input id="diarization" type="checkbox">
                 <span>Diarization</span>
             </label>
-            <label class="checkbox-row">
-                <input id="languageId" type="checkbox">
-                <span>Language ID</span>
-            </label>
             <button id="start">Start</button>
             <button id="stop" disabled>Stop</button>
         </div>
@@ -339,26 +335,13 @@
                 Language
                 <input id="agent-language" type="text" placeholder="en">
             </label>
-            <label>
-                LLM Model
-                <select id="agent-llm">
-                    <option value="gpt-4o-mini">gpt-4o-mini</option>
-                    <option value="gpt-4o">gpt-4o</option>
-                    <option value="gpt-4-turbo">gpt-4-turbo</option>
-                    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                </select>
-            </label>
             <button id="agent-start">Start Agent</button>
             <button id="agent-stop" disabled>Stop</button>
             <button id="agent-clear" disabled>Clear History</button>
         </div>
-
-        <div class="controls" style="margin-top: 0;">
-            <label style="grid-column: 1 / -1;">
-                System Prompt
-                <textarea id="agent-system-prompt">You are a helpful voice assistant. Keep responses concise and conversational.</textarea>
-            </label>
-        </div>
+        <p class="muted" style="margin-top: 0;">
+            This demo uses a simulated agent that echoes your speech. Replace the backend logic with your own LLM/agent.
+        </p>
 
         <div class="agent-status">
             <div class="status-item">
@@ -457,7 +440,6 @@
         const languageInput = document.getElementById('language');
         const endpointInput = document.getElementById('endpoint');
         const diarizationInput = document.getElementById('diarization');
-        const languageIdInput = document.getElementById('languageId');
         const segmentModeSelect = document.getElementById('segmentMode');
         const groupBySelect = document.getElementById('groupBy');
 
@@ -480,7 +462,7 @@
             if (language) url.searchParams.set('language', language);
             url.searchParams.set('endpoint', endpointInput.checked ? 'true' : 'false');
             url.searchParams.set('diarization', diarizationInput.checked ? 'true' : 'false');
-            url.searchParams.set('languageId', languageIdInput.checked ? 'true' : 'false');
+            url.searchParams.set('languageId', 'true');
             url.searchParams.set('segmentMode', segmentModeSelect.value);
             url.searchParams.set('groupBy', groupBySelect.value);
             return url.toString();
@@ -643,8 +625,6 @@
         const agentClearBtn = document.getElementById('agent-clear');
         const agentModelInput = document.getElementById('agent-model');
         const agentLanguageInput = document.getElementById('agent-language');
-        const agentLlmSelect = document.getElementById('agent-llm');
-        const agentSystemPrompt = document.getElementById('agent-system-prompt');
         const agentStateEl = document.getElementById('agent-state');
         const agentStateIndicator = document.getElementById('agent-state-indicator');
         const agentSttStatus = document.getElementById('agent-stt-status');
@@ -680,8 +660,6 @@
             url.searchParams.set('model', agentModelInput.value.trim() || 'stt-rt-v3');
             const lang = agentLanguageInput.value.trim();
             if (lang) url.searchParams.set('language', lang);
-            url.searchParams.set('llmModel', agentLlmSelect.value);
-            url.searchParams.set('systemPrompt', agentSystemPrompt.value);
             return url.toString();
         }
 
@@ -739,7 +717,7 @@
                     agentLog(`Assistant: "${message.text.substring(0, 50)}..."`);
                     break;
                 case 'connected':
-                    agentLog(`Connected - STT: ${message.config?.sttModel}, LLM: ${message.config?.llmModel}`);
+                    agentLog(`Connected - STT: ${message.config?.sttModel}`);
                     break;
                 case 'history_cleared':
                     agentChatEl.innerHTML = '';
