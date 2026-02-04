@@ -355,7 +355,7 @@ export class SonioxTranscription {
     /**
      * Additional context provided for the transcription.
      */
-    readonly context: TranscriptionContext | string | null | undefined;
+    readonly context: TranscriptionContext | null | undefined;
 
     /**
      * Pre-fetched transcript. Only available when using `transcribe()` with `wait: true`,

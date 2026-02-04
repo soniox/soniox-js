@@ -212,7 +212,7 @@ export type SonioxTranscriptionData = {
     /**
      * Additional context provided for the transcription.
      */
-    context?: TranscriptionContext | string | null | undefined;
+    context?: TranscriptionContext | null | undefined;
 }
 
 /**
@@ -260,7 +260,7 @@ export type CreateTranscriptionOptions = {
     /**
      * Additional context to improve transcription accuracy and formatting of specialized terms.
      */
-    context?: TranscriptionContext | string | undefined;
+    context?: TranscriptionContext | undefined;
 
     /**
      * Translation configuration.
@@ -353,7 +353,7 @@ export type TranscribeBaseOptions = {
     /**
      * Additional context to improve transcription accuracy and formatting of specialized terms.
      */
-    context?: TranscriptionContext | string | undefined;
+    context?: TranscriptionContext | undefined;
 
     /**
      * Translation configuration.
