@@ -306,7 +306,7 @@ wss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
 
     // Create segment buffer if using buffer mode
     const segmentBuffer = params.segmentMode === 'buffer'
-        ? new RealtimeSegmentBuffer({ groupBy: params.groupBy, finalOnly: true })
+        ? new RealtimeSegmentBuffer({ group_by: params.groupBy, final_only: true })
         : null;
 
     const sendJson = (payload: Record<string, unknown>) => {
@@ -324,8 +324,8 @@ wss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
             case 'segments': {
                 // Stateless segmentation - segment current result tokens
                 const segments = segmentRealtimeTokens(result.tokens, {
-                    groupBy: params.groupBy,
-                    finalOnly: true,
+                    group_by: params.groupBy,
+                    final_only: true,
                 });
                 sendJson({ type: 'result', result, segments });
                 break;
@@ -499,7 +499,7 @@ agentWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
     const conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
     // Buffer to collect utterances for endpoint-driven workflow
-    const utteranceBuffer = new RealtimeUtteranceBuffer({ finalOnly: true });
+    const utteranceBuffer = new RealtimeUtteranceBuffer({ final_only: true });
 
     const sendJson = (payload: Record<string, unknown>) => {
         if (clientWs.readyState === WebSocket.OPEN) {
@@ -717,8 +717,8 @@ pttWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
             let waitingForFinalize = false;
 
             // UtteranceBuffer collects tokens; we flush after finalization
-            // Use finalOnly: true since we wait for Soniox to finalize before flushing
-            const utteranceBuffer = new RealtimeUtteranceBuffer({ finalOnly: true });
+            // Use final_only: true since we wait for Soniox to finalize before flushing
+            const utteranceBuffer = new RealtimeUtteranceBuffer({ final_only: true });
 
             const sendJson = (payload: Record<string, unknown>) => {
                 if (clientWs.readyState === WebSocket.OPEN) {

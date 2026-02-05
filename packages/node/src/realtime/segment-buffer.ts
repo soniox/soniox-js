@@ -14,19 +14,19 @@ const DEFAULT_MAX_TOKENS = 2000;
  */
 export class RealtimeSegmentBuffer {
   private tokens: RealtimeToken[] = [];
-  private readonly groupBy: RealtimeSegmentBufferOptions['groupBy'];
+  private readonly groupBy: RealtimeSegmentBufferOptions['group_by'];
   private readonly finalOnly: boolean;
   private readonly maxTokens: number | undefined;
   private readonly maxMs: number | undefined;
 
   constructor(options: RealtimeSegmentBufferOptions = {}) {
-    validatePositive('maxTokens', options.maxTokens);
-    validatePositive('maxMs', options.maxMs);
+    validatePositive('max_tokens', options.max_tokens);
+    validatePositive('max_ms', options.max_ms);
 
-    this.groupBy = options.groupBy;
-    this.finalOnly = options.finalOnly ?? true;
-    this.maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
-    this.maxMs = options.maxMs;
+    this.groupBy = options.group_by;
+    this.finalOnly = options.final_only ?? true;
+    this.maxTokens = options.max_tokens ?? DEFAULT_MAX_TOKENS;
+    this.maxMs = options.max_ms;
   }
 
   /**
@@ -68,7 +68,7 @@ export class RealtimeSegmentBuffer {
       return [];
     }
 
-    const segments = segmentRealtimeTokens(this.tokens, { groupBy: this.groupBy });
+    const segments = segmentRealtimeTokens(this.tokens, { group_by: this.groupBy });
     this.tokens = [];
     return segments;
   }
@@ -78,7 +78,7 @@ export class RealtimeSegmentBuffer {
       return [];
     }
 
-    const segments = segmentRealtimeTokens(this.tokens, { groupBy: this.groupBy });
+    const segments = segmentRealtimeTokens(this.tokens, { group_by: this.groupBy });
     const stableSegments: RealtimeSegment[] = [];
     let dropCount = 0;
 

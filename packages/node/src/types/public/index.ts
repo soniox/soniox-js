@@ -140,13 +140,13 @@ export type RealtimeOptions = {
    * Falls back to SONIOX_WS_URL environment variable,
    * then to 'wss://stt-rt.soniox.com/transcribe-websocket'.
    */
-  wsBaseUrl?: string | undefined;
+  ws_base_url?: string | undefined;
 
   /**
    * Default session options applied to all realtime sessions.
    * Can be overridden per-session.
    */
-  defaultSessionOptions?: SttSessionOptions | undefined;
+  default_session_options?: SttSessionOptions | undefined;
 };
 
 export type SonioxNodeClientOptions = {
@@ -154,19 +154,19 @@ export type SonioxNodeClientOptions = {
    * API key for authentication.
    * Falls back to SONIOX_API_KEY environment variable if not provided.
    */
-  apiKey?: string;
+  api_key?: string;
 
   /**
    * Base URL for the REST API.
    * Falls back to SONIOX_API_BASE_URL environment variable,
    * then to 'https://api.soniox.com'.
    */
-  baseURL?: string;
+  base_url?: string;
 
   /**
    * Custom HTTP client implementation.
    */
-  httpClient?: HttpClient;
+  http_client?: HttpClient;
 
   /**
    * Realtime API configuration options.

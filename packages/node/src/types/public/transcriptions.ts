@@ -632,7 +632,7 @@ export type SegmentTranscriptOptions = {
    * Fields to group by. A new segment starts when any of these fields changes
    * @default ['speaker', 'language']
    */
-  groupBy?: SegmentGroupKey[] | undefined;
+  group_by?: SegmentGroupKey[] | undefined;
 };
 
 /**

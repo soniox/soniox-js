@@ -37,7 +37,7 @@ describe('RealtimeUtteranceBuffer', () => {
   });
 
   it('should include buffered tokens when no stable segments yet', () => {
-    const buffer = new RealtimeUtteranceBuffer({ finalOnly: false });
+    const buffer = new RealtimeUtteranceBuffer({ final_only: false });
     const tokens = [createToken('Hello', { is_final: false, start_ms: 0, end_ms: 200 })];
 
     buffer.addResult(createResult(tokens, 0));

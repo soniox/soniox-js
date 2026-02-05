@@ -241,13 +241,13 @@ export type RealtimeSegmentOptions = {
    * Fields to group by. A new segment starts when any of these fields changes
    * @default ['speaker', 'language']
    */
-  groupBy?: SegmentGroupKey[] | undefined;
+  group_by?: SegmentGroupKey[] | undefined;
 
   /**
    * When true, only tokens marked as final are included.
    * @default false
    */
-  finalOnly?: boolean | undefined;
+  final_only?: boolean | undefined;
 };
 
 /**
@@ -258,24 +258,24 @@ export type RealtimeSegmentBufferOptions = {
    * Fields to group by. A new segment starts when any of these fields changes
    * @default ['speaker', 'language']
    */
-  groupBy?: SegmentGroupKey[] | undefined;
+  group_by?: SegmentGroupKey[] | undefined;
 
   /**
    * When true, only tokens marked as final are buffered.
    * @default true
    */
-  finalOnly?: boolean | undefined;
+  final_only?: boolean | undefined;
 
   /**
    * Maximum number of tokens to keep in the buffer.
    * @default 2000
    */
-  maxTokens?: number | undefined;
+  max_tokens?: number | undefined;
 
   /**
    * Maximum time window to keep in milliseconds (requires token timings).
    */
-  maxMs?: number | undefined;
+  max_ms?: number | undefined;
 };
 
 /**
@@ -336,24 +336,24 @@ export type RealtimeUtteranceBufferOptions = {
    * Fields to group by. A new segment starts when any of these fields changes
    * @default ['speaker', 'language']
    */
-  groupBy?: SegmentGroupKey[] | undefined;
+  group_by?: SegmentGroupKey[] | undefined;
 
   /**
    * When true, only tokens marked as final are buffered.
    * @default true
    */
-  finalOnly?: boolean | undefined;
+  final_only?: boolean | undefined;
 
   /**
    * Maximum number of tokens to keep in the buffer.
    * @default 2000
    */
-  maxTokens?: number | undefined;
+  max_tokens?: number | undefined;
 
   /**
    * Maximum time window to keep in milliseconds (requires token timings).
    */
-  maxMs?: number | undefined;
+  max_ms?: number | undefined;
 };
 
 /**
@@ -485,17 +485,17 @@ export type RealtimeClientOptions = {
   /**
    * API key for realtime sessions.
    */
-  apiKey: string;
+  api_key: string;
 
   /**
    * WebSocket base URL for realtime connections.
    * @default 'wss://stt-rt.soniox.com/transcribe-websocket'
    */
-  wsBaseUrl: string;
+  ws_base_url: string;
 
   /**
    * Default session options applied to all realtime sessions.
    * Can be overridden per-session.
    */
-  defaultSessionOptions?: SttSessionOptions | undefined;
+  default_session_options?: SttSessionOptions | undefined;
 };

@@ -32,11 +32,11 @@ export class SonioxRealtimeApi {
   stt(config: SttSessionConfig, options?: SttSessionOptions): RealtimeSttSession {
     // Merge default options with per-session options
     const mergedOptions: SttSessionOptions = {
-      ...this.options.defaultSessionOptions,
+      ...this.options.default_session_options,
       ...options,
     };
 
-    return new RealtimeSttSession(this.options.apiKey, this.options.wsBaseUrl, config, mergedOptions);
+    return new RealtimeSttSession(this.options.api_key, this.options.ws_base_url, config, mergedOptions);
   }
 }
 

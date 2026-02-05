@@ -141,6 +141,9 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   private finishResolver: (() => void) | null = null;
   private finishRejecter: ((error: Error) => void) | null = null;
 
+  // Abort handler reference for cleanup
+  private abortHandler: (() => void) | null = null;
+
   constructor(apiKey: string, wsBaseUrl: string, config: SttSessionConfig, options?: SttSessionOptions) {
     this.apiKey = apiKey;
     this.wsBaseUrl = wsBaseUrl;
@@ -149,11 +152,10 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
     this.keepaliveEnabled = options?.keepalive ?? false;
     this.signal = options?.signal;
 
-    // Set up abort signal handler
+    // Set up abort signal handler (store reference for cleanup)
     if (this.signal) {
-      this.signal.addEventListener('abort', () => {
-        this.handleAbort();
-      });
+      this.abortHandler = () => this.handleAbort();
+      this.signal.addEventListener('abort', this.abortHandler);
     }
   }
 
@@ -489,6 +491,11 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   private cleanup(finalState: 'closed' | 'error' | 'finished' | 'canceled', error?: Error): void {
     this.setState(finalState);
     this.stopKeepalive();
+
+    if (this.signal && this.abortHandler) {
+      this.signal.removeEventListener('abort', this.abortHandler);
+      this.abortHandler = null;
+    }
 
     if (this.ws) {
       this.ws.close();

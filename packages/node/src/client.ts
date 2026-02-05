@@ -17,17 +17,17 @@ export class SonioxNodeClient {
   readonly realtime: SonioxRealtimeApi;
 
   constructor(options: SonioxNodeClientOptions = {}) {
-    const apiKey = options.apiKey ?? process.env['SONIOX_API_KEY'];
+    const apiKey = options.api_key ?? process.env['SONIOX_API_KEY'];
     if (!apiKey) {
-      throw new Error('Missing API key. Provide it via options.apiKey or set the SONIOX_API_KEY environment variable.');
+      throw new Error('Missing API key. Provide it via options.api_key or set the SONIOX_API_KEY environment variable.');
     }
 
-    const baseURL = options.baseURL ?? process.env['SONIOX_API_BASE_URL'] ?? SONIOX_API_BASE_URL;
+    const baseURL = options.base_url ?? process.env['SONIOX_API_BASE_URL'] ?? SONIOX_API_BASE_URL;
     const http =
-      options.httpClient ??
+      options.http_client ??
       new FetchHttpClient({
-        baseUrl: baseURL,
-        defaultHeaders: {
+        base_url: baseURL,
+        default_headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
@@ -39,12 +39,12 @@ export class SonioxNodeClient {
     this.webhooks = new SonioxWebhooksAPI(this.stt);
     this.auth = new SonioxAuthAPI(http);
 
-    const wsBaseUrl = options.realtime?.wsBaseUrl ?? process.env['SONIOX_WS_URL'] ?? SONIOX_API_WS_URL;
+    const wsBaseUrl = options.realtime?.ws_base_url ?? process.env['SONIOX_WS_URL'] ?? SONIOX_API_WS_URL;
 
     this.realtime = new SonioxRealtimeApi({
-      apiKey,
-      wsBaseUrl,
-      defaultSessionOptions: options.realtime?.defaultSessionOptions,
+      api_key: apiKey,
+      ws_base_url: wsBaseUrl,
+      default_session_options: options.realtime?.default_session_options,
     });
   }
 }

@@ -18,7 +18,7 @@ describe('FetchHttpClient', () => {
     });
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
+      base_url: 'https://api.example.com',
       fetch: mockFetch,
     });
 
@@ -41,7 +41,7 @@ describe('FetchHttpClient', () => {
     });
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
+      base_url: 'https://api.example.com',
       fetch: mockFetch,
     });
 
@@ -66,7 +66,7 @@ describe('FetchHttpClient', () => {
     });
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
+      base_url: 'https://api.example.com',
       fetch: mockFetch,
     });
 
@@ -88,8 +88,8 @@ describe('FetchHttpClient', () => {
     });
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
-      defaultHeaders: { 'authorization': 'Bearer token' },
+      base_url: 'https://api.example.com',
+      default_headers: { 'authorization': 'Bearer token' },
       fetch: mockFetch,
     });
 
@@ -118,7 +118,7 @@ describe('FetchHttpClient', () => {
     });
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
+      base_url: 'https://api.example.com',
       fetch: mockFetch,
     });
 
@@ -144,7 +144,7 @@ describe('FetchHttpClient', () => {
     });
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
+      base_url: 'https://api.example.com',
       fetch: mockFetch,
     });
 
@@ -163,7 +163,7 @@ describe('FetchHttpClient', () => {
     });
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
+      base_url: 'https://api.example.com',
       fetch: mockFetch,
     });
 
@@ -185,7 +185,7 @@ describe('FetchHttpClient', () => {
     const onResponse = jest.fn();
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
+      base_url: 'https://api.example.com',
       fetch: mockFetch,
       hooks: { onRequest, onResponse },
     });
@@ -215,7 +215,7 @@ describe('FetchHttpClient', () => {
     const onError = jest.fn();
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
+      base_url: 'https://api.example.com',
       fetch: mockFetch,
       hooks: { onError },
     });
@@ -235,7 +235,7 @@ describe('FetchHttpClient', () => {
     });
 
     const client = new FetchHttpClient({
-      baseUrl: 'https://api.example.com',
+      base_url: 'https://api.example.com',
       fetch: mockFetch,
     });
 

@@ -125,8 +125,8 @@ async function parseResponse<T>(
  * @example Basic usage
  * ```typescript
  * const client = new FetchHttpClient({
- *   baseUrl: 'https://api.example.com/v1',
- *   defaultHeaders: {
+ *   base_url: 'https://api.example.com/v1',
+ *   default_headers: {
  *     'Authorization': 'Bearer token',
  *   },
  * });
@@ -142,7 +142,7 @@ async function parseResponse<T>(
  * ```typescript
  * const mockFetch = vi.fn().mockResolvedValue(new Response('{}'));
  * const client = new FetchHttpClient({
- *   baseUrl: 'https://api.example.com',
+ *   base_url: 'https://api.example.com',
  *   fetch: mockFetch,
  * });
  * ```
@@ -189,9 +189,9 @@ export class FetchHttpClient implements HttpClient {
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: HttpClientOptions = {}) {
-    this.baseUrl = options.baseUrl;
-    this.defaultHeaders = options.defaultHeaders ?? {};
-    this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.baseUrl = options.base_url;
+    this.defaultHeaders = options.default_headers ?? {};
+    this.defaultTimeoutMs = options.default_timeout_ms ?? DEFAULT_TIMEOUT_MS;
     this.hooks = options.hooks ?? {};
     this.fetchImpl = options.fetch ?? globalThis.fetch;
 
@@ -250,9 +250,8 @@ export class FetchHttpClient implements HttpClient {
     }
 
     // Combine timeout signal with user-provided signal
-    const signal = request.signal
-      ? combineAbortSignals(timeoutController.signal, request.signal)
-      : timeoutController.signal;
+    const combined = request.signal ? combineAbortSignals(timeoutController.signal, request.signal) : null;
+    const signal = combined ? combined.signal : timeoutController.signal;
 
     try {
       // Perform the fetch
@@ -315,6 +314,8 @@ export class FetchHttpClient implements HttpClient {
       this.hooks.onError?.(normalizedError, errorMeta);
 
       throw normalizedError;
+    } finally {
+      combined?.cleanup();
     }
   }
 
@@ -356,24 +357,31 @@ export class FetchHttpClient implements HttpClient {
 /**
  * Combines multiple AbortSignals into one.
  * The resulting signal will abort if any of the input signals abort.
+ * Returns the combined signal and a cleanup function to remove listeners.
  */
-function combineAbortSignals(...signals: AbortSignal[]): AbortSignal {
+function combineAbortSignals(...signals: AbortSignal[]): { signal: AbortSignal; cleanup: () => void } {
   const controller = new AbortController();
+  const handlers: Array<{ signal: AbortSignal; handler: () => void }> = [];
+
+  const cleanup = () => {
+    for (const { signal, handler } of handlers) {
+      signal.removeEventListener('abort', handler);
+    }
+    handlers.length = 0;
+  };
 
   for (const signal of signals) {
     if (signal.aborted) {
       controller.abort(signal.reason);
-      return controller.signal;
+      return { signal: controller.signal, cleanup };
     }
 
-    signal.addEventListener(
-      'abort',
-      () => {
-        controller.abort(signal.reason);
-      },
-      { once: true }
-    );
+    const handler = () => {
+      controller.abort(signal.reason);
+    };
+    handlers.push({ signal, handler });
+    signal.addEventListener('abort', handler, { once: true });
   }
 
-  return controller.signal;
+  return { signal: controller.signal, cleanup };
 }

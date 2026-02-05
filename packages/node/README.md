@@ -26,14 +26,14 @@ npm install @soniox/node
 import { SonioxNodeClient } from '@soniox/node';
 
 const client = new SonioxNodeClient({
-    apiKey: 'your-api-key', // or set SONIOX_API_KEY env var
+    api_key: 'your-api-key', // or set SONIOX_API_KEY env var
 });
 ```
 
 ## Compact API Reference
 
 **Client**
-- `new SonioxNodeClient({ apiKey?, baseURL?, httpClient? })`
+- `new SonioxNodeClient({ api_key?, base_url?, http_client? })`
 
 **Files**
 - `client.files.upload(file, options?)`
@@ -98,9 +98,9 @@ The SDK supports the following environment variables:
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `SONIOX_API_KEY` | API key for authentication. Used when `apiKey` is not provided in client options. | — |
-| `SONIOX_API_BASE_URL` | Base URL for API requests. Used when `baseURL` is not provided in client options. | `https://api.soniox.com` |
-| `SONIOX_WS_URL` | WebSocket URL for realtime API. Used when `realtime.wsBaseUrl` is not provided. | `wss://stt-rt.soniox.com/transcribe-websocket` |
+| `SONIOX_API_KEY` | API key for authentication. Used when `api_key` is not provided in client options. | — |
+| `SONIOX_API_BASE_URL` | Base URL for API requests. Used when `base_url` is not provided in client options. | `https://api.soniox.com` |
+| `SONIOX_WS_URL` | WebSocket URL for realtime API. Used when `realtime.ws_base_url` is not provided. | `wss://stt-rt.soniox.com/transcribe-websocket` |
 | `SONIOX_API_WEBHOOK_HEADER` | Header name for webhook authentication. Used by webhook handlers when `auth` is not provided. | — |
 | `SONIOX_API_WEBHOOK_SECRET` | Header value for webhook authentication. Used by webhook handlers when `auth` is not provided. | — |
 
@@ -113,7 +113,7 @@ export SONIOX_API_WEBHOOK_SECRET=your-webhook-secret
 ```
 
 ```typescript
-// No need to pass apiKey when SONIOX_API_KEY is set
+// No need to pass api_key when SONIOX_API_KEY is set
 const client = new SonioxNodeClient();
 
 // No need to pass auth when webhook env vars are set
@@ -399,20 +399,20 @@ import { segmentTranscript } from '@soniox/node';
 const segments = segmentTranscript(transcript.tokens);
 ```
 
-Control grouping with the `groupBy` option:
+Control grouping with the `group_by` option:
 
 ```typescript
 // Group by speaker only (ignore language changes)
-const bySpeaker = transcript.segments({ groupBy: ['speaker'] });
+const bySpeaker = transcript.segments({ group_by: ['speaker'] });
 
 // Group by language only (ignore speaker changes)
-const byLanguage = transcript.segments({ groupBy: ['language'] });
+const byLanguage = transcript.segments({ group_by: ['language'] });
 
 // Group by both (default)
-const byBoth = transcript.segments({ groupBy: ['speaker', 'language'] });
+const byBoth = transcript.segments({ group_by: ['speaker', 'language'] });
 
 // No grouping (all tokens in one segment)
-const all = transcript.segments({ groupBy: [] });
+const all = transcript.segments({ group_by: [] });
 ```
 
 Each segment contains:
@@ -741,7 +741,7 @@ Group realtime tokens into segments by speaker/language changes:
 import { segmentRealtimeTokens } from '@soniox/node';
 
 session.on('result', (result) => {
-    const segments = segmentRealtimeTokens(result.tokens, { finalOnly: true });
+    const segments = segmentRealtimeTokens(result.tokens, { final_only: true });
 
     for (const seg of segments) {
         console.log(`[Speaker ${seg.speaker}] ${seg.text}`);
@@ -750,8 +750,8 @@ session.on('result', (result) => {
 ```
 
 Important notes:
-- Set `finalOnly: true` to avoid partial tokens
-- Use `groupBy: ['speaker']`, `['language']`, or `[]` to control grouping
+- Set `final_only: true` to avoid partial tokens
+- Use `group_by: ['speaker']`, `['language']`, or `[]` to control grouping
 - `start_ms`/`end_ms` may be undefined if timing is missing
 
 ### Rolling Segment Buffer
@@ -762,9 +762,9 @@ If you want stable segments during live transcription, use the rolling buffer:
 import { RealtimeSegmentBuffer } from '@soniox/node';
 
 const buffer = new RealtimeSegmentBuffer({
-    finalOnly: true,
-    maxTokens: 2000,
-    maxMs: 60000,
+    final_only: true,
+    max_tokens: 2000,
+    max_ms: 60000,
 });
 
 session.on('result', (result) => {
@@ -776,7 +776,7 @@ session.on('result', (result) => {
 ```
 
 Notes:
-- The buffer is bounded by `maxTokens` (default 2000) and/or `maxMs`
+- The buffer is bounded by `max_tokens` (default 2000) and/or `max_ms`
 - Stable segments are emitted when their end time is finalized
 - Call `buffer.reset()` to drop all buffered tokens
 
@@ -788,8 +788,8 @@ Collect segments into utterances for endpoint-driven workflows:
 import { RealtimeUtteranceBuffer } from '@soniox/node';
 
 const buffer = new RealtimeUtteranceBuffer({
-    finalOnly: true,
-    maxTokens: 2000,
+    final_only: true,
+    max_tokens: 2000,
 });
 
 session.on('result', (result) => {
@@ -989,7 +989,7 @@ const session = client.realtime.stt({
     enable_endpoint_detection: true,
 });
 
-const utteranceBuffer = new RealtimeUtteranceBuffer({ finalOnly: true });
+const utteranceBuffer = new RealtimeUtteranceBuffer({ final_only: true });
 
 session.on('result', (result) => {
     utteranceBuffer.addResult(result);

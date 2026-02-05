@@ -145,11 +145,11 @@ function createTimeoutSignal(
 
 /**
  * Groups contiguous tokens into segments based on specified grouping keys.
- * A new segment starts when any of the `groupBy` fields changes
+ * A new segment starts when any of the `group_by` fields changes
  *
  * @param tokens - Array of transcript tokens to segment
  * @param options - Segmentation options
- * @param options.groupBy - Fields to group by (default: ['speaker', 'language'])
+ * @param options.group_by - Fields to group by (default: ['speaker', 'language'])
  * @returns Array of segments with combined text and timing
  *
  * @example
@@ -160,10 +160,10 @@ function createTimeoutSignal(
  * const segments = segmentTranscript(transcript.tokens);
  *
  * // Group by speaker only
- * const bySpeaker = segmentTranscript(transcript.tokens, { groupBy: ['speaker'] });
+ * const bySpeaker = segmentTranscript(transcript.tokens, { group_by: ['speaker'] });
  *
  * // Group by language only
- * const byLanguage = segmentTranscript(transcript.tokens, { groupBy: ['language'] });
+ * const byLanguage = segmentTranscript(transcript.tokens, { group_by: ['language'] });
  *
  * for (const seg of segments) {
  *     console.log(`[Speaker ${seg.speaker}] ${seg.text}`);
@@ -232,10 +232,10 @@ export class SonioxTranscript {
   /**
    * Groups tokens into segments based on specified grouping keys.
    *
-   * A new segment starts when any of the `groupBy` fields changes.
+   * A new segment starts when any of the `group_by` fields changes.
    *
    * @param options - Segmentation options
-   * @param options.groupBy - Fields to group by (default: ['speaker', 'language'])
+   * @param options.group_by - Fields to group by (default: ['speaker', 'language'])
    * @returns Array of segments with combined text and timing
    *
    * @example
@@ -246,7 +246,7 @@ export class SonioxTranscript {
    * const segments = transcript.segments();
    *
    * // Group by speaker only
-   * const bySpeaker = transcript.segments({ groupBy: ['speaker'] });
+   * const bySpeaker = transcript.segments({ group_by: ['speaker'] });
    *
    * for (const s of segments) {
    *     console.log(`[Speaker ${s.speaker}] ${s.text}`);

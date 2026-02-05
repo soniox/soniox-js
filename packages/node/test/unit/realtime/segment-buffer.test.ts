@@ -19,7 +19,7 @@ describe('RealtimeSegmentBuffer', () => {
   });
 
   it('should return stable segments and keep remainder buffered', () => {
-    const buffer = new RealtimeSegmentBuffer({ groupBy: ['speaker'] });
+    const buffer = new RealtimeSegmentBuffer({ group_by: ['speaker'] });
     const tokens = [
       createToken('Hello', { speaker: '1', start_ms: 0, end_ms: 100 }),
       createToken('Hi', { speaker: '2', start_ms: 100, end_ms: 200 }),
@@ -42,8 +42,8 @@ describe('RealtimeSegmentBuffer', () => {
     expect(buffer.size).toBe(0);
   });
 
-  it('should trim to maxTokens', () => {
-    const buffer = new RealtimeSegmentBuffer({ maxTokens: 2, finalOnly: false });
+  it('should trim to max_tokens', () => {
+    const buffer = new RealtimeSegmentBuffer({ max_tokens: 2, final_only: false });
     const tokens = [
       createToken('A', { end_ms: 10 }),
       createToken('B', { end_ms: 20 }),
@@ -56,7 +56,7 @@ describe('RealtimeSegmentBuffer', () => {
   });
 
   it('should reset buffer', () => {
-    const buffer = new RealtimeSegmentBuffer({ finalOnly: false });
+    const buffer = new RealtimeSegmentBuffer({ final_only: false });
     const tokens = [createToken('Hello', { end_ms: 10 })];
 
     buffer.add(createResult(tokens, 0));
@@ -67,7 +67,7 @@ describe('RealtimeSegmentBuffer', () => {
   });
 
   it('should flush all buffered tokens into segments', () => {
-    const buffer = new RealtimeSegmentBuffer({ groupBy: ['speaker'], finalOnly: false });
+    const buffer = new RealtimeSegmentBuffer({ group_by: ['speaker'], final_only: false });
     const tokens = [
       createToken('Hello', { speaker: '1', start_ms: 0, end_ms: 100 }),
       createToken('Hi', { speaker: '2', start_ms: 100, end_ms: 200 }),

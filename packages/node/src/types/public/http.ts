@@ -154,16 +154,16 @@ export interface HttpClientOptions {
    * Base URL for all requests
    * @example 'https://api.soniox.com/v1'
    */
-  baseUrl?: string;
+  base_url?: string;
   /**
    * Default headers to include in all requests
    */
-  defaultHeaders?: Record<string, string>;
+  default_headers?: Record<string, string>;
   /**
    * Default timeout in milliseconds
    * @default 30000 (30 seconds)
    */
-  defaultTimeoutMs?: number;
+  default_timeout_ms?: number;
   /**
    * Observability hooks for monitoring requests
    */

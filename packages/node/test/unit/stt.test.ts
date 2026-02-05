@@ -2553,15 +2553,15 @@ describe('segmentTranscript', () => {
         expect(result[2]).toMatchObject({ text: 'Hi there', speaker: '2', language: 'en' });
     });
 
-    describe('groupBy option', () => {
-        it('should group by speaker only when groupBy is ["speaker"]', () => {
+    describe('group_by option', () => {
+        it('should group by speaker only when group_by is ["speaker"]', () => {
             const tokens = [
                 createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
                 createToken(' Hola', 500, 1000, { speaker: '1', language: 'es' }),
                 createToken('Hi', 1000, 1200, { speaker: '2', language: 'en' }),
             ];
 
-            const result = segmentTranscript(tokens, { groupBy: ['speaker'] });
+            const result = segmentTranscript(tokens, { group_by: ['speaker'] });
 
             expect(result).toHaveLength(2);
             expect(result[0]?.text).toBe('Hello Hola');
@@ -2570,14 +2570,14 @@ describe('segmentTranscript', () => {
             expect(result[1]?.speaker).toBe('2');
         });
 
-        it('should group by language only when groupBy is ["language"]', () => {
+        it('should group by language only when group_by is ["language"]', () => {
             const tokens = [
                 createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
                 createToken(' Hi', 500, 1000, { speaker: '2', language: 'en' }),
                 createToken(' Hola', 1000, 1200, { speaker: '2', language: 'es' }),
             ];
 
-            const result = segmentTranscript(tokens, { groupBy: ['language'] });
+            const result = segmentTranscript(tokens, { group_by: ['language'] });
 
             expect(result).toHaveLength(2);
             expect(result[0]?.text).toBe('Hello Hi');
@@ -2586,20 +2586,20 @@ describe('segmentTranscript', () => {
             expect(result[1]?.language).toBe('es');
         });
 
-        it('should put all tokens in one segment when groupBy is empty', () => {
+        it('should put all tokens in one segment when group_by is empty', () => {
             const tokens = [
                 createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
                 createToken(' Hola', 500, 1000, { speaker: '2', language: 'es' }),
                 createToken(' Hi', 1000, 1200, { speaker: '3', language: 'fr' }),
             ];
 
-            const result = segmentTranscript(tokens, { groupBy: [] });
+            const result = segmentTranscript(tokens, { group_by: [] });
 
             expect(result).toHaveLength(1);
             expect(result[0]?.text).toBe('Hello Hola Hi');
         });
 
-        it('should use default groupBy when options is undefined', () => {
+        it('should use default group_by when options is undefined', () => {
             const tokens = [
                 createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
                 createToken('Hola', 500, 1000, { speaker: '1', language: 'es' }),
@@ -2610,7 +2610,7 @@ describe('segmentTranscript', () => {
             expect(result).toHaveLength(2);
         });
 
-        it('should use default groupBy when groupBy is undefined', () => {
+        it('should use default group_by when group_by is undefined', () => {
             const tokens = [
                 createToken('Hello', 0, 500, { speaker: '1', language: 'en' }),
                 createToken('Hola', 500, 1000, { speaker: '1', language: 'es' }),
@@ -2670,7 +2670,7 @@ describe('SonioxTranscript', () => {
             expect(segments).toEqual([]);
         });
 
-        it('should accept groupBy option', () => {
+        it('should accept group_by option', () => {
             const tokens: TranscriptToken[] = [
                 { text: 'Hello', start_ms: 0, end_ms: 500, confidence: 0.9, speaker: '1', language: 'en' },
                 { text: ' Hola', start_ms: 600, end_ms: 800, confidence: 0.95, speaker: '1', language: 'es' },
@@ -2686,7 +2686,7 @@ describe('SonioxTranscript', () => {
             expect(transcript.segments()).toHaveLength(2);
 
             // With speaker-only grouping, creates 1 segment
-            const bySpeaker = transcript.segments({ groupBy: ['speaker'] });
+            const bySpeaker = transcript.segments({ group_by: ['speaker'] });
             expect(bySpeaker).toHaveLength(1);
             expect(bySpeaker[0]?.text).toBe('Hello Hola');
         });

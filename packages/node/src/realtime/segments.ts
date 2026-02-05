@@ -4,20 +4,20 @@ import type { RealtimeSegment, RealtimeSegmentOptions, RealtimeToken } from '../
 /**
  * Groups realtime tokens into segments based on specified grouping keys.
  *
- * A new segment starts when any of the `groupBy` fields changes.
+ * A new segment starts when any of the `group_by` fields changes.
  * Tokens are concatenated as-is.
  *
  * @param tokens - Array of realtime tokens to segment
  * @param options - Segmentation options
- * @param options.groupBy - Fields to group by (default: ['speaker', 'language'])
- * @param options.finalOnly - When true, only finalized tokens are included
+ * @param options.group_by - Fields to group by (default: ['speaker', 'language'])
+ * @param options.final_only - When true, only finalized tokens are included
  * @returns Array of segments with combined text and timing (if available)
  */
 export function segmentRealtimeTokens(
   tokens: RealtimeToken[],
   options: RealtimeSegmentOptions = {}
 ): RealtimeSegment[] {
-  const filteredTokens = options.finalOnly ? tokens.filter((token) => token.is_final) : tokens;
+  const filteredTokens = options.final_only ? tokens.filter((token) => token.is_final) : tokens;
   return segmentTokens(filteredTokens, options, buildSegment);
 }
 

@@ -33,26 +33,26 @@ describe('segmentRealtimeTokens', () => {
     expect(result[1]).toMatchObject({ text: 'Hola', speaker: '1', language: 'es' });
   });
 
-  it('should support finalOnly filtering', () => {
+  it('should support final_only filtering', () => {
     const tokens = [
       createToken('Hello', { is_final: false, speaker: '1' }),
       createToken(' world', { is_final: true, speaker: '1' }),
     ];
 
-    const result = segmentRealtimeTokens(tokens, { finalOnly: true });
+    const result = segmentRealtimeTokens(tokens, { final_only: true });
 
     expect(result).toHaveLength(1);
     expect(result[0]?.text).toBe(' world');
   });
 
-  it('should honor groupBy override', () => {
+  it('should honor group_by override', () => {
     const tokens = [
       createToken('Hello', { speaker: '1', language: 'en' }),
       createToken(' Hola', { speaker: '1', language: 'es' }),
       createToken('Hi', { speaker: '2', language: 'es' }),
     ];
 
-    const result = segmentRealtimeTokens(tokens, { groupBy: ['speaker'] });
+    const result = segmentRealtimeTokens(tokens, { group_by: ['speaker'] });
 
     expect(result).toHaveLength(2);
     expect(result[0]?.text).toBe('Hello Hola');

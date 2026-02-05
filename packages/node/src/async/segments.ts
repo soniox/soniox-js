@@ -1,7 +1,7 @@
 import type { SegmentGroupKey } from '../types/public/transcriptions.js';
 
 type SegmentTokensOptions = {
-  groupBy?: SegmentGroupKey[] | undefined;
+  group_by?: SegmentGroupKey[] | undefined;
 };
 
 type SegmentableToken = {
@@ -20,7 +20,7 @@ export function segmentTokens<TToken extends SegmentableToken, TSegment>(
     return [];
   }
 
-  const groupBy = options?.groupBy ?? DEFAULT_GROUP_BY;
+  const groupBy = options?.group_by ?? DEFAULT_GROUP_BY;
   const groupBySpeaker = groupBy.includes('speaker');
   const groupByLanguage = groupBy.includes('language');
 
