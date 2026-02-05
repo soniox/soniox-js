@@ -1,5 +1,5 @@
 import type { HttpClient } from '../http/client.js';
-import { isSonioxHttpError } from '../http/errors.js';
+import { isNotFoundError } from '../http/errors.js';
 import type {
   FileIdentifier,
   ListFilesOptions,
@@ -8,13 +8,6 @@ import type {
   UploadFileInput,
   UploadFileOptions,
 } from '../types/public/index.js';
-
-/**
- * Checks if an error is a 404 Not Found error
- */
-function isNotFoundError(error: unknown): boolean {
-  return isSonioxHttpError(error) && error.status === 404;
-}
 
 /**
  * Uploaded file

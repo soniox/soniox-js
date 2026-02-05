@@ -189,3 +189,10 @@ export function isAbortError(error: unknown): boolean {
 export function isSonioxHttpError(error: unknown): error is SonioxHttpError {
   return error instanceof SonioxHttpError;
 }
+
+/**
+ * Checks if an error is a 404 Not Found error
+ */
+export function isNotFoundError(error: unknown): boolean {
+  return isSonioxHttpError(error) && error.status === 404;
+}

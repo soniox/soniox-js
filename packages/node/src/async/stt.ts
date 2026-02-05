@@ -1,5 +1,5 @@
 import type { HttpClient } from '../http/client.js';
-import { isSonioxHttpError } from '../http/errors.js';
+import { isNotFoundError } from '../http/errors.js';
 import type {
   CreateTranscriptionOptions,
   ISonioxTranscript,
@@ -24,13 +24,6 @@ import type {
 
 import type { SonioxFilesAPI } from './files.js';
 import { segmentTokens } from './segments.js';
-
-/**
- * Checks if an error is a 404 Not Found error
- */
-function isNotFoundError(error: unknown): boolean {
-  return isSonioxHttpError(error) && error.status === 404;
-}
 
 /**
  * Minimum polling interval in ms

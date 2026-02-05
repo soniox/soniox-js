@@ -34,7 +34,7 @@ describe('SonioxAuthAPI', () => {
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'POST',
                 path: '/v1/auth/temporary-api-key',
-                body: { expires_in_seconds: 3600 },
+                body: { expires_in_seconds: 3600, usage_type: 'transcribe_websocket' },
             });
         });
 
