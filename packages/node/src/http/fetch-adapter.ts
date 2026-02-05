@@ -24,11 +24,7 @@ import {
   isAbortError,
   SonioxHttpError,
 } from './errors.js';
-import {
-  buildUrl,
-  mergeHeaders,
-  normalizeHeaders,
-} from './url.js';
+import { buildUrl, mergeHeaders, normalizeHeaders } from './url.js';
 
 /** Default timeout in milliseconds (30 seconds) TODO: Move to constants? */
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -57,9 +53,7 @@ function getContentTypeForBody(body: HttpRequestBody | undefined): string | unde
 /**
  * Prepares the request body for fetch.
  */
-function prepareBody(
-  body: HttpRequestBody | undefined
-): string | ArrayBuffer | Uint8Array | FormData | undefined {
+function prepareBody(body: HttpRequestBody | undefined): string | ArrayBuffer | Uint8Array | FormData | undefined {
   if (body === null || body === undefined) {
     return undefined;
   }
@@ -202,9 +196,7 @@ export class FetchHttpClient implements HttpClient {
     this.fetchImpl = options.fetch ?? globalThis.fetch;
 
     if (!this.fetchImpl) {
-      throw new Error(
-        'fetch is not available. Please provide a fetch implementation via options.fetch'
-      );
+      throw new Error('fetch is not available. Please provide a fetch implementation via options.fetch');
     }
   }
 
@@ -224,13 +216,11 @@ export class FetchHttpClient implements HttpClient {
     // Prepare headers
     const contentTypeHeader = getContentTypeForBody(request.body);
     const isFormData = typeof FormData !== 'undefined' && request.body instanceof FormData;
-    
+
     const defaultHeadersWithoutContentType = isFormData
-      ? Object.fromEntries(
-          Object.entries(this.defaultHeaders).filter(([key]) => key.toLowerCase() !== 'content-type')
-        )
+      ? Object.fromEntries(Object.entries(this.defaultHeaders).filter(([key]) => key.toLowerCase() !== 'content-type'))
       : this.defaultHeaders;
-    
+
     const headers = mergeHeaders(
       defaultHeadersWithoutContentType,
       contentTypeHeader ? { 'Content-Type': contentTypeHeader } : undefined,
@@ -285,13 +275,7 @@ export class FetchHttpClient implements HttpClient {
       // Check for HTTP errors (non-2xx status)
       if (!response.ok) {
         const bodyText = await response.text().catch(() => '');
-        throw createHttpError(
-          url,
-          method,
-          response.status,
-          responseHeaders,
-          bodyText,
-        );
+        throw createHttpError(url, method, response.status, responseHeaders, bodyText);
       }
 
       // Parse response

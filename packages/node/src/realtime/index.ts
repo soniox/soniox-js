@@ -1,8 +1,4 @@
-import type {
-  RealtimeClientOptions,
-  SttSessionConfig,
-  SttSessionOptions,
-} from '../types/public/realtime.js';
+import type { RealtimeClientOptions, SttSessionConfig, SttSessionOptions } from '../types/public/realtime.js';
 
 import { RealtimeSttSession } from './stt.js';
 
@@ -40,12 +36,7 @@ export class SonioxRealtimeApi {
       ...options,
     };
 
-    return new RealtimeSttSession(
-      this.options.apiKey,
-      this.options.wsBaseUrl,
-      config,
-      mergedOptions
-    );
+    return new RealtimeSttSession(this.options.apiKey, this.options.wsBaseUrl, config, mergedOptions);
   }
 }
 

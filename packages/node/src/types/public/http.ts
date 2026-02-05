@@ -35,13 +35,7 @@ export type HttpResponseType = 'json' | 'text' | 'arrayBuffer';
 /**
  * Request body types
  */
-export type HttpRequestBody =
-  | string
-  | Record<string, unknown>
-  | ArrayBuffer
-  | Uint8Array
-  | FormData
-  | null;
+export type HttpRequestBody = string | Record<string, unknown> | ArrayBuffer | Uint8Array | FormData | null;
 
 /**
  * Query parameters
@@ -96,12 +90,7 @@ export interface HttpResponse<T> {
 /**
  * Error codes for HTTP client errors
  */
-export type HttpErrorCode =
-  | 'network_error'
-  | 'timeout'
-  | 'aborted'
-  | 'http_error'
-  | 'parse_error';
+export type HttpErrorCode = 'network_error' | 'timeout' | 'aborted' | 'http_error' | 'parse_error';
 
 /**
  * Error details for SonioxHttpError

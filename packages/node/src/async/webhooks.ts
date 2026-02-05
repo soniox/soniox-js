@@ -1,35 +1,32 @@
-import {
-    SONIOX_API_WEBHOOK_HEADER_ENV,
-    SONIOX_API_WEBHOOK_SECRET_ENV,
-} from '../constants.js';
+import { SONIOX_API_WEBHOOK_HEADER_ENV, SONIOX_API_WEBHOOK_SECRET_ENV } from '../constants.js';
 import type {
-    ExpressLikeRequest,
-    FastifyLikeRequest,
-    HandleWebhookOptions,
-    HonoLikeContext,
-    NestJSLikeRequest,
-    WebhookAuthConfig,
-    WebhookEvent,
-    WebhookEventStatus,
-    WebhookHandlerResult,
-    WebhookHandlerResultWithFetch,
-    WebhookHeaders,
+  ExpressLikeRequest,
+  FastifyLikeRequest,
+  HandleWebhookOptions,
+  HonoLikeContext,
+  NestJSLikeRequest,
+  WebhookAuthConfig,
+  WebhookEvent,
+  WebhookEventStatus,
+  WebhookHandlerResult,
+  WebhookHandlerResultWithFetch,
+  WebhookHeaders,
 } from '../types/public/webhooks.js';
 
 import type { SonioxSttApi } from './stt.js';
 
 export type {
-    ExpressLikeRequest,
-    FastifyLikeRequest,
-    HandleWebhookOptions,
-    HonoLikeContext,
-    NestJSLikeRequest,
-    WebhookAuthConfig,
-    WebhookEvent,
-    WebhookEventStatus,
-    WebhookHandlerResult,
-    WebhookHandlerResultWithFetch,
-    WebhookHeaders,
+  ExpressLikeRequest,
+  FastifyLikeRequest,
+  HandleWebhookOptions,
+  HonoLikeContext,
+  NestJSLikeRequest,
+  WebhookAuthConfig,
+  WebhookEvent,
+  WebhookEventStatus,
+  WebhookHandlerResult,
+  WebhookHandlerResultWithFetch,
+  WebhookHeaders,
 };
 
 const VALID_STATUSES: WebhookEventStatus[] = ['completed', 'error'];
@@ -53,18 +50,18 @@ const VALID_STATUSES: WebhookEventStatus[] = ['completed', 'error'];
  * ```
  */
 export function getWebhookAuthFromEnv(): WebhookAuthConfig | undefined {
-    const headerName = process.env[SONIOX_API_WEBHOOK_HEADER_ENV];
-    const headerValue = process.env[SONIOX_API_WEBHOOK_SECRET_ENV];
+  const headerName = process.env[SONIOX_API_WEBHOOK_HEADER_ENV];
+  const headerValue = process.env[SONIOX_API_WEBHOOK_SECRET_ENV];
 
-    // Both header name and secret value must be set for auth to work
-    if (headerName && headerValue) {
-        return {
-            name: headerName,
-            value: headerValue,
-        };
-    }
+  // Both header name and secret value must be set for auth to work
+  if (headerName && headerValue) {
+    return {
+      name: headerName,
+      value: headerValue,
+    };
+  }
 
-    return undefined;
+  return undefined;
 }
 
 /**
@@ -77,7 +74,7 @@ export function getWebhookAuthFromEnv(): WebhookAuthConfig | undefined {
  * @returns Resolved WebhookAuthConfig or undefined if not configured
  */
 function resolveWebhookAuth(auth?: WebhookAuthConfig): WebhookAuthConfig | undefined {
-    return auth ?? getWebhookAuthFromEnv();
+  return auth ?? getWebhookAuthFromEnv();
 }
 
 /**
@@ -94,21 +91,21 @@ function resolveWebhookAuth(auth?: WebhookAuthConfig): WebhookAuthConfig | undef
  * ```
  */
 export function isWebhookEvent(payload: unknown): payload is WebhookEvent {
-    if (typeof payload !== 'object' || payload === null) {
-        return false;
-    }
+  if (typeof payload !== 'object' || payload === null) {
+    return false;
+  }
 
-    const obj = payload as Record<string, unknown>;
+  const obj = payload as Record<string, unknown>;
 
-    if (typeof obj.id !== 'string' || obj.id.length === 0) {
-        return false;
-    }
+  if (typeof obj.id !== 'string' || obj.id.length === 0) {
+    return false;
+  }
 
-    if (!VALID_STATUSES.includes(obj.status as WebhookEventStatus)) {
-        return false;
-    }
+  if (!VALID_STATUSES.includes(obj.status as WebhookEventStatus)) {
+    return false;
+  }
 
-    return true;
+  return true;
 }
 
 /**
@@ -129,75 +126,73 @@ export function isWebhookEvent(payload: unknown): payload is WebhookEvent {
  * ```
  */
 export function parseWebhookEvent(payload: unknown): WebhookEvent {
-    // Handle string input (parse as JSON)
-    if (typeof payload === 'string') {
-        try {
-            payload = JSON.parse(payload);
-        } catch {
-            throw new Error('Invalid webhook payload: not valid JSON');
-        }
+  // Handle string input (parse as JSON)
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload);
+    } catch {
+      throw new Error('Invalid webhook payload: not valid JSON');
     }
+  }
 
-    if (typeof payload !== 'object' || payload === null) {
-        throw new Error('Invalid webhook payload: expected an object');
-    }
+  if (typeof payload !== 'object' || payload === null) {
+    throw new Error('Invalid webhook payload: expected an object');
+  }
 
-    const obj = payload as Record<string, unknown>;
+  const obj = payload as Record<string, unknown>;
 
-    if (typeof obj.id !== 'string') {
-        throw new Error('Invalid webhook payload: missing or invalid "id" field');
-    }
+  if (typeof obj.id !== 'string') {
+    throw new Error('Invalid webhook payload: missing or invalid "id" field');
+  }
 
-    if (obj.id.length === 0) {
-        throw new Error('Invalid webhook payload: "id" field cannot be empty');
-    }
+  if (obj.id.length === 0) {
+    throw new Error('Invalid webhook payload: "id" field cannot be empty');
+  }
 
-    if (!VALID_STATUSES.includes(obj.status as WebhookEventStatus)) {
-        throw new Error(
-            `Invalid webhook payload: "status" must be "completed" or "error", got "${String(obj.status)}"`
-        );
-    }
+  if (!VALID_STATUSES.includes(obj.status as WebhookEventStatus)) {
+    throw new Error(`Invalid webhook payload: "status" must be "completed" or "error", got "${String(obj.status)}"`);
+  }
 
-    return {
-        id: obj.id,
-        status: obj.status as WebhookEventStatus,
-    };
+  return {
+    id: obj.id,
+    status: obj.status as WebhookEventStatus,
+  };
 }
 
 /**
  * Get a header value from various header formats (case-insensitive)
  */
 function getHeaderValue(headers: WebhookHeaders, name: string): string | null {
-    const lowerName = name.toLowerCase();
+  const lowerName = name.toLowerCase();
 
-    // Fetch API Headers
-    if (headers instanceof Headers) {
-        return headers.get(lowerName);
+  // Fetch API Headers
+  if (headers instanceof Headers) {
+    return headers.get(lowerName);
+  }
+
+  // Object with get method (like Express headers or custom)
+  if (typeof (headers as { get?(name: string): string | null }).get === 'function') {
+    return (headers as { get(name: string): string | null }).get(lowerName);
+  }
+
+  // Plain object
+  const record = headers as Record<string, string | string[] | undefined>;
+
+  // Try exact match first
+  if (lowerName in record) {
+    const value = record[lowerName];
+    return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+  }
+
+  // Case-insensitive search
+  for (const key of Object.keys(record)) {
+    if (key.toLowerCase() === lowerName) {
+      const value = record[key];
+      return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
     }
+  }
 
-    // Object with get method (like Express headers or custom)
-    if (typeof (headers as { get?(name: string): string | null }).get === 'function') {
-        return (headers as { get(name: string): string | null }).get(lowerName);
-    }
-
-    // Plain object
-    const record = headers as Record<string, string | string[] | undefined>;
-
-    // Try exact match first
-    if (lowerName in record) {
-        const value = record[lowerName];
-        return Array.isArray(value) ? value[0] ?? null : value ?? null;
-    }
-
-    // Case-insensitive search
-    for (const key of Object.keys(record)) {
-        if (key.toLowerCase() === lowerName) {
-            const value = record[key];
-            return Array.isArray(value) ? value[0] ?? null : value ?? null;
-        }
-    }
-
-    return null;
+  return null;
 }
 
 /**
@@ -219,12 +214,9 @@ function getHeaderValue(headers: WebhookHeaders, name: string): string | null {
  * }
  * ```
  */
-export function verifyWebhookAuth(
-    headers: WebhookHeaders,
-    auth: WebhookAuthConfig
-): boolean {
-    const headerValue = getHeaderValue(headers, auth.name);
-    return headerValue === auth.value;
+export function verifyWebhookAuth(headers: WebhookHeaders, auth: WebhookAuthConfig): boolean {
+  const headerValue = getHeaderValue(headers, auth.name);
+  return headerValue === auth.value;
 }
 
 /**
@@ -271,46 +263,46 @@ export function verifyWebhookAuth(
  * ```
  */
 export function handleWebhook(options: HandleWebhookOptions): WebhookHandlerResult {
-    const { method, headers, body, auth } = options;
+  const { method, headers, body, auth } = options;
 
-    // Validate HTTP method
-    if (method.toUpperCase() !== 'POST') {
-        return {
-            ok: false,
-            status: 405,
-            error: 'Method not allowed',
-        };
+  // Validate HTTP method
+  if (method.toUpperCase() !== 'POST') {
+    return {
+      ok: false,
+      status: 405,
+      error: 'Method not allowed',
+    };
+  }
+
+  // Resolve authentication from explicit config or environment variables
+  const resolvedAuth = resolveWebhookAuth(auth);
+
+  // Verify authentication if configured
+  if (resolvedAuth) {
+    if (!verifyWebhookAuth(headers, resolvedAuth)) {
+      return {
+        ok: false,
+        status: 401,
+        error: 'Unauthorized',
+      };
     }
+  }
 
-    // Resolve authentication from explicit config or environment variables
-    const resolvedAuth = resolveWebhookAuth(auth);
-
-    // Verify authentication if configured
-    if (resolvedAuth) {
-        if (!verifyWebhookAuth(headers, resolvedAuth)) {
-            return {
-                ok: false,
-                status: 401,
-                error: 'Unauthorized',
-            };
-        }
-    }
-
-    // Parse and validate payload
-    try {
-        const event = parseWebhookEvent(body);
-        return {
-            ok: true,
-            status: 200,
-            event,
-        };
-    } catch (error) {
-        return {
-            ok: false,
-            status: 400,
-            error: error instanceof Error ? error.message : 'Invalid webhook payload',
-        };
-    }
+  // Parse and validate payload
+  try {
+    const event = parseWebhookEvent(body);
+    return {
+      ok: true,
+      status: 200,
+      event,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 400,
+      error: error instanceof Error ? error.message : 'Invalid webhook payload',
+    };
+  }
 }
 
 /**
@@ -341,39 +333,36 @@ export function handleWebhook(options: HandleWebhookOptions): WebhookHandlerResu
  * });
  * ```
  */
-export async function handleWebhookRequest(
-    request: Request,
-    auth?: WebhookAuthConfig
-): Promise<WebhookHandlerResult> {
-    if (request.method.toUpperCase() !== 'POST') {
-        return {
-            ok: false,
-            status: 405,
-            error: 'Method not allowed',
-        };
-    }
-
-    let body: unknown;
-
-    try {
-        body = await request.json();
-    } catch {
-        return {
-            ok: false,
-            status: 400,
-            error: 'Invalid webhook payload: not valid JSON',
-        };
-    }
-
-    const options: HandleWebhookOptions = {
-        method: request.method,
-        headers: request.headers,
-        body,
+export async function handleWebhookRequest(request: Request, auth?: WebhookAuthConfig): Promise<WebhookHandlerResult> {
+  if (request.method.toUpperCase() !== 'POST') {
+    return {
+      ok: false,
+      status: 405,
+      error: 'Method not allowed',
     };
-    if (auth) {
-        options.auth = auth;
-    }
-    return handleWebhook(options);
+  }
+
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Invalid webhook payload: not valid JSON',
+    };
+  }
+
+  const options: HandleWebhookOptions = {
+    method: request.method,
+    headers: request.headers,
+    body,
+  };
+  if (auth) {
+    options.auth = auth;
+  }
+  return handleWebhook(options);
 }
 
 /**
@@ -404,19 +393,16 @@ export async function handleWebhookRequest(
  * });
  * ```
  */
-export function handleWebhookExpress(
-    req: ExpressLikeRequest,
-    auth?: WebhookAuthConfig
-): WebhookHandlerResult {
-    const options: HandleWebhookOptions = {
-        method: req.method,
-        headers: req.headers,
-        body: req.body,
-    };
-    if (auth) {
-        options.auth = auth;
-    }
-    return handleWebhook(options);
+export function handleWebhookExpress(req: ExpressLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResult {
+  const options: HandleWebhookOptions = {
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+  };
+  if (auth) {
+    options.auth = auth;
+  }
+  return handleWebhook(options);
 }
 
 /**
@@ -446,19 +432,16 @@ export function handleWebhookExpress(
  * });
  * ```
  */
-export function handleWebhookFastify(
-    req: FastifyLikeRequest,
-    auth?: WebhookAuthConfig
-): WebhookHandlerResult {
-    const options: HandleWebhookOptions = {
-        method: req.method,
-        headers: req.headers,
-        body: req.body,
-    };
-    if (auth) {
-        options.auth = auth;
-    }
-    return handleWebhook(options);
+export function handleWebhookFastify(req: FastifyLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResult {
+  const options: HandleWebhookOptions = {
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+  };
+  if (auth) {
+    options.auth = auth;
+  }
+  return handleWebhook(options);
 }
 
 /**
@@ -493,19 +476,16 @@ export function handleWebhookFastify(
  * }
  * ```
  */
-export function handleWebhookNestJS(
-    req: NestJSLikeRequest,
-    auth?: WebhookAuthConfig
-): WebhookHandlerResult {
-    const options: HandleWebhookOptions = {
-        method: req.method,
-        headers: req.headers,
-        body: req.body,
-    };
-    if (auth) {
-        options.auth = auth;
-    }
-    return handleWebhook(options);
+export function handleWebhookNestJS(req: NestJSLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResult {
+  const options: HandleWebhookOptions = {
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+  };
+  if (auth) {
+    options.auth = auth;
+  }
+  return handleWebhook(options);
 }
 
 /**
@@ -536,38 +516,35 @@ export function handleWebhookNestJS(
  * });
  * ```
  */
-export async function handleWebhookHono(
-    c: HonoLikeContext,
-    auth?: WebhookAuthConfig
-): Promise<WebhookHandlerResult> {
-    let body: unknown;
+export async function handleWebhookHono(c: HonoLikeContext, auth?: WebhookAuthConfig): Promise<WebhookHandlerResult> {
+  let body: unknown;
 
-    try {
-        body = await c.req.json();
-    } catch {
-        return {
-            ok: false,
-            status: 400,
-            error: 'Invalid webhook payload: not valid JSON',
-        };
-    }
-
-    // Build headers object from Hono's header getter
-    const headers: WebhookHeaders = {
-        get(name: string): string | null {
-            return c.req.header(name) ?? null;
-        },
+  try {
+    body = await c.req.json();
+  } catch {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Invalid webhook payload: not valid JSON',
     };
+  }
 
-    const options: HandleWebhookOptions = {
-        method: c.req.method,
-        headers,
-        body,
-    };
-    if (auth) {
-        options.auth = auth;
-    }
-    return handleWebhook(options);
+  // Build headers object from Hono's header getter
+  const headers: WebhookHeaders = {
+    get(name: string): string | null {
+      return c.req.header(name) ?? null;
+    },
+  };
+
+  const options: HandleWebhookOptions = {
+    method: c.req.method,
+    headers,
+    body,
+  };
+  if (auth) {
+    options.auth = auth;
+  }
+  return handleWebhook(options);
 }
 
 /**
@@ -577,128 +554,126 @@ export async function handleWebhookHono(
  * When used via the client, results include lazy fetch helpers for transcripts.
  */
 export class SonioxWebhooksAPI {
-    private stt: SonioxSttApi | undefined;
+  private stt: SonioxSttApi | undefined;
 
-    /**
-     * @internal
-     */
-    constructor(stt?: SonioxSttApi) {
-        this.stt = stt;
+  /**
+   * @internal
+   */
+  constructor(stt?: SonioxSttApi) {
+    this.stt = stt;
+  }
+
+  /**
+   * Enhance a webhook result with fetch helpers
+   */
+  private withFetchHelpers(result: WebhookHandlerResult): WebhookHandlerResultWithFetch {
+    const stt = this.stt;
+    const event = result.event;
+
+    // If no stt API or no event, return result without fetch helpers
+    if (!stt || !event) {
+      return {
+        ...result,
+        fetchTranscript: undefined,
+        fetchTranscription: undefined,
+      };
     }
 
-    /**
-     * Enhance a webhook result with fetch helpers
-     */
-    private withFetchHelpers(result: WebhookHandlerResult): WebhookHandlerResultWithFetch {
-        const stt = this.stt;
-        const event = result.event;
+    const transcriptionId = event.id;
 
-        // If no stt API or no event, return result without fetch helpers
-        if (!stt || !event) {
-            return {
-                ...result,
-                fetchTranscript: undefined,
-                fetchTranscription: undefined,
-            };
-        }
+    return {
+      ...result,
+      fetchTranscript: event.status === 'completed' ? () => stt.getTranscript(transcriptionId) : undefined,
+      fetchTranscription: () => stt.get(transcriptionId),
+    };
+  }
 
-        const transcriptionId = event.id;
+  /**
+   * Get webhook authentication configuration from environment variables.
+   *
+   * Reads `SONIOX_API_WEBHOOK_HEADER` and `SONIOX_API_WEBHOOK_SECRET` environment variables.
+   * Returns undefined if either variable is not set (both are required for authentication).
+   */
+  getAuthFromEnv(): WebhookAuthConfig | undefined {
+    return getWebhookAuthFromEnv();
+  }
 
-        return {
-            ...result,
-            fetchTranscript: event.status === 'completed'
-                ? () => stt.getTranscript(transcriptionId)
-                : undefined,
-            fetchTranscription: () => stt.get(transcriptionId),
-        };
-    }
+  /**
+   * Type guard to check if a value is a valid WebhookEvent
+   */
+  isEvent(payload: unknown): payload is WebhookEvent {
+    return isWebhookEvent(payload);
+  }
 
-    /**
-     * Get webhook authentication configuration from environment variables.
-     *
-     * Reads `SONIOX_API_WEBHOOK_HEADER` and `SONIOX_API_WEBHOOK_SECRET` environment variables.
-     * Returns undefined if either variable is not set (both are required for authentication).
-     */
-    getAuthFromEnv(): WebhookAuthConfig | undefined {
-        return getWebhookAuthFromEnv();
-    }
+  /**
+   * Parse and validate a webhook event payload
+   */
+  parseEvent(payload: unknown): WebhookEvent {
+    return parseWebhookEvent(payload);
+  }
 
-    /**
-     * Type guard to check if a value is a valid WebhookEvent
-     */
-    isEvent(payload: unknown): payload is WebhookEvent {
-        return isWebhookEvent(payload);
-    }
+  /**
+   * Verify webhook authentication header
+   */
+  verifyAuth(headers: WebhookHeaders, auth: WebhookAuthConfig): boolean {
+    return verifyWebhookAuth(headers, auth);
+  }
 
-    /**
-     * Parse and validate a webhook event payload
-     */
-    parseEvent(payload: unknown): WebhookEvent {
-        return parseWebhookEvent(payload);
-    }
+  /**
+   * Framework-agnostic webhook handler
+   */
+  handle(options: HandleWebhookOptions): WebhookHandlerResultWithFetch {
+    return this.withFetchHelpers(handleWebhook(options));
+  }
 
-    /**
-     * Verify webhook authentication header
-     */
-    verifyAuth(headers: WebhookHeaders, auth: WebhookAuthConfig): boolean {
-        return verifyWebhookAuth(headers, auth);
-    }
+  /**
+   * Handle a webhook from a Fetch API Request
+   */
+  async handleRequest(request: Request, auth?: WebhookAuthConfig): Promise<WebhookHandlerResultWithFetch> {
+    const result = await handleWebhookRequest(request, auth);
+    return this.withFetchHelpers(result);
+  }
 
-    /**
-     * Framework-agnostic webhook handler
-     */
-    handle(options: HandleWebhookOptions): WebhookHandlerResultWithFetch {
-        return this.withFetchHelpers(handleWebhook(options));
-    }
+  /**
+   * Handle a webhook from an Express-like request
+   *
+   * @example
+   * ```typescript
+   * app.post('/webhook', async (req, res) => {
+   *     const result = soniox.webhooks.handleExpress(req);
+   *
+   *     if (result.ok && result.event.status === 'completed') {
+   *         const transcript = await result.fetchTranscript();
+   *         console.log(transcript?.text);
+   *     }
+   *
+   *     res.status(result.status).json({ received: true });
+   * });
+   * ```
+   */
+  handleExpress(req: ExpressLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResultWithFetch {
+    return this.withFetchHelpers(handleWebhookExpress(req, auth));
+  }
 
-    /**
-     * Handle a webhook from a Fetch API Request
-     */
-    async handleRequest(request: Request, auth?: WebhookAuthConfig): Promise<WebhookHandlerResultWithFetch> {
-        const result = await handleWebhookRequest(request, auth);
-        return this.withFetchHelpers(result);
-    }
+  /**
+   * Handle a webhook from a Fastify request
+   */
+  handleFastify(req: FastifyLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResultWithFetch {
+    return this.withFetchHelpers(handleWebhookFastify(req, auth));
+  }
 
-    /**
-     * Handle a webhook from an Express-like request
-     *
-     * @example
-     * ```typescript
-     * app.post('/webhook', async (req, res) => {
-     *     const result = soniox.webhooks.handleExpress(req);
-     *
-     *     if (result.ok && result.event.status === 'completed') {
-     *         const transcript = await result.fetchTranscript();
-     *         console.log(transcript?.text);
-     *     }
-     *
-     *     res.status(result.status).json({ received: true });
-     * });
-     * ```
-     */
-    handleExpress(req: ExpressLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResultWithFetch {
-        return this.withFetchHelpers(handleWebhookExpress(req, auth));
-    }
+  /**
+   * Handle a webhook from a NestJS request
+   */
+  handleNestJS(req: NestJSLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResultWithFetch {
+    return this.withFetchHelpers(handleWebhookNestJS(req, auth));
+  }
 
-    /**
-     * Handle a webhook from a Fastify request
-     */
-    handleFastify(req: FastifyLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResultWithFetch {
-        return this.withFetchHelpers(handleWebhookFastify(req, auth));
-    }
-
-    /**
-     * Handle a webhook from a NestJS request
-     */
-    handleNestJS(req: NestJSLikeRequest, auth?: WebhookAuthConfig): WebhookHandlerResultWithFetch {
-        return this.withFetchHelpers(handleWebhookNestJS(req, auth));
-    }
-
-    /**
-     * Handle a webhook from a Hono context
-     */
-    async handleHono(c: HonoLikeContext, auth?: WebhookAuthConfig): Promise<WebhookHandlerResultWithFetch> {
-        const result = await handleWebhookHono(c, auth);
-        return this.withFetchHelpers(result);
-    }
+  /**
+   * Handle a webhook from a Hono context
+   */
+  async handleHono(c: HonoLikeContext, auth?: WebhookAuthConfig): Promise<WebhookHandlerResultWithFetch> {
+    const result = await handleWebhookHono(c, auth);
+    return this.withFetchHelpers(result);
+  }
 }

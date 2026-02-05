@@ -7,11 +7,7 @@ import type { QueryParams } from '../types/public/http.js';
 /**
  * Builds a complete URL from base URL, path, and query parameters
  */
-export function buildUrl(
-  baseUrl: string | undefined,
-  path: string,
-  query?: QueryParams
-): string {
+export function buildUrl(baseUrl: string | undefined, path: string, query?: QueryParams): string {
   // Join base URL and path
   let url = joinUrl(baseUrl ?? '', path);
 
@@ -59,9 +55,7 @@ export function normalizeHeaders(headers: Headers): Record<string, string> {
 /**
  * Merges header objects
  */
-export function mergeHeaders(
-  ...headerObjects: (Record<string, string> | undefined)[]
-): Record<string, string> {
+export function mergeHeaders(...headerObjects: (Record<string, string> | undefined)[]): Record<string, string> {
   const result: Record<string, string> = {};
   for (const headers of headerObjects) {
     if (headers) {

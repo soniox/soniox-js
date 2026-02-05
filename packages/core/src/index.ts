@@ -5,4 +5,4 @@
  * This package is platform-agnostic
  */
 
-export {}
+export {};

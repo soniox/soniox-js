@@ -108,10 +108,7 @@ export class StateError extends RealtimeError {
  * @param response - Error response from the WebSocket
  * @returns Appropriate error subclass
  */
-export function mapErrorResponse(response: {
-  error_code?: number;
-  error_message?: string;
-}): RealtimeError {
+export function mapErrorResponse(response: { error_code?: number; error_message?: string }): RealtimeError {
   const { error_code, error_message } = response;
   const message = error_message ?? 'Unknown error';
 

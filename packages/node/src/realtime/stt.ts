@@ -11,12 +11,7 @@ import type {
 
 import { AsyncEventQueue } from './async-queue.js';
 import { TypedEmitter } from './emitter.js';
-import {
-  AbortError,
-  ConnectionError,
-  StateError,
-  mapErrorResponse,
-} from './errors.js';
+import { AbortError, ConnectionError, StateError, mapErrorResponse } from './errors.js';
 
 // Default keepalive interval
 const DEFAULT_KEEPALIVE_INTERVAL_MS = 5000;
@@ -36,10 +31,7 @@ function toUint8Array(data: AudioData): Uint8Array {
 /**
  * Build the configuration message to send after WebSocket connection
  */
-function buildConfigMessage(
-  config: SttSessionConfig,
-  apiKey: string
-): Record<string, unknown> {
+function buildConfigMessage(config: SttSessionConfig, apiKey: string): Record<string, unknown> {
   return {
     api_key: apiKey,
     model: config.model,
@@ -79,9 +71,7 @@ function parseResultMessage(data: string): RealtimeResult & { raw: unknown } {
     speaker: typeof t.speaker === 'string' ? t.speaker : undefined,
     language: typeof t.language === 'string' ? t.language : undefined,
     translation_status:
-      t.translation_status === 'none' ||
-      t.translation_status === 'original' ||
-      t.translation_status === 'translation'
+      t.translation_status === 'none' || t.translation_status === 'original' || t.translation_status === 'translation'
         ? t.translation_status
         : undefined,
     source_language: typeof t.source_language === 'string' ? t.source_language : undefined,
@@ -151,12 +141,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   private finishResolver: (() => void) | null = null;
   private finishRejecter: ((error: Error) => void) | null = null;
 
-  constructor(
-    apiKey: string,
-    wsBaseUrl: string,
-    config: SttSessionConfig,
-    options?: SttSessionOptions
-  ) {
+  constructor(apiKey: string, wsBaseUrl: string, config: SttSessionConfig, options?: SttSessionOptions) {
     this.apiKey = apiKey;
     this.wsBaseUrl = wsBaseUrl;
     this.config = config;

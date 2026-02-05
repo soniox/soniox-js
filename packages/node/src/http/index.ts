@@ -37,8 +37,4 @@ export {
 } from './errors.js';
 
 // URL utilities
-export {
-  buildUrl,
-  mergeHeaders,
-  normalizeHeaders,
-} from './url.js';
+export { buildUrl, mergeHeaders, normalizeHeaders } from './url.js';

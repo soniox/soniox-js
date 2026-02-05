@@ -89,11 +89,7 @@ export class SonioxHttpError extends SonioxError {
 /**
  * Creates a network error
  */
-export function createNetworkError(
-  url: string,
-  method: HttpMethod,
-  cause: unknown
-): SonioxHttpError {
+export function createNetworkError(url: string, method: HttpMethod, cause: unknown): SonioxHttpError {
   const message = cause instanceof Error ? cause.message : 'Network request failed';
   return new SonioxHttpError({
     code: 'network_error',
@@ -107,11 +103,7 @@ export function createNetworkError(
 /**
  * Creates a timeout error
  */
-export function createTimeoutError(
-  url: string,
-  method: HttpMethod,
-  timeoutMs: number
-): SonioxHttpError {
+export function createTimeoutError(url: string, method: HttpMethod, timeoutMs: number): SonioxHttpError {
   return new SonioxHttpError({
     code: 'timeout',
     message: `Request timed out after ${timeoutMs}ms`,
@@ -123,11 +115,7 @@ export function createTimeoutError(
 /**
  * Creates an abort error
  */
-export function createAbortError(
-  url: string,
-  method: HttpMethod,
-  cause?: unknown
-): SonioxHttpError {
+export function createAbortError(url: string, method: HttpMethod, cause?: unknown): SonioxHttpError {
   return new SonioxHttpError({
     code: 'aborted',
     message: 'Request was aborted',
@@ -145,7 +133,7 @@ export function createHttpError(
   method: HttpMethod,
   status: number,
   headers: Record<string, string>,
-  bodyText: string,
+  bodyText: string
 ): SonioxHttpError {
   const cappedBody = truncateBodyText(bodyText);
   return new SonioxHttpError({
@@ -162,12 +150,7 @@ export function createHttpError(
 /**
  * Creates a parse error (invalid JSON, etc.)
  */
-export function createParseError(
-  url: string,
-  method: HttpMethod,
-  bodyText: string,
-  cause: unknown
-): SonioxHttpError {
+export function createParseError(url: string, method: HttpMethod, bodyText: string, cause: unknown): SonioxHttpError {
   const message = cause instanceof Error ? cause.message : 'Failed to parse response';
   const cappedBody = truncateBodyText(bodyText);
   return new SonioxHttpError({
