@@ -23,7 +23,7 @@
     "test:all": "jest",
     "test:coverage": "npm run test -- --coverage",
     "typecheck": "tsc -b --force",
-    "prepare": "npm run build"
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
