@@ -752,6 +752,13 @@ export class SonioxSttApi {
    * ```
    */
   async create(options: CreateTranscriptionOptions, signal?: AbortSignal): Promise<SonioxTranscription> {
+    // Validate client_reference_id length
+    if (options.client_reference_id !== undefined && options.client_reference_id.length > 256) {
+      throw new Error(
+        `client_reference_id exceeds maximum length of 256 characters (got ${options.client_reference_id.length})`
+      );
+    }
+
     const response = await this.http.request<SonioxTranscriptionData>({
       method: 'POST',
       path: '/v1/transcriptions',
@@ -1097,6 +1104,13 @@ export class SonioxSttApi {
     const hasHeaderValue = options.webhook_auth_header_value !== undefined;
     if (hasHeaderName !== hasHeaderValue) {
       throw new Error('webhook_auth_header_name and webhook_auth_header_value must be provided together');
+    }
+
+    // Validate client_reference_id length
+    if (options.client_reference_id !== undefined && options.client_reference_id.length > 256) {
+      throw new Error(
+        `client_reference_id exceeds maximum length of 256 characters (got ${options.client_reference_id.length})`
+      );
     }
 
     // Validate cleanup - only allowed when wait=true

@@ -5,6 +5,11 @@ export class SonioxAuthAPI {
   constructor(private http: HttpClient) {}
 
   async createTemporaryKey(request: TemporaryApiKeyRequest): Promise<TemporaryApiKeyResponse> {
+    // Validate expires_in_seconds range
+    if (request.expires_in_seconds < 1 || request.expires_in_seconds > 3600) {
+      throw new Error('expires_in_seconds must be between 1 and 3600');
+    }
+
     const response = await this.http.request<TemporaryApiKeyResponse>({
       method: 'POST',
       path: '/v1/auth/temporary-api-key',

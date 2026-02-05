@@ -701,6 +701,37 @@ describe('SonioxTranscriptionsAPI', () => {
             expect(result).toBeInstanceOf(SonioxTranscription);
             expect(result.status).toBe('queued');
         });
+
+        it('should reject client_reference_id exceeding 256 characters', async () => {
+            const mockHttp = createMockHttpClient();
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
+
+            await expect(api.create({
+                model: 'stt-async-v4',
+                audio_url: 'https://example.com/audio.mp3',
+                client_reference_id: 'x'.repeat(257),
+            })).rejects.toThrow('client_reference_id exceeds maximum length of 256 characters (got 257)');
+        });
+
+        it('should accept client_reference_id at exactly 256 characters', async () => {
+            const requestMock = jest.fn().mockResolvedValue({
+                status: 201,
+                headers: {},
+                data: createMockTranscriptionData(),
+            });
+            const mockHttp = createMockHttpClient(requestMock);
+            const mockFilesApi = createMockFilesAPI();
+            const api = new SonioxSttApi(mockHttp, mockFilesApi);
+
+            await api.create({
+                model: 'stt-async-v4',
+                audio_url: 'https://example.com/audio.mp3',
+                client_reference_id: 'x'.repeat(256),
+            });
+
+            expect(requestMock).toHaveBeenCalled();
+        });
     });
 
     describe('list()', () => {
@@ -1467,6 +1498,39 @@ describe('SonioxTranscriptionsAPI', () => {
                     model: 'stt-async-v4',
                     audio_url: 'https://example.com/audio.mp3',
                     webhook_url: 'https://example.com/webhook',
+                });
+
+                expect(requestMock).toHaveBeenCalled();
+            });
+        });
+
+        describe('client_reference_id validation', () => {
+            it('should reject client_reference_id exceeding 256 characters', async () => {
+                const mockHttp = createMockHttpClient();
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
+
+                await expect(api.transcribe({
+                    model: 'stt-async-v4',
+                    audio_url: 'https://example.com/audio.mp3',
+                    client_reference_id: 'x'.repeat(257),
+                })).rejects.toThrow('client_reference_id exceeds maximum length of 256 characters (got 257)');
+            });
+
+            it('should accept client_reference_id at exactly 256 characters', async () => {
+                const requestMock = jest.fn().mockResolvedValue({
+                    status: 201,
+                    headers: {},
+                    data: createMockTranscriptionData({ status: 'queued' }),
+                });
+                const mockHttp = createMockHttpClient(requestMock);
+                const mockFilesApi = createMockFilesAPI();
+                const api = new SonioxSttApi(mockHttp, mockFilesApi);
+
+                await api.transcribe({
+                    model: 'stt-async-v4',
+                    audio_url: 'https://example.com/audio.mp3',
+                    client_reference_id: 'x'.repeat(256),
                 });
 
                 expect(requestMock).toHaveBeenCalled();
