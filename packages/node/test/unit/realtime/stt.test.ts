@@ -1,5 +1,10 @@
 import { RealtimeSttSession } from '../../../src/realtime/stt';
 import { StateError, AbortError, ConnectionError } from '../../../src/realtime/errors';
+import {
+  MockWebSocket,
+  installMockWebSocket,
+  restoreMockWebSocket,
+} from '../../utils/mock-websocket';
 
 describe('RealtimeSttSession', () => {
   const mockApiKey = 'test-api-key';
@@ -67,71 +72,12 @@ describe('RealtimeSttSession', () => {
   });
 
   describe('finish', () => {
-    class MockWebSocket {
-      static CONNECTING = 0;
-      static OPEN = 1;
-      static CLOSED = 3;
-      static instances: MockWebSocket[] = [];
-
-      readonly url: string;
-      readyState = MockWebSocket.CONNECTING;
-      binaryType = 'arraybuffer';
-      private readonly listeners = new Map<string, Set<(event: any) => void>>();
-
-      constructor(url: string) {
-        this.url = url;
-        MockWebSocket.instances.push(this);
-      }
-
-      addEventListener(type: string, listener: (event: any) => void): void {
-        const handlers = this.listeners.get(type) ?? new Set();
-        handlers.add(listener);
-        this.listeners.set(type, handlers);
-      }
-
-      removeEventListener(type: string, listener: (event: any) => void): void {
-        this.listeners.get(type)?.delete(listener);
-      }
-
-      send(_data: unknown): void {
-        if (this.readyState !== MockWebSocket.OPEN) {
-          throw new Error('WebSocket is not open');
-        }
-      }
-
-      open(): void {
-        this.readyState = MockWebSocket.OPEN;
-        this.dispatch('open', { type: 'open' });
-      }
-
-      close(reason = ''): void {
-        if (this.readyState === MockWebSocket.CLOSED) {
-          return;
-        }
-        this.readyState = MockWebSocket.CLOSED;
-        this.dispatch('close', { type: 'close', reason });
-      }
-
-      private dispatch(type: string, event: any): void {
-        const handlers = this.listeners.get(type);
-        if (!handlers) return;
-        for (const handler of handlers) {
-          handler(event);
-        }
-      }
-    }
-
-    const OriginalWebSocket = global.WebSocket;
-
     beforeEach(() => {
-      MockWebSocket.instances = [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (global as any).WebSocket = MockWebSocket;
+      installMockWebSocket();
     });
 
     afterEach(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (global as any).WebSocket = OriginalWebSocket;
+      restoreMockWebSocket();
     });
 
     it('should reject when socket closes before finished', async () => {
@@ -202,75 +148,14 @@ describe('RealtimeSttSession', () => {
   });
 
   describe('keepalive', () => {
-    class MockWebSocket {
-      static CONNECTING = 0;
-      static OPEN = 1;
-      static CLOSED = 3;
-      static instances: MockWebSocket[] = [];
-
-      readonly url: string;
-      readyState = MockWebSocket.CONNECTING;
-      binaryType = 'arraybuffer';
-      sent: unknown[] = [];
-      private readonly listeners = new Map<string, Set<(event: any) => void>>();
-
-      constructor(url: string) {
-        this.url = url;
-        MockWebSocket.instances.push(this);
-      }
-
-      addEventListener(type: string, listener: (event: any) => void): void {
-        const handlers = this.listeners.get(type) ?? new Set();
-        handlers.add(listener);
-        this.listeners.set(type, handlers);
-      }
-
-      removeEventListener(type: string, listener: (event: any) => void): void {
-        this.listeners.get(type)?.delete(listener);
-      }
-
-      send(data: unknown): void {
-        if (this.readyState !== MockWebSocket.OPEN) {
-          throw new Error('WebSocket is not open');
-        }
-        this.sent.push(data);
-      }
-
-      open(): void {
-        this.readyState = MockWebSocket.OPEN;
-        this.dispatch('open', { type: 'open' });
-      }
-
-      close(reason = ''): void {
-        if (this.readyState === MockWebSocket.CLOSED) {
-          return;
-        }
-        this.readyState = MockWebSocket.CLOSED;
-        this.dispatch('close', { type: 'close', reason });
-      }
-
-      private dispatch(type: string, event: any): void {
-        const handlers = this.listeners.get(type);
-        if (!handlers) return;
-        for (const handler of handlers) {
-          handler(event);
-        }
-      }
-    }
-
-    const OriginalWebSocket = global.WebSocket;
-
     beforeEach(() => {
-      MockWebSocket.instances = [];
+      installMockWebSocket();
       jest.useFakeTimers();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (global as any).WebSocket = MockWebSocket;
     });
 
     afterEach(() => {
       jest.useRealTimers();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (global as any).WebSocket = OriginalWebSocket;
+      restoreMockWebSocket();
     });
 
     it('should send keepalive when enabled', async () => {
@@ -315,77 +200,12 @@ describe('RealtimeSttSession', () => {
   });
 
   describe('state_change and finished events', () => {
-    class MockWebSocket {
-      static CONNECTING = 0;
-      static OPEN = 1;
-      static CLOSED = 3;
-      static instances: MockWebSocket[] = [];
-
-      readonly url: string;
-      readyState = MockWebSocket.CONNECTING;
-      binaryType = 'arraybuffer';
-      sent: unknown[] = [];
-      private readonly listeners = new Map<string, Set<(event: any) => void>>();
-
-      constructor(url: string) {
-        this.url = url;
-        MockWebSocket.instances.push(this);
-      }
-
-      addEventListener(type: string, listener: (event: any) => void): void {
-        const handlers = this.listeners.get(type) ?? new Set();
-        handlers.add(listener);
-        this.listeners.set(type, handlers);
-      }
-
-      removeEventListener(type: string, listener: (event: any) => void): void {
-        this.listeners.get(type)?.delete(listener);
-      }
-
-      send(data: unknown): void {
-        if (this.readyState !== MockWebSocket.OPEN) {
-          throw new Error('WebSocket is not open');
-        }
-        this.sent.push(data);
-      }
-
-      open(): void {
-        this.readyState = MockWebSocket.OPEN;
-        this.dispatch('open', { type: 'open' });
-      }
-
-      close(reason = ''): void {
-        if (this.readyState === MockWebSocket.CLOSED) {
-          return;
-        }
-        this.readyState = MockWebSocket.CLOSED;
-        this.dispatch('close', { type: 'close', reason });
-      }
-
-      message(data: string): void {
-        this.dispatch('message', { data });
-      }
-
-      private dispatch(type: string, event: any): void {
-        const handlers = this.listeners.get(type);
-        if (!handlers) return;
-        for (const handler of handlers) {
-          handler(event);
-        }
-      }
-    }
-
-    const OriginalWebSocket = global.WebSocket;
-
     beforeEach(() => {
-      MockWebSocket.instances = [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (global as any).WebSocket = MockWebSocket;
+      installMockWebSocket();
     });
 
     afterEach(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (global as any).WebSocket = OriginalWebSocket;
+      restoreMockWebSocket();
     });
 
     it('should emit state_change on connect', async () => {
