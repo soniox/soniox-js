@@ -2,11 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [project-setup]
     tags:
       - "v*"
   pull_request:
-    branches: [main]
+    branches: [project-setup]
 
 permissions:
   contents: read
