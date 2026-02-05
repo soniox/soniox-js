@@ -297,11 +297,11 @@ app.post('/webhook', (req, res) => {
 // Realtime WebSocket Proxy
 // ============================================================================
 
-wss.on('connection', async (clientWs: WebSocket, req: http.IncomingMessage) => {
+wss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
     const params = parseQueryParams(req);
     const config = buildRealtimeConfig(params);
     const session = soniox.realtime.stt(config);
-    const pendingAudio: Buffer[] = [];
+    const pendingAudio: Buffer<ArrayBufferLike>[] = [];
     let connected = false;
 
     // Create segment buffer if using buffer mode
@@ -365,7 +365,7 @@ wss.on('connection', async (clientWs: WebSocket, req: http.IncomingMessage) => {
         if (isBinary) {
             const chunk = data instanceof Buffer ? data : Buffer.from(data as ArrayBuffer);
             if (!connected) {
-                pendingAudio.push(chunk);
+                pendingAudio.push(chunk as Buffer<ArrayBufferLike>);
                 return;
             }
             try {
@@ -376,7 +376,7 @@ wss.on('connection', async (clientWs: WebSocket, req: http.IncomingMessage) => {
             return;
         }
 
-        const text = typeof data === 'string' ? data : data.toString();
+        const text = typeof data === 'string' ? data : Buffer.from(data as ArrayBuffer).toString();
         try {
             const message = JSON.parse(text) as { type?: string; trailing_silence_ms?: number };
             if (message.type === 'finalize') {
@@ -404,23 +404,25 @@ wss.on('connection', async (clientWs: WebSocket, req: http.IncomingMessage) => {
         session.close();
     });
 
-    try {
-        await session.connect();
-        connected = true;
-        sendJson({
-            type: 'connected',
-            config,
-            segmentMode: params.segmentMode,
-            groupBy: params.groupBy,
-        });
-        for (const chunk of pendingAudio) {
-            session.sendAudio(chunk);
+    void (async () => {
+        try {
+            await session.connect();
+            connected = true;
+            sendJson({
+                type: 'connected',
+                config,
+                segmentMode: params.segmentMode,
+                groupBy: params.groupBy,
+            });
+            for (const chunk of pendingAudio) {
+                session.sendAudio(chunk);
+            }
+            pendingAudio.length = 0;
+        } catch (error) {
+            handleError(error);
+            clientWs.close(1011, 'Failed to connect to Soniox');
         }
-        pendingAudio.length = 0;
-    } catch (error) {
-        handleError(error);
-        clientWs.close(1011, 'Failed to connect to Soniox');
-    }
+    })();
 });
 
 // ============================================================================
@@ -489,7 +491,7 @@ agentWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
             };
 
             const session = soniox.realtime.stt(sttConfig);
-    const pendingAudio: Buffer[] = [];
+    const pendingAudio: Buffer<ArrayBufferLike>[] = [];
     let connected = false;
     let currentState: AgentState = 'listening';
 
@@ -591,7 +593,7 @@ agentWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
         if (isBinary) {
             const chunk = data instanceof Buffer ? data : Buffer.from(data as ArrayBuffer);
             if (!connected) {
-                pendingAudio.push(chunk);
+                pendingAudio.push(chunk as Buffer<ArrayBufferLike>);
                 return;
             }
             // Only send audio if we're in listening state
@@ -605,7 +607,7 @@ agentWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
             return;
         }
 
-        const text = typeof data === 'string' ? data : data.toString();
+        const text = typeof data === 'string' ? data : Buffer.from(data as ArrayBuffer).toString();
         try {
             const message = JSON.parse(text) as { type?: string };
             if (message.type === 'finish') {
@@ -653,10 +655,12 @@ agentWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
 
         } catch (error) {
             console.error('[Agent] Connection error:', error);
-            handleError(error);
-            clientWs.close(1011, 'Failed to connect to Soniox');
+            if (clientWs.readyState === WebSocket.OPEN) {
+                clientWs.send(JSON.stringify({ type: 'error', error: serializeError(error) }));
+                clientWs.close(1011, 'Failed to connect to Soniox');
+            }
         }
-    })().catch((error) => {
+    })().catch((error: unknown) => {
         console.error('[Agent] Unhandled error:', error);
         if (clientWs.readyState === WebSocket.OPEN) {
             clientWs.close(1011, 'Internal error');
@@ -707,7 +711,7 @@ pttWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
                 language_hints: language ? [language] : undefined,
             });
 
-            const pendingAudio: Buffer[] = [];
+            const pendingAudio: Buffer<ArrayBufferLike>[] = [];
             let connected = false;
             let recording = false;
             let waitingForFinalize = false;
@@ -762,7 +766,7 @@ pttWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
                 if (isBinary) {
                     const chunk = data instanceof Buffer ? data : Buffer.from(data as ArrayBuffer);
                     if (!connected) {
-                        pendingAudio.push(chunk);
+                        pendingAudio.push(chunk as Buffer<ArrayBufferLike>);
                         return;
                     }
                     // Only process audio while recording
@@ -776,7 +780,7 @@ pttWss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
                     return;
                 }
 
-                const text = typeof data === 'string' ? data : data.toString();
+                const text = typeof data === 'string' ? data : Buffer.from(data as ArrayBuffer).toString();
                 try {
                     const message = JSON.parse(text) as { type?: string };
 
