@@ -4,7 +4,17 @@ import type { TemporaryApiKeyRequest, TemporaryApiKeyResponse } from '../types/p
 export class SonioxAuthAPI {
   constructor(private http: HttpClient) {}
 
-  async createTemporaryKey(request: TemporaryApiKeyRequest): Promise<TemporaryApiKeyResponse> {
+  /**
+   * Creates a temporary API key for client-side use.
+   *
+   * @param request - Request parameters for the temporary key
+   * @param signal - Optional AbortSignal for cancellation
+   * @returns The temporary API key response
+   */
+  async createTemporaryKey(
+    request: TemporaryApiKeyRequest,
+    signal?: AbortSignal
+  ): Promise<TemporaryApiKeyResponse> {
     // Validate expires_in_seconds range
     if (request.expires_in_seconds < 1 || request.expires_in_seconds > 3600) {
       throw new Error('expires_in_seconds must be between 1 and 3600');
@@ -14,6 +24,7 @@ export class SonioxAuthAPI {
       method: 'POST',
       path: '/v1/auth/temporary-api-key',
       body: request,
+      ...(signal && { signal }),
     });
 
     return response.data;

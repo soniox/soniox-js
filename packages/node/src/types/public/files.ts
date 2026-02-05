@@ -46,6 +46,11 @@ export type ListFilesOptions = {
    * Pagination cursor for the next page of results.
    */
   cursor?: string | undefined;
+
+  /**
+   * AbortSignal for cancelling the request
+   */
+  signal?: AbortSignal | undefined;
 };
 
 /**

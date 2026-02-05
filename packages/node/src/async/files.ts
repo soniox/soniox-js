@@ -47,6 +47,7 @@ export class SonioxFile {
    * Permanently deletes this file.
    * This operation is idempotent - succeeds even if the file doesn't exist.
    *
+   * @param signal - Optional AbortSignal for cancellation
    * @throws {SonioxHttpError} On API errors (except 404)
    *
    * @example
@@ -57,11 +58,12 @@ export class SonioxFile {
    * }
    * ```
    */
-  async delete(): Promise<void> {
+  async delete(signal?: AbortSignal): Promise<void> {
     try {
       await this._http.request<null>({
         method: 'DELETE',
         path: `/v1/files/${this.id}`,
+        ...(signal && { signal }),
       });
     } catch (error) {
       if (!isNotFoundError(error)) {
@@ -88,7 +90,8 @@ export class FileListResult implements AsyncIterable<SonioxFile> {
   constructor(
     initialResponse: ListFilesResponse<SonioxFileData>,
     private readonly _http: HttpClient,
-    private readonly _limit: number | undefined
+    private readonly _limit: number | undefined,
+    private readonly _signal: AbortSignal | undefined = undefined
   ) {
     this.files = initialResponse.files.map((data) => new SonioxFile(data, _http));
     this.next_page_cursor = initialResponse.next_page_cursor;
@@ -132,6 +135,7 @@ export class FileListResult implements AsyncIterable<SonioxFile> {
           limit: this._limit,
           cursor,
         },
+        ...(this._signal && { signal: this._signal }),
       });
 
       for (const data of response.data.files) {
@@ -405,7 +409,7 @@ export class SonioxFilesAPI {
    *
    * The returned result is async iterable - use `for await...of`
    *
-   * @param options - Optional pagination parameters
+   * @param options - Optional pagination and cancellation parameters
    * @returns FileListResult
    * @throws {SonioxHttpError}
    *
@@ -433,25 +437,33 @@ export class SonioxFilesAPI {
    * if (page1.next_page_cursor) {
    *     const page2 = await client.files.list({ cursor: page1.next_page_cursor });
    * }
+   *
+   * // With cancellation
+   * const controller = new AbortController();
+   * const result = await client.files.list({ signal: controller.signal });
    * ```
    */
   async list(options: ListFilesOptions = {}): Promise<FileListResult> {
+    const { limit, cursor, signal } = options;
+
     const response = await this.http.request<ListFilesResponse<SonioxFileData>>({
       method: 'GET',
       path: '/v1/files',
       query: {
-        limit: options.limit,
-        cursor: options.cursor,
+        limit,
+        cursor,
       },
+      ...(signal && { signal }),
     });
 
-    return new FileListResult(response.data, this.http, options.limit);
+    return new FileListResult(response.data, this.http, limit, signal);
   }
 
   /**
    * Retrieve metadata for an uploaded file.
    *
    * @param file - The UUID of the file or a SonioxFile instance
+   * @param signal - Optional AbortSignal for cancellation
    * @returns The file instance, or null if not found
    * @throws {SonioxHttpError} On API errors (except 404)
    *
@@ -463,12 +475,13 @@ export class SonioxFilesAPI {
    * }
    * ```
    */
-  async get(file: FileIdentifier): Promise<SonioxFile | null> {
+  async get(file: FileIdentifier, signal?: AbortSignal): Promise<SonioxFile | null> {
     const file_id = getFileId(file);
     try {
       const response = await this.http.request<SonioxFileData>({
         method: 'GET',
         path: `/v1/files/${file_id}`,
+        ...(signal && { signal }),
       });
       return new SonioxFile(response.data, this.http);
     } catch (error) {
@@ -484,6 +497,7 @@ export class SonioxFilesAPI {
    * This operation is idempotent - succeeds even if the file doesn't exist.
    *
    * @param file - The UUID of the file or a SonioxFile instance
+   * @param signal - Optional AbortSignal for cancellation
    * @throws {SonioxHttpError} On API errors (except 404)
    *
    * @example
@@ -501,12 +515,13 @@ export class SonioxFilesAPI {
    * await file.delete();
    * ```
    */
-  async delete(file: FileIdentifier): Promise<void> {
+  async delete(file: FileIdentifier, signal?: AbortSignal): Promise<void> {
     const file_id = getFileId(file);
     try {
       await this.http.request<null>({
         method: 'DELETE',
         path: `/v1/files/${file_id}`,
+        ...(signal && { signal }),
       });
     } catch (error) {
       if (!isNotFoundError(error)) {
