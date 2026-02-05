@@ -339,12 +339,13 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   private async createWebSocket(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       try {
-        this.ws = new WebSocket(this.wsBaseUrl);
-        this.ws.binaryType = 'arraybuffer';
+        const ws = new WebSocket(this.wsBaseUrl);
+        this.ws = ws;
+        ws.binaryType = 'arraybuffer';
 
         const cleanup = () => {
-          this.ws!.removeEventListener('open', onOpen);
-          this.ws!.removeEventListener('error', onError);
+          ws.removeEventListener('open', onOpen);
+          ws.removeEventListener('error', onError);
         };
 
         const onOpen = () => {
@@ -352,12 +353,12 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
 
           // Send config message
           const configMessage = buildConfigMessage(this.config, this.apiKey);
-          this.ws!.send(JSON.stringify(configMessage));
+          ws.send(JSON.stringify(configMessage));
 
           // Set up message handlers
-          this.ws!.addEventListener('message', this.handleMessage.bind(this));
-          this.ws!.addEventListener('close', this.handleClose.bind(this));
-          this.ws!.addEventListener('error', this.handleError.bind(this));
+          ws.addEventListener('message', this.handleMessage.bind(this));
+          ws.addEventListener('close', this.handleClose.bind(this));
+          ws.addEventListener('error', this.handleError.bind(this));
 
           resolve();
         };
@@ -367,8 +368,8 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
           reject(new ConnectionError('WebSocket connection failed', event));
         };
 
-        this.ws.addEventListener('open', onOpen);
-        this.ws.addEventListener('error', onError);
+        ws.addEventListener('open', onOpen);
+        ws.addEventListener('error', onError);
 
         // Handle abort during connection
         if (this.signal) {
@@ -376,7 +377,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
             'abort',
             () => {
               cleanup();
-              this.ws?.close();
+              ws.close();
               reject(new AbortError());
             },
             { once: true }

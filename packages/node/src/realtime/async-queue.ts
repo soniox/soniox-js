@@ -22,9 +22,9 @@ export class AsyncEventQueue<T> implements AsyncIterable<T> {
       return;
     }
 
-    if (this.waiters.length > 0) {
-      const { resolve } = this.waiters.shift()!;
-      resolve({ value: event, done: false });
+    const waiter = this.waiters.shift();
+    if (waiter) {
+      waiter.resolve({ value: event, done: false });
     } else {
       this.queue.push(event);
     }
@@ -82,8 +82,8 @@ export class AsyncEventQueue<T> implements AsyncIterable<T> {
     }
 
     // If there are queued events, return immediately
-    if (this.queue.length > 0) {
-      const event = this.queue.shift()!;
+    const event = this.queue.shift();
+    if (event !== undefined) {
       return Promise.resolve({ value: event, done: false });
     }
 
