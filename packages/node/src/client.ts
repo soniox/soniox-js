@@ -8,6 +8,19 @@ import { FetchHttpClient } from './http/fetch-adapter.js';
 import { SonioxRealtimeApi } from './realtime/index.js';
 import type { SonioxNodeClientOptions } from './types/public/index.js';
 
+/**
+ * Soniox Node Client
+ * @returns {SonioxNodeClient}
+ * 
+ * @example
+ * ```typescript
+ * import { SonioxNodeClient } from '@soniox/node';
+ *
+ * const client = new SonioxNodeClient({
+ *   api_key: 'your-api-key',
+ * });
+ * ```
+ */
 export class SonioxNodeClient {
   readonly files: SonioxFilesAPI;
   readonly stt: SonioxSttApi;
