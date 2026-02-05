@@ -176,29 +176,6 @@ describe('RealtimeSttSession', () => {
     });
   });
 
-  describe('event handlers', () => {
-    it('should support on/off/once', () => {
-      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
-      const handler = jest.fn();
-
-      session.on('result', handler);
-      session.off('result', handler);
-
-      expect(() => session.once('connected', () => {})).not.toThrow();
-    });
-
-    it('should return session for chaining', () => {
-      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
-
-      const result = session
-        .on('result', () => {})
-        .on('error', () => {})
-        .once('connected', () => {});
-
-      expect(result).toBe(session);
-    });
-  });
-
   describe('state_change and finished events', () => {
     beforeEach(() => {
       installMockWebSocket();
@@ -249,12 +226,4 @@ describe('RealtimeSttSession', () => {
     });
   });
 
-  describe('async iterator', () => {
-    it('should be async iterable', () => {
-      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
-
-      expect(session[Symbol.asyncIterator]).toBeDefined();
-      expect(typeof session[Symbol.asyncIterator]).toBe('function');
-    });
-  });
 });

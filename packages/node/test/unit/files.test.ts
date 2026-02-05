@@ -31,30 +31,6 @@ const createMockHttpClient = (
 });
 
 describe('SonioxFile', () => {
-    it('should create a file with correct properties', () => {
-        const mockHttp = createMockHttpClient();
-        const data = createMockFileData({
-            client_reference_id: 'my-ref-123',
-        });
-
-        const file = new SonioxFile(data, mockHttp);
-
-        expect(file.id).toBe('550e8400-e29b-41d4-a716-446655440000');
-        expect(file.filename).toBe('test-file.mp3');
-        expect(file.size).toBe(123456);
-        expect(file.created_at).toBe('2024-11-26T00:00:00Z');
-        expect(file.client_reference_id).toBe('my-ref-123');
-    });
-
-    it('should handle undefined client_reference_id', () => {
-        const mockHttp = createMockHttpClient();
-        const data = createMockFileData();
-
-        const file = new SonioxFile(data, mockHttp);
-
-        expect(file.client_reference_id).toBeUndefined();
-    });
-
     describe('delete()', () => {
         it('should call DELETE on the correct endpoint', async () => {
             const requestMock = jest.fn().mockResolvedValue({

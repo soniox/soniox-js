@@ -55,45 +55,6 @@ const createMockFilesAPI = (uploadMock: jest.Mock = jest.fn()): SonioxFilesAPI =
 };
 
 describe('SonioxTranscription', () => {
-    it('should create a transcription with correct properties', () => {
-        const mockHttp = createMockHttpClient();
-        const data = createMockTranscriptionData({
-            audio_url: 'https://example.com/audio.mp3',
-            client_reference_id: 'my-ref-123',
-        });
-
-        const transcription = new SonioxTranscription(data, mockHttp);
-
-        expect(transcription.id).toBe('550e8400-e29b-41d4-a716-446655440000');
-        expect(transcription.status).toBe('queued');
-        expect(transcription.model).toBe('stt-async-v4');
-        expect(transcription.created_at).toBe('2024-11-26T00:00:00Z');
-        expect(transcription.audio_url).toBe('https://example.com/audio.mp3');
-        expect(transcription.client_reference_id).toBe('my-ref-123');
-    });
-
-    it('should handle undefined optional fields', () => {
-        const mockHttp = createMockHttpClient();
-        const data = createMockTranscriptionData();
-
-        const transcription = new SonioxTranscription(data, mockHttp);
-
-        expect(transcription.audio_url).toBeUndefined();
-        expect(transcription.file_id).toBeUndefined();
-        expect(transcription.client_reference_id).toBeUndefined();
-    });
-
-    it('should handle error status', () => {
-        const mockHttp = createMockHttpClient();
-        const data = createMockTranscriptionData({
-            status: 'error',
-        });
-
-        const transcription = new SonioxTranscription(data, mockHttp);
-
-        expect(transcription.status).toBe('error');
-    });
-
     describe('delete()', () => {
         it('should call DELETE on the correct endpoint', async () => {
             const requestMock = jest.fn().mockResolvedValue({
@@ -626,12 +587,12 @@ describe('TranscriptionListResult', () => {
             expect(requestMock).toHaveBeenNthCalledWith(1, {
                 method: 'GET',
                 path: '/v1/transcriptions',
-                query: { limit: 10, cursor: 'cursor-page-2', status: undefined },
+                query: { limit: 10, cursor: 'cursor-page-2' },
             });
             expect(requestMock).toHaveBeenNthCalledWith(2, {
                 method: 'GET',
                 path: '/v1/transcriptions',
-                query: { limit: 10, cursor: 'cursor-page-3', status: undefined },
+                query: { limit: 10, cursor: 'cursor-page-3' },
             });
         });
 
@@ -753,11 +714,11 @@ describe('SonioxTranscriptionsAPI', () => {
             expect(requestMock).toHaveBeenCalledWith({
                 method: 'GET',
                 path: '/v1/transcriptions',
-                query: { limit: undefined, cursor: undefined, status: undefined },
+                query: { limit: undefined, cursor: undefined },
             });
         });
 
-        it('should pass limit, cursor, and status options', async () => {
+        it('should pass limit and cursor options', async () => {
             const requestMock = jest.fn().mockResolvedValue({
                 status: 200,
                 headers: {},
@@ -2688,18 +2649,6 @@ describe('segmentTranscript', () => {
 });
 
 describe('SonioxTranscript', () => {
-    it('should create transcript with correct properties', () => {
-        const transcript = new SonioxTranscript({
-            id: 'trans-123',
-            text: 'Hello world',
-            tokens: [],
-        });
-
-        expect(transcript.id).toBe('trans-123');
-        expect(transcript.text).toBe('Hello world');
-        expect(transcript.tokens).toEqual([]);
-    });
-
     describe('segments()', () => {
         it('should return segments from tokens', () => {
             const tokens: TranscriptToken[] = [

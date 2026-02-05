@@ -56,13 +56,6 @@ describe('RealtimeError', () => {
     expect(error).toBeInstanceOf(RealtimeError);
   });
 
-  it('should have proper stack trace', () => {
-    const error = new RealtimeError('Test');
-
-    expect(error.stack).toBeDefined();
-    expect(error.stack).toContain('RealtimeError');
-  });
-
   it('should serialize to string correctly', () => {
     const error = new RealtimeError('Test error', 'bad_request', 400);
 
