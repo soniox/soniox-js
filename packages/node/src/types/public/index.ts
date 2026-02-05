@@ -37,6 +37,8 @@ export type {
   ContextGeneralEntry,
   ContextTranslationTerm,
   CreateTranscriptionOptions,
+  ISonioxTranscript,
+  ISonioxTranscription,
   ListTranscriptionsOptions,
   ListTranscriptionsResponse,
   OneWayTranslationConfig,

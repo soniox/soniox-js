@@ -2,6 +2,8 @@ import type { HttpClient } from '../http/client.js';
 import { isSonioxHttpError } from '../http/errors.js';
 import type {
   CreateTranscriptionOptions,
+  ISonioxTranscript,
+  ISonioxTranscription,
   ListTranscriptionsOptions,
   ListTranscriptionsResponse,
   SegmentTranscriptOptions,
@@ -207,7 +209,7 @@ function buildSegment(
 /**
  * A Transcript result containing the transcribed text and tokens.
  */
-export class SonioxTranscript {
+export class SonioxTranscript implements ISonioxTranscript {
   /**
    * Unique identifier of the transcription this transcript belongs to.
    */
@@ -261,7 +263,7 @@ export class SonioxTranscript {
 /**
  * A Transcription instance
  */
-export class SonioxTranscription {
+export class SonioxTranscription implements ISonioxTranscription {
   /**
    * Unique identifier of the transcription.
    */

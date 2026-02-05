@@ -1,4 +1,4 @@
-import type { SonioxTranscriptionData, TranscriptResponse } from './transcriptions.js';
+import type { ISonioxTranscript, ISonioxTranscription } from './transcriptions.js';
 
 /**
  * Webhook event status values
@@ -91,7 +91,7 @@ export type WebhookHandlerResultWithFetch = WebhookHandlerResult & {
    * }
    * ```
    */
-  fetchTranscript: (() => Promise<TranscriptResponse | null>) | undefined;
+  fetchTranscript: (() => Promise<ISonioxTranscript | null>) | undefined;
 
   /**
    * Fetch the full transcription object.
@@ -108,7 +108,7 @@ export type WebhookHandlerResultWithFetch = WebhookHandlerResult & {
    * }
    * ```
    */
-  fetchTranscription: (() => Promise<SonioxTranscriptionData | null>) | undefined;
+  fetchTranscription: (() => Promise<ISonioxTranscription | null>) | undefined;
 };
 
 /**

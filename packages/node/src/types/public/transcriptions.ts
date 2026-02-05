@@ -669,3 +669,47 @@ export type TranscriptSegment = {
    */
   tokens: TranscriptToken[];
 };
+
+/**
+ * Type contract for SonioxTranscript class.
+ * @see SonioxTranscript for full documentation.
+ */
+export interface ISonioxTranscript {
+  readonly id: string;
+  readonly text: string;
+  readonly tokens: TranscriptToken[];
+  segments(options?: SegmentTranscriptOptions): TranscriptSegment[];
+}
+
+/**
+ * Type contract for SonioxTranscription class.
+ * @see SonioxTranscription for full documentation.
+ */
+export interface ISonioxTranscription {
+  readonly id: string;
+  readonly status: TranscriptionStatus;
+  readonly created_at: string;
+  readonly model: string;
+  readonly audio_url: string | null | undefined;
+  readonly file_id: string | null | undefined;
+  readonly filename: string;
+  readonly language_hints: string[] | undefined;
+  readonly enable_speaker_diarization: boolean;
+  readonly enable_language_identification: boolean;
+  readonly audio_duration_ms: number | null | undefined;
+  readonly error_type: string | null | undefined;
+  readonly error_message: string | null | undefined;
+  readonly webhook_url: string | null | undefined;
+  readonly webhook_auth_header_name: string | null | undefined;
+  readonly webhook_auth_header_value: string | null | undefined;
+  readonly webhook_status_code: number | null | undefined;
+  readonly client_reference_id: string | null | undefined;
+  readonly context: TranscriptionContext | string | null | undefined;
+  readonly transcript: ISonioxTranscript | null | undefined;
+  toJSON(): SonioxTranscriptionData;
+  delete(): Promise<void>;
+  destroy(): Promise<void>;
+  getTranscript(options?: { force?: boolean; signal?: AbortSignal }): Promise<ISonioxTranscript | null>;
+  refresh(signal?: AbortSignal): Promise<ISonioxTranscription>;
+  wait(options?: WaitOptions): Promise<ISonioxTranscription>;
+}
