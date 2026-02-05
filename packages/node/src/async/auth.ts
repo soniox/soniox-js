@@ -11,10 +11,7 @@ export class SonioxAuthAPI {
    * @param signal - Optional AbortSignal for cancellation
    * @returns The temporary API key response
    */
-  async createTemporaryKey(
-    request: TemporaryApiKeyRequest,
-    signal?: AbortSignal
-  ): Promise<TemporaryApiKeyResponse> {
+  async createTemporaryKey(request: TemporaryApiKeyRequest, signal?: AbortSignal): Promise<TemporaryApiKeyResponse> {
     // Validate expires_in_seconds range
     if (request.expires_in_seconds < 1 || request.expires_in_seconds > 3600) {
       throw new Error('expires_in_seconds must be between 1 and 3600');

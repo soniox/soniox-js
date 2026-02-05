@@ -19,7 +19,9 @@ export class SonioxNodeClient {
   constructor(options: SonioxNodeClientOptions = {}) {
     const apiKey = options.api_key ?? process.env['SONIOX_API_KEY'];
     if (!apiKey) {
-      throw new Error('Missing API key. Provide it via options.api_key or set the SONIOX_API_KEY environment variable.');
+      throw new Error(
+        'Missing API key. Provide it via options.api_key or set the SONIOX_API_KEY environment variable.'
+      );
     }
 
     const baseURL = options.base_url ?? process.env['SONIOX_API_BASE_URL'] ?? SONIOX_API_BASE_URL;
