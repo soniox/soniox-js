@@ -2,21 +2,52 @@
  * HTTP error handling for the Soniox SDK
  */
 
-import type { HttpErrorCode, HttpErrorDetails, HttpMethod } from '../types/public/http.js';
+import type { HttpErrorCode, HttpErrorDetails, HttpMethod, SonioxErrorCode } from '../types/public/errors.js';
 
 /** Maximum body text length to include in error details (4KB) */
 const MAX_BODY_TEXT_LENGTH = 4096;
 
 /**
- * Base error class for all Soniox SDK errors
+ * Base error class for all Soniox SDK errors.
+ *
+ * All SDK errors extend this class for error handling across both REST (HTTP) and WebSocket (Realtime) APIs.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   await client.transcribe(file);
+ *   await session.connect();
+ * } catch (error) {
+ *   if (error instanceof SonioxError) {
+ *     console.log(error.code);       // 'auth_error', 'network_error', etc.
+ *     console.log(error.statusCode); // 401, 500, etc. (when applicable)
+ *     console.log(error.toJSON());   // Consistent serialization
+ *   }
+ * }
+ * ```
  */
 export class SonioxError extends Error {
-  readonly code: string;
+  /**
+   * Error code describing the type of error
+   */
+  readonly code: SonioxErrorCode;
 
-  constructor(message: string, code = 'SONIOX_ERROR') {
+  /**
+   * HTTP status code when applicable (e.g., 401 for auth errors, 500 for server errors).
+   */
+  readonly statusCode: number | undefined;
+
+  /**
+   * The underlying error that caused this error, if any.
+   */
+  readonly cause: unknown;
+
+  constructor(message: string, code: SonioxErrorCode = 'soniox_error', statusCode?: number, cause?: unknown) {
     super(message);
     this.name = 'SonioxError';
     this.code = code;
+    this.statusCode = statusCode;
+    this.cause = cause;
 
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, this.constructor);
@@ -24,47 +55,14 @@ export class SonioxError extends Error {
 
     Object.setPrototypeOf(this, new.target.prototype);
   }
-}
-
-/**
- * HTTP error class for all HTTP-related failures
- */
-export class SonioxHttpError extends SonioxError {
-  /** Categorized error code */
-  declare readonly code: HttpErrorCode;
-  /** Request URL */
-  readonly url: string;
-  /** HTTP method */
-  readonly method: HttpMethod;
-  /** HTTP status code (only for http_error) */
-  readonly status: number | undefined;
-  /** Response headers (only for http_error) */
-  readonly headers: Record<string, string> | undefined;
-  /** Response body text, capped at 4KB (only for http_error/parse_error) */
-  readonly bodyText: string | undefined;
-  /** Original error that caused this error */
-  readonly cause: unknown;
-
-  constructor(details: HttpErrorDetails) {
-    super(details.message, details.code);
-    this.name = 'SonioxHttpError';
-    this.url = details.url;
-    this.method = details.method;
-    this.status = details.status;
-    this.headers = details.headers;
-    this.bodyText = details.bodyText;
-    this.cause = details.cause;
-  }
 
   /**
    * Creates a human-readable string representation
    */
   override toString(): string {
-    const parts = [`SonioxHttpError [${this.code}]: ${this.message}`];
-    parts.push(`  Method: ${this.method}`);
-    parts.push(`  URL: ${this.url}`);
-    if (this.status !== undefined) {
-      parts.push(`  Status: ${this.status}`);
+    const parts = [`${this.name} [${this.code}]: ${this.message}`];
+    if (this.statusCode !== undefined) {
+      parts.push(`  Status: ${this.statusCode}`);
     }
     return parts.join('\n');
   }
@@ -77,9 +75,62 @@ export class SonioxHttpError extends SonioxError {
       name: this.name,
       code: this.code,
       message: this.message,
+      ...(this.statusCode !== undefined && { statusCode: this.statusCode }),
+    };
+  }
+}
+
+/**
+ * HTTP error class for all HTTP-related failures (REST API).
+ *
+ * Thrown when HTTP requests fail due to network issues, timeouts,
+ * server errors, or response parsing failures.
+ */
+export class SonioxHttpError extends SonioxError {
+  /** Categorized HTTP error code */
+  declare readonly code: HttpErrorCode;
+  /** Request URL */
+  readonly url: string;
+  /** HTTP method */
+  readonly method: HttpMethod;
+  /** Response headers (only for http_error) */
+  readonly headers: Record<string, string> | undefined;
+  /** Response body text, capped at 4KB (only for http_error/parse_error) */
+  readonly bodyText: string | undefined;
+
+  constructor(details: HttpErrorDetails) {
+    super(details.message, details.code, details.statusCode, details.cause);
+    this.name = 'SonioxHttpError';
+    this.url = details.url;
+    this.method = details.method;
+    this.headers = details.headers;
+    this.bodyText = details.bodyText;
+  }
+
+  /**
+   * Creates a human-readable string representation
+   */
+  override toString(): string {
+    const parts = [`SonioxHttpError [${this.code}]: ${this.message}`];
+    parts.push(`  Method: ${this.method}`);
+    parts.push(`  URL: ${this.url}`);
+    if (this.statusCode !== undefined) {
+      parts.push(`  Status: ${this.statusCode}`);
+    }
+    return parts.join('\n');
+  }
+
+  /**
+   * Converts to a plain object for logging/serialization
+   */
+  override toJSON(): Record<string, unknown> {
+    return {
+      name: this.name,
+      code: this.code,
+      message: this.message,
       url: this.url,
       method: this.method,
-      ...(this.status !== undefined && { status: this.status }),
+      ...(this.statusCode !== undefined && { statusCode: this.statusCode }),
       ...(this.headers !== undefined && { headers: this.headers }),
       ...(this.bodyText !== undefined && { bodyText: this.bodyText }),
     };
@@ -131,17 +182,17 @@ export function createAbortError(url: string, method: HttpMethod, cause?: unknow
 export function createHttpError(
   url: string,
   method: HttpMethod,
-  status: number,
+  statusCode: number,
   headers: Record<string, string>,
   bodyText: string
 ): SonioxHttpError {
   const cappedBody = truncateBodyText(bodyText);
   return new SonioxHttpError({
     code: 'http_error',
-    message: `HTTP ${status}`,
+    message: `HTTP ${statusCode}`,
     url,
     method,
-    status,
+    statusCode,
     headers,
     bodyText: cappedBody,
   });
@@ -184,6 +235,14 @@ export function isAbortError(error: unknown): boolean {
 }
 
 /**
+ * Type guard to check if an error is any SonioxError (base class).
+ * This catches all SDK errors including HTTP and Realtime errors.
+ */
+export function isSonioxError(error: unknown): error is SonioxError {
+  return error instanceof SonioxError;
+}
+
+/**
  * Type guard to check if an error is a SonioxHttpError
  */
 export function isSonioxHttpError(error: unknown): error is SonioxHttpError {
@@ -194,5 +253,5 @@ export function isSonioxHttpError(error: unknown): error is SonioxHttpError {
  * Checks if an error is a 404 Not Found error
  */
 export function isNotFoundError(error: unknown): boolean {
-  return isSonioxHttpError(error) && error.status === 404;
+  return isSonioxHttpError(error) && error.statusCode === 404;
 }

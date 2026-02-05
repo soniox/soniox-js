@@ -9,6 +9,7 @@ import {
   StateError,
   mapErrorResponse,
 } from '../../../src/realtime/errors';
+import { SonioxError } from '../../../src/http/errors';
 
 describe('RealtimeError', () => {
   it('should create error with message only', () => {
@@ -16,30 +17,42 @@ describe('RealtimeError', () => {
 
     expect(error.message).toBe('Test error');
     expect(error.name).toBe('RealtimeError');
-    expect(error.code).toBeUndefined();
+    expect(error.code).toBe('realtime_error');
+    expect(error.statusCode).toBeUndefined();
     expect(error.raw).toBeUndefined();
   });
 
   it('should create error with message and code', () => {
-    const error = new RealtimeError('Test error', 400);
+    const error = new RealtimeError('Test error', 'bad_request');
 
     expect(error.message).toBe('Test error');
-    expect(error.code).toBe(400);
+    expect(error.code).toBe('bad_request');
+    expect(error.statusCode).toBeUndefined();
   });
 
-  it('should create error with message, code, and raw', () => {
-    const raw = { error_code: 400, error_message: 'Bad Request' };
-    const error = new RealtimeError('Test error', 400, raw);
+  it('should create error with message, code, and statusCode', () => {
+    const error = new RealtimeError('Test error', 'bad_request', 400);
 
     expect(error.message).toBe('Test error');
-    expect(error.code).toBe(400);
+    expect(error.code).toBe('bad_request');
+    expect(error.statusCode).toBe(400);
+  });
+
+  it('should create error with message, code, statusCode, and raw', () => {
+    const raw = { error_code: 400, error_message: 'Bad Request' };
+    const error = new RealtimeError('Test error', 'bad_request', 400, raw);
+
+    expect(error.message).toBe('Test error');
+    expect(error.code).toBe('bad_request');
+    expect(error.statusCode).toBe(400);
     expect(error.raw).toEqual(raw);
   });
 
-  it('should be instanceof Error', () => {
+  it('should be instanceof Error and SonioxError', () => {
     const error = new RealtimeError('Test');
 
     expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(SonioxError);
     expect(error).toBeInstanceOf(RealtimeError);
   });
 
@@ -49,30 +62,54 @@ describe('RealtimeError', () => {
     expect(error.stack).toBeDefined();
     expect(error.stack).toContain('RealtimeError');
   });
+
+  it('should serialize to string correctly', () => {
+    const error = new RealtimeError('Test error', 'bad_request', 400);
+
+    expect(error.toString()).toBe('RealtimeError [bad_request]: Test error\n  Status: 400');
+  });
+
+  it('should serialize to JSON correctly', () => {
+    const raw = { error_code: 400, error_message: 'Bad Request' };
+    const error = new RealtimeError('Test error', 'bad_request', 400, raw);
+
+    const json = error.toJSON();
+
+    expect(json).toEqual({
+      name: 'RealtimeError',
+      message: 'Test error',
+      code: 'bad_request',
+      statusCode: 400,
+      raw: raw,
+    });
+  });
 });
 
 describe('AuthError', () => {
-  it('should have correct name', () => {
+  it('should have correct name and code', () => {
     const error = new AuthError('Invalid API key', 401);
 
     expect(error.name).toBe('AuthError');
-    expect(error.code).toBe(401);
+    expect(error.code).toBe('auth_error');
+    expect(error.statusCode).toBe(401);
   });
 
-  it('should be instanceof RealtimeError', () => {
+  it('should be instanceof RealtimeError and SonioxError', () => {
     const error = new AuthError('Invalid API key');
 
+    expect(error).toBeInstanceOf(SonioxError);
     expect(error).toBeInstanceOf(RealtimeError);
     expect(error).toBeInstanceOf(AuthError);
   });
 });
 
 describe('BadRequestError', () => {
-  it('should have correct name', () => {
+  it('should have correct name and code', () => {
     const error = new BadRequestError('Invalid config', 400);
 
     expect(error.name).toBe('BadRequestError');
-    expect(error.code).toBe(400);
+    expect(error.code).toBe('bad_request');
+    expect(error.statusCode).toBe(400);
   });
 
   it('should be instanceof RealtimeError', () => {
@@ -84,11 +121,12 @@ describe('BadRequestError', () => {
 });
 
 describe('QuotaError', () => {
-  it('should have correct name', () => {
+  it('should have correct name and code', () => {
     const error = new QuotaError('Rate limit exceeded', 429);
 
     expect(error.name).toBe('QuotaError');
-    expect(error.code).toBe(429);
+    expect(error.code).toBe('quota_exceeded');
+    expect(error.statusCode).toBe(429);
   });
 
   it('should be instanceof RealtimeError', () => {
@@ -100,11 +138,12 @@ describe('QuotaError', () => {
 });
 
 describe('ConnectionError', () => {
-  it('should have correct name', () => {
+  it('should have correct name and code', () => {
     const error = new ConnectionError('WebSocket failed');
 
     expect(error.name).toBe('ConnectionError');
-    expect(error.code).toBeUndefined();
+    expect(error.code).toBe('connection_error');
+    expect(error.statusCode).toBeUndefined();
   });
 
   it('should accept raw event', () => {
@@ -127,7 +166,8 @@ describe('NetworkError', () => {
     const error = new NetworkError('Service unavailable', 503);
 
     expect(error.name).toBe('NetworkError');
-    expect(error.code).toBe(503);
+    expect(error.code).toBe('network_error');
+    expect(error.statusCode).toBe(503);
   });
 
   it('should accept raw response', () => {
@@ -146,11 +186,12 @@ describe('NetworkError', () => {
 });
 
 describe('AbortError', () => {
-  it('should have default message', () => {
+  it('should have default message and correct code', () => {
     const error = new AbortError();
 
     expect(error.message).toBe('Operation aborted');
     expect(error.name).toBe('AbortError');
+    expect(error.code).toBe('aborted');
   });
 
   it('should accept custom message', () => {
@@ -168,11 +209,12 @@ describe('AbortError', () => {
 });
 
 describe('StateError', () => {
-  it('should have correct name', () => {
+  it('should have correct name and code', () => {
     const error = new StateError('Cannot connect: already connected');
 
     expect(error.message).toBe('Cannot connect: already connected');
     expect(error.name).toBe('StateError');
+    expect(error.code).toBe('state_error');
   });
 
   it('should be instanceof RealtimeError', () => {
@@ -191,7 +233,8 @@ describe('mapErrorResponse', () => {
 
     expect(error).toBeInstanceOf(AuthError);
     expect(error.message).toBe('Invalid API key');
-    expect(error.code).toBe(401);
+    expect(error.code).toBe('auth_error');
+    expect(error.statusCode).toBe(401);
     expect(error.raw).toEqual(response);
   });
 
@@ -202,6 +245,8 @@ describe('mapErrorResponse', () => {
 
     expect(error).toBeInstanceOf(BadRequestError);
     expect(error.message).toBe('Invalid audio format');
+    expect(error.code).toBe('bad_request');
+    expect(error.statusCode).toBe(400);
   });
 
   it('should map 402 to QuotaError', () => {
@@ -210,7 +255,8 @@ describe('mapErrorResponse', () => {
     const error = mapErrorResponse(response);
 
     expect(error).toBeInstanceOf(QuotaError);
-    expect(error.code).toBe(402);
+    expect(error.code).toBe('quota_exceeded');
+    expect(error.statusCode).toBe(402);
   });
 
   it('should map 429 to QuotaError', () => {
@@ -219,7 +265,8 @@ describe('mapErrorResponse', () => {
     const error = mapErrorResponse(response);
 
     expect(error).toBeInstanceOf(QuotaError);
-    expect(error.code).toBe(429);
+    expect(error.code).toBe('quota_exceeded');
+    expect(error.statusCode).toBe(429);
   });
 
   it('should map 408 to NetworkError', () => {
@@ -228,7 +275,8 @@ describe('mapErrorResponse', () => {
     const error = mapErrorResponse(response);
 
     expect(error).toBeInstanceOf(NetworkError);
-    expect(error.code).toBe(408);
+    expect(error.code).toBe('network_error');
+    expect(error.statusCode).toBe(408);
   });
 
   it('should map 500 to NetworkError', () => {
@@ -237,7 +285,8 @@ describe('mapErrorResponse', () => {
     const error = mapErrorResponse(response);
 
     expect(error).toBeInstanceOf(NetworkError);
-    expect(error.code).toBe(500);
+    expect(error.code).toBe('network_error');
+    expect(error.statusCode).toBe(500);
   });
 
   it('should map 503 to NetworkError', () => {
@@ -246,7 +295,8 @@ describe('mapErrorResponse', () => {
     const error = mapErrorResponse(response);
 
     expect(error).toBeInstanceOf(NetworkError);
-    expect(error.code).toBe(503);
+    expect(error.code).toBe('network_error');
+    expect(error.statusCode).toBe(503);
   });
 
   it('should return generic RealtimeError for unknown codes', () => {
@@ -258,7 +308,8 @@ describe('mapErrorResponse', () => {
     expect(error).not.toBeInstanceOf(AuthError);
     expect(error).not.toBeInstanceOf(BadRequestError);
     expect(error).not.toBeInstanceOf(QuotaError);
-    expect(error.code).toBe(418);
+    expect(error.code).toBe('realtime_error');
+    expect(error.statusCode).toBe(418);
   });
 
   it('should handle missing error_message', () => {
@@ -275,6 +326,7 @@ describe('mapErrorResponse', () => {
     const error = mapErrorResponse(response);
 
     expect(error.message).toBe('Something went wrong');
-    expect(error.code).toBeUndefined();
+    expect(error.statusCode).toBeUndefined();
+    expect(error.code).toBe('realtime_error');
   });
 });

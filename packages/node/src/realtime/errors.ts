@@ -1,27 +1,52 @@
 /**
- * Base error class for all realtime SDK errors.
+ * Realtime (WebSocket) API error classes for the Soniox SDK
+ * All realtime errors extend SonioxError
  */
-export class RealtimeError extends Error {
-  /**
-   * Error code from the Soniox API (if available).
-   */
-  readonly code: number | undefined;
+
+import { SonioxError } from '../http/errors.js';
+import type { RealtimeErrorCode } from '../types/public/errors.js';
+
+/**
+ * Base error class for all realtime (WebSocket) SDK errors
+ */
+export class RealtimeError extends SonioxError {
+  /** Realtime error code */
+  declare readonly code: RealtimeErrorCode;
 
   /**
    * Original response payload for debugging.
+   * Contains the raw WebSocket message that caused the error.
    */
   readonly raw: unknown;
 
-  constructor(message: string, code?: number, raw?: unknown) {
-    super(message);
+  constructor(message: string, code: RealtimeErrorCode = 'realtime_error', statusCode?: number, raw?: unknown) {
+    super(message, code, statusCode);
     this.name = 'RealtimeError';
-    this.code = code;
     this.raw = raw;
+  }
 
-    // Maintains proper stack trace in V8 (Node.js)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
+  /**
+   * Creates a human-readable string representation
+   */
+  override toString(): string {
+    const parts = [`${this.name} [${this.code}]: ${this.message}`];
+    if (this.statusCode !== undefined) {
+      parts.push(`  Status: ${this.statusCode}`);
     }
+    return parts.join('\n');
+  }
+
+  /**
+   * Converts to a plain object for logging/serialization
+   */
+  override toJSON(): Record<string, unknown> {
+    return {
+      name: this.name,
+      code: this.code,
+      message: this.message,
+      ...(this.statusCode !== undefined && { statusCode: this.statusCode }),
+      ...(this.raw !== undefined && { raw: this.raw }),
+    };
   }
 }
 
@@ -30,8 +55,8 @@ export class RealtimeError extends Error {
  * Thrown when the API key is invalid or expired.
  */
 export class AuthError extends RealtimeError {
-  constructor(message: string, code?: number, raw?: unknown) {
-    super(message, code, raw);
+  constructor(message: string, statusCode?: number, raw?: unknown) {
+    super(message, 'auth_error', statusCode, raw);
     this.name = 'AuthError';
   }
 }
@@ -41,8 +66,8 @@ export class AuthError extends RealtimeError {
  * Thrown for invalid configuration or parameters.
  */
 export class BadRequestError extends RealtimeError {
-  constructor(message: string, code?: number, raw?: unknown) {
-    super(message, code, raw);
+  constructor(message: string, statusCode?: number, raw?: unknown) {
+    super(message, 'bad_request', statusCode, raw);
     this.name = 'BadRequestError';
   }
 }
@@ -52,8 +77,8 @@ export class BadRequestError extends RealtimeError {
  * Thrown when rate limits are exceeded or quota is exhausted.
  */
 export class QuotaError extends RealtimeError {
-  constructor(message: string, code?: number, raw?: unknown) {
-    super(message, code, raw);
+  constructor(message: string, statusCode?: number, raw?: unknown) {
+    super(message, 'quota_exceeded', statusCode, raw);
     this.name = 'QuotaError';
   }
 }
@@ -64,7 +89,7 @@ export class QuotaError extends RealtimeError {
  */
 export class ConnectionError extends RealtimeError {
   constructor(message: string, raw?: unknown) {
-    super(message, undefined, raw);
+    super(message, 'connection_error', undefined, raw);
     this.name = 'ConnectionError';
   }
 }
@@ -74,8 +99,8 @@ export class ConnectionError extends RealtimeError {
  * Thrown for server-side network issues (408, 500, 503).
  */
 export class NetworkError extends RealtimeError {
-  constructor(message: string, code?: number, raw?: unknown) {
-    super(message, code, raw);
+  constructor(message: string, statusCode?: number, raw?: unknown) {
+    super(message, 'network_error', statusCode, raw);
     this.name = 'NetworkError';
   }
 }
@@ -86,7 +111,7 @@ export class NetworkError extends RealtimeError {
  */
 export class AbortError extends RealtimeError {
   constructor(message = 'Operation aborted') {
-    super(message);
+    super(message, 'aborted');
     this.name = 'AbortError';
   }
 }
@@ -97,7 +122,7 @@ export class AbortError extends RealtimeError {
  */
 export class StateError extends RealtimeError {
   constructor(message: string) {
-    super(message);
+    super(message, 'state_error');
     this.name = 'StateError';
   }
 }
@@ -129,6 +154,6 @@ export function mapErrorResponse(response: { error_code?: number; error_message?
       return new NetworkError(message, error_code, response);
 
     default:
-      return new RealtimeError(message, error_code, response);
+      return new RealtimeError(message, 'realtime_error', error_code, response);
   }
 }

@@ -3,13 +3,10 @@
  * @module
  */
 
-// Types
+// Types from client
 export type {
   HttpClient,
   HttpClientOptions,
-  HttpErrorCode,
-  HttpErrorDetails,
-  HttpMethod,
   HttpObservabilityHooks,
   HttpRequest,
   HttpRequestBody,
@@ -19,6 +16,15 @@ export type {
   HttpResponseType,
   QueryParams,
 } from './client.js';
+
+// Error types (re-exported from public types)
+export type {
+  HttpErrorCode,
+  HttpErrorDetails,
+  HttpMethod,
+  RealtimeErrorCode,
+  SonioxErrorCode,
+} from '../types/public/errors.js';
 
 // Implementation
 export { FetchHttpClient } from './fetch-adapter.js';
@@ -31,6 +37,7 @@ export {
   createParseError,
   createTimeoutError,
   isAbortError,
+  isSonioxError,
   isSonioxHttpError,
   SonioxError,
   SonioxHttpError,

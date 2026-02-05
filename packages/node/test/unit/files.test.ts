@@ -9,7 +9,7 @@ const createMock404Error = () => new SonioxHttpError({
     message: 'HTTP 404',
     url: 'https://api.soniox.com/v1/files/test',
     method: 'GET',
-    status: 404,
+    statusCode: 404,
     headers: {},
     bodyText: 'Not found',
 });

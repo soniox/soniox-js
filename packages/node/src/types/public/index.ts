@@ -2,12 +2,12 @@
 import type { HttpClient } from './http.js';
 import type { SttSessionOptions } from './realtime.js';
 
+// Error types
+export type { HttpErrorCode, HttpErrorDetails, HttpMethod, RealtimeErrorCode, SonioxErrorCode } from './errors.js';
+
 export type {
   HttpClient,
   HttpClientOptions,
-  HttpErrorCode,
-  HttpErrorDetails,
-  HttpMethod,
   HttpObservabilityHooks,
   HttpRequest,
   HttpRequestBody,

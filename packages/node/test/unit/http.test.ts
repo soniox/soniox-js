@@ -132,7 +132,7 @@ describe('FetchHttpClient', () => {
       expect(err).toBeInstanceOf(SonioxHttpError);
       const httpError = err as SonioxHttpError;
       expect(httpError.code).toBe('http_error');
-      expect(httpError.status).toBe(404);
+      expect(httpError.statusCode).toBe(404);
     }
   });
 
@@ -343,7 +343,7 @@ describe('SonioxHttpError', () => {
       message: 'Not Found',
       url: 'https://api.example.com/missing',
       method: 'GET',
-      status: 404,
+      statusCode: 404,
     });
 
     expect(error.name).toBe('SonioxHttpError');
@@ -351,7 +351,7 @@ describe('SonioxHttpError', () => {
     expect(error.message).toBe('Not Found');
     expect(error.url).toBe('https://api.example.com/missing');
     expect(error.method).toBe('GET');
-    expect(error.status).toBe(404);
+    expect(error.statusCode).toBe(404);
   });
 
   it('should be instanceof Error', () => {
@@ -372,7 +372,7 @@ describe('SonioxHttpError', () => {
       message: 'Bad Request',
       url: 'https://api.example.com/data',
       method: 'POST',
-      status: 400,
+      statusCode: 400,
       bodyText: '{"error": "invalid"}',
     });
 
@@ -383,7 +383,7 @@ describe('SonioxHttpError', () => {
       message: 'Bad Request',
       url: 'https://api.example.com/data',
       method: 'POST',
-      status: 400,
+      statusCode: 400,
       bodyText: '{"error": "invalid"}',
     });
   });

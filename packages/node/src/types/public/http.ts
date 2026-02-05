@@ -22,10 +22,11 @@
  * ```
  */
 
-/**
- * HTTP methods supported by the client
- */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
+// Import types for local use, then re-export them
+import type { HttpErrorCode, HttpErrorDetails, HttpMethod, RealtimeErrorCode, SonioxErrorCode } from './errors.js';
+
+// Re-export error-related types from the unified errors module
+export type { HttpErrorCode, HttpErrorDetails, HttpMethod, RealtimeErrorCode, SonioxErrorCode };
 
 /**
  * Response types
@@ -85,26 +86,6 @@ export interface HttpResponse<T> {
   headers: Record<string, string>;
   /** Parsed response data */
   data: T;
-}
-
-/**
- * Error codes for HTTP client errors
- */
-export type HttpErrorCode = 'network_error' | 'timeout' | 'aborted' | 'http_error' | 'parse_error';
-
-/**
- * Error details for SonioxHttpError
- */
-export interface HttpErrorDetails {
-  code: HttpErrorCode;
-  message: string;
-  url: string;
-  method: HttpMethod;
-  status?: number | undefined;
-  headers?: Record<string, string> | undefined;
-  /** Response body text (capped at 4KB) */
-  bodyText?: string | undefined;
-  cause?: unknown;
 }
 
 /**
