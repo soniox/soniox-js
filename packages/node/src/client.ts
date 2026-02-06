@@ -11,7 +11,7 @@ import type { SonioxNodeClientOptions } from './types/public/index.js';
 /**
  * Soniox Node Client
  * @returns {SonioxNodeClient}
- * 
+ *
  * @example
  * ```typescript
  * import { SonioxNodeClient } from '@soniox/node';
