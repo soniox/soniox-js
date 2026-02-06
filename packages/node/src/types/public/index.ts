@@ -115,7 +115,7 @@ export type TemporaryApiKeyRequest = {
 
   /**
    * Optional tracking identifier string. Does not need to be unique
-   * @maxLength 255
+   * @maxLength 256
    */
   client_reference_id?: string;
 };

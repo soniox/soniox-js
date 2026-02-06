@@ -156,7 +156,7 @@ export type SonioxTranscriptionData = {
   /**
    * Expected languages in the audio. If not specified, languages are automatically detected.
    */
-  language_hints?: string[] | undefined;
+  language_hints?: string[] | null | undefined;
 
   /**
    * When true, speakers are identified and separated in the transcription output.
@@ -575,27 +575,22 @@ export type TranscriptToken = {
   /**
    * Speaker identifier (if speaker diarization was enabled).
    */
-  speaker?: string | undefined;
+  speaker?: string | null | undefined;
 
   /**
    * Detected language code (if language identification was enabled).
    */
-  language?: string | undefined;
+  language?: string | null | undefined;
 
   /**
    * Translation status for this token.
    */
-  translation_status?: 'none' | 'original' | 'translation' | undefined;
+  translation_status?: 'none' | 'original' | 'translation' | null | undefined;
 
   /**
    * Whether this token represents an audio event.
    */
   is_audio_event?: boolean | null | undefined;
-
-  /**
-   * Source language code (for translated tokens).
-   */
-  source_language?: string | undefined;
 };
 
 /**

@@ -27,7 +27,7 @@ export type SonioxFileData = {
   /**
    * Optional tracking identifier string.
    */
-  client_reference_id?: string | undefined;
+  client_reference_id?: string | null | undefined;
 };
 
 /**

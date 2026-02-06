@@ -36,7 +36,7 @@ export type SonioxModel = {
   /**
    * Version of context supported.
    */
-  context_version: number;
+  context_version: number | null;
   /**
    * Transcription mode of the model.
    */
@@ -64,10 +64,12 @@ export type SonioxModel = {
   /**
    * When contains string 'all_languages', any laguage from languages can be used
    */
-  one_way_translation: string;
+  one_way_translation: string | null;
 
   /**
    * When contains string 'all_languages',' any laguage pair from languages can be used
    */
-  two_way_translation: string;
+  two_way_translation: string | null;
+
+  supports_max_endpoint_delay: boolean;
 };
