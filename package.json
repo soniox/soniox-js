@@ -22,6 +22,7 @@
     "test:integration": "jest --testPathPatterns='examples/'",
     "test:all": "jest",
     "test:coverage": "npm run test -- --coverage",
+    "docs": "typedoc && node scripts/consolidate-docs.mjs",
     "typecheck": "tsc -b --force",
     "prepare": "husky"
   },
