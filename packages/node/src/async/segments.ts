@@ -5,8 +5,8 @@ type SegmentTokensOptions = {
 };
 
 type SegmentableToken = {
-  speaker?: string | undefined;
-  language?: string | undefined;
+  speaker?: string | null | undefined;
+  language?: string | null | undefined;
 };
 
 const DEFAULT_GROUP_BY: SegmentGroupKey[] = ['speaker', 'language'];
@@ -14,7 +14,7 @@ const DEFAULT_GROUP_BY: SegmentGroupKey[] = ['speaker', 'language'];
 export function segmentTokens<TToken extends SegmentableToken, TSegment>(
   tokens: TToken[],
   options: SegmentTokensOptions | undefined,
-  buildSegment: (tokens: TToken[], speaker: string | undefined, language: string | undefined) => TSegment
+  buildSegment: (tokens: TToken[], speaker: string | null | undefined, language: string | null | undefined) => TSegment
 ): TSegment[] {
   if (tokens.length === 0) {
     return [];
@@ -26,8 +26,8 @@ export function segmentTokens<TToken extends SegmentableToken, TSegment>(
 
   const segments: TSegment[] = [];
   let currentTokens: TToken[] = [];
-  let currentSpeaker: string | undefined;
-  let currentLanguage: string | undefined;
+  let currentSpeaker: string | null | undefined;
+  let currentLanguage: string | null | undefined;
 
   for (const token of tokens) {
     const speakerChanged = groupBySpeaker && token.speaker !== currentSpeaker;

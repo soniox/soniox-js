@@ -177,8 +177,8 @@ export function segmentTranscript(
  */
 function buildSegment(
   tokens: TranscriptToken[],
-  speaker: string | undefined,
-  language: string | undefined
+  speaker: string | null | undefined,
+  language: string | null | undefined
 ): TranscriptSegment {
   const firstToken = tokens[0];
   const lastToken = tokens[tokens.length - 1];
@@ -193,8 +193,8 @@ function buildSegment(
     text,
     start_ms: firstToken.start_ms,
     end_ms: lastToken.end_ms,
-    ...(speaker !== undefined && { speaker }),
-    ...(language !== undefined && { language }),
+    ...(speaker != null && { speaker }),
+    ...(language != null && { language }),
     tokens,
   };
 }
@@ -370,7 +370,7 @@ export class SonioxTranscription implements ISonioxTranscription {
     this.audio_url = data.audio_url;
     this.file_id = data.file_id;
     this.filename = data.filename;
-    this.language_hints = data.language_hints;
+    this.language_hints = data.language_hints ?? undefined;
     this.enable_speaker_diarization = data.enable_speaker_diarization;
     this.enable_language_identification = data.enable_language_identification;
     this.audio_duration_ms = data.audio_duration_ms;

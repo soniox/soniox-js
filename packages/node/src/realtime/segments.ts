@@ -23,8 +23,8 @@ export function segmentRealtimeTokens(
 
 function buildSegment(
   tokens: RealtimeToken[],
-  speaker: string | undefined,
-  language: string | undefined
+  speaker: string | null | undefined,
+  language: string | null | undefined
 ): RealtimeSegment {
   const firstToken = tokens[0];
   const lastToken = tokens[tokens.length - 1];
@@ -39,8 +39,8 @@ function buildSegment(
     text,
     start_ms: firstToken.start_ms,
     end_ms: lastToken.end_ms,
-    ...(speaker !== undefined && { speaker }),
-    ...(language !== undefined && { language }),
+    ...(!!speaker && { speaker }),
+    ...(!!language && { language }),
     tokens,
   };
 }

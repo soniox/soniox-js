@@ -27,7 +27,14 @@ export class SonioxFile {
     this.filename = data.filename;
     this.size = data.size;
     this.created_at = data.created_at;
-    this.client_reference_id = data.client_reference_id;
+
+    if (data.client_reference_id) {
+      if (data.client_reference_id.length > 256) {
+        throw new Error('client_reference_id exceeds maximum length of 256 characters');
+      }
+
+      this.client_reference_id = data.client_reference_id;
+    }
   }
 
   /**
