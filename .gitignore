@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test
+*.lcov
+**/test/**/*.js
+**/test/**/*.d.ts
+**/test/**/*.js.map
+**/test/**/*.d.ts.map
+
+# OS
+Thumbs.db
+
+# LLM
+.cursor/
+
+# Generated docs
+generated/

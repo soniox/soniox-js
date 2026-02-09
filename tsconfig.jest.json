@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "types": ["jest", "node"],
+    "verbatimModuleSyntax": false,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@soniox/node": ["./packages/node/src"],
+      "@soniox/node/*": ["./packages/node/src/*"]
+    }
+  },
+  "include": ["packages/**/*.ts", "packages/**/*.tsx", "examples/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

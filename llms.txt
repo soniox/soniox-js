@@ -1,0 +1,9 @@
+Soniox Node SDK
+
+Package: @soniox/node
+Install: npm install @soniox/node
+
+Create client:
+  import { SonioxNodeClient } from '@soniox/node';
+  const client = new SonioxNodeClient({ apiKey: '...' });
+  // or set SONIOX_API_KEY

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["packages/node/src/typedoc-entry.ts"],
+  "tsconfig": "packages/node/tsconfig.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "generated/docs/api-reference",
+
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "excludeNotDocumented": false,
+  "excludeExternals": true,
+  "hideGenerator": true,
+  "readme": "none",
+  "disableSources": true,
+  "sanitizeComments": true,
+  "groupOrder": ["Classes", "Type Aliases", "Interfaces"],
+
+  "outputFileStrategy": "members",
+  "flattenOutputFiles": true,
+  "hideBreadcrumbs": true,
+  "hidePageHeader": true,
+  "useCodeBlocks": true,
+  "expandObjects": true,
+  "parametersFormat": "table",
+  "propertiesFormat": "table",
+  "typeDeclarationFormat": "table",
+  "enumMembersFormat": "table",
+  "indexFormat": "table",
+  "tableColumnSettings": {
+    "hideDefaults": false,
+    "hideInherited": true,
+    "hideOverrides": true,
+    "hideSources": true,
+    "hideModifiers": true
+  }
+}
