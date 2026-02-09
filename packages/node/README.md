@@ -16,8 +16,8 @@ npm install @soniox/node
 import { SonioxNodeClient } from '@soniox/node';
 
 const client = new SonioxNodeClient({
-    api_key: 'your-api-key', // or set SONIOX_API_KEY env var
+  api_key: 'your-api-key', // or set SONIOX_API_KEY env var
 });
 ```
 
-For the full documentation please go to our docs: [Full Node SDK Documentation](https://soniox.com/docs/stt/SDKs/node-sdk)
+For the full documentation please go to our docs: [Full Node SDK Documentation](https://soniox.com/docs/stt/SDKs/node-SDK)

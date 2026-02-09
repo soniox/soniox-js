@@ -1,11 +1,12 @@
 {
-  "name": "soniox-sdk-js",
+  "name": "soniox-js",
   "version": "1.0.0",
   "license": "MIT",
   "description": "Official Soniox JS SDK monorepo",
+  "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/soniox/soniox-sdk-js.git"
+    "url": "git+https://github.com/soniox/soniox-js.git"
   },
   "workspaces": [
     "packages/*",
@@ -24,7 +25,8 @@
     "test:coverage": "npm run test -- --coverage",
     "docs": "typedoc && node scripts/consolidate-docs.mjs",
     "typecheck": "tsc -b --force",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

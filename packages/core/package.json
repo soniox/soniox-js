@@ -1,11 +1,19 @@
 {
   "name": "@soniox/core",
   "version": "1.0.0",
+  "private": true,
   "description": "Core types, errors, and utilities for Soniox JS SDKs",
-  "keywords": ["soniox", "ai", "speech-to-text", "transcription", "sdk", "types"],
+  "keywords": [
+    "soniox",
+    "ai",
+    "speech-to-text",
+    "transcription",
+    "sdk",
+    "types"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/soniox/soniox-sdk-node.git",
+    "url": "git+https://github.com/soniox/soniox-js.git",
     "directory": "packages/core"
   },
   "license": "MIT",

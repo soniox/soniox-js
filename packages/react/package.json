@@ -1,5 +1,6 @@
 {
   "name": "@soniox/react",
+  "private": true,
   "version": "1.0.0",
   "description": "React integration for the Soniox JS SDK (placeholder)",
   "keywords": [
@@ -11,7 +12,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/soniox/soniox-sdk-js.git",
+    "url": "git+https://github.com/soniox/soniox-js.git",
     "directory": "packages/react"
   },
   "license": "MIT",

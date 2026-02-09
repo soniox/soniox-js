@@ -2,11 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [project-setup]
+    branches: ['**']
     tags:
-      - "v*"
+      - 'v*'
   pull_request:
-    branches: [project-setup]
+    branches: [main]
 
 permissions:
   contents: read
@@ -26,9 +26,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
-          cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Install
         run: npm ci
@@ -52,9 +52,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
-          cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Install
         run: npm ci
@@ -72,9 +72,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
-          cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Install
         run: npm ci
@@ -97,10 +97,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
-          registry-url: "https://registry.npmjs.org"
-          cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Install
         run: npm ci
@@ -108,11 +108,17 @@ jobs:
       - name: Build
         run: npm run build
 
-      # TODO: Implement actual npm publish
-      - name: Publish (stub)
+      - name: Validate version matches tag
         run: |
-          echo "Publishing packages to npm..."
-          echo "Tag: ${{ github.ref_name }}"
-          echo "This is a stub - actual publish not implemented yet"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./packages/node/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
+            exit 1
+          fi
+
+      - name: Publish @soniox/node
+        run: npm publish --dry-run --provenance --access public
+        working-directory: packages/node
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
