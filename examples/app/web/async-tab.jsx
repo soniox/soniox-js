@@ -261,7 +261,7 @@ export function AsyncTab() {
 
       {/* Right column: Transcriptions list */}
       <div>
-        <div className="flex justify-between items-center mb-3">
+        <div className="items-center mb-3">
           <h3 className="font-semibold text-lg">Transcriptions</h3>
           <div className="flex gap-2">
             <Button onClick={fetchTranscriptions} variant="secondary">

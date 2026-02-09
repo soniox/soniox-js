@@ -1,7 +1,10 @@
 import type http from 'http';
 
-import { type SonioxNodeClient, RealtimeUtteranceBuffer } from '@soniox/node';
-import type { WebSocketServer, WebSocket, RawData } from 'ws';
+import { RealtimeUtteranceBuffer } from '@soniox/node';
+import type { WebSocketServer, RawData } from 'ws';
+import { WebSocket } from 'ws';
+
+import { getClientForWsRequest } from '../session';
 
 const DEFAULT_RT_MODEL = 'stt-rt-v4';
 const DEFAULT_SAMPLE_RATE = 16000;
@@ -66,9 +69,19 @@ function serializeError(error: unknown) {
   return { name: 'Error', message: 'Unknown error' };
 }
 
-export function register(wss: WebSocketServer, soniox: SonioxNodeClient) {
+export function register(wss: WebSocketServer) {
   wss.on('connection', (clientWs: WebSocket, req: http.IncomingMessage) => {
     console.log('[PTT] New connection');
+
+    let soniox;
+    try {
+      soniox = getClientForWsRequest(req);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'No API key configured';
+      clientWs.send(JSON.stringify({ type: 'error', error: { message } }));
+      clientWs.close(4001, 'No API key configured');
+      return;
+    }
 
     (async () => {
       try {

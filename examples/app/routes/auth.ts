@@ -1,9 +1,11 @@
-import type { SonioxNodeClient } from '@soniox/node';
 import type { Express } from 'express';
 
-export function register(app: Express, soniox: SonioxNodeClient) {
-  app.get('/tmp-key', async (_req, res, next) => {
+import { getClientForRequest } from '../session';
+
+export function register(app: Express) {
+  app.get('/tmp-key', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const key = await soniox.auth.createTemporaryKey({
         usage_type: 'transcribe_websocket',
         expires_in_seconds: 3600,

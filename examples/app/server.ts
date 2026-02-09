@@ -1,7 +1,6 @@
 import http from 'http';
 import path from 'path';
 
-import { SonioxNodeClient } from '@soniox/node';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 
@@ -13,11 +12,12 @@ import { register as registerPushToTalk } from './routes/push-to-talk';
 import { register as registerRealtime } from './routes/realtime';
 import { register as registerTranscriptions } from './routes/transcriptions';
 import { register as registerWebhooks } from './routes/webhooks';
+import { sessionMiddleware, setSessionApiKey, clearSessionApiKey, getSessionStatus } from './session';
 
 const app = express();
 app.use(express.json());
+app.use(sessionMiddleware);
 
-const soniox = new SonioxNodeClient();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 const agentWss = new WebSocketServer({ noServer: true });
@@ -52,19 +52,43 @@ server.on('upgrade', (request, socket, head) => {
 // Serve built frontend (Vite output)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Register REST routes
-registerAuth(app, soniox);
-registerModels(app, soniox);
-registerFiles(app, soniox);
-registerTranscriptions(app, soniox);
-registerWebhooks(app, soniox);
+// --- API token management endpoints ---
 
-// Register WebSocket routes
-registerRealtime(wss, soniox);
-registerAgent(agentWss, soniox);
-registerPushToTalk(pttWss, soniox);
+app.get('/api-token/status', (req, res) => {
+  const sessionId = req.sessionId!;
+  res.json(getSessionStatus(sessionId));
+});
 
-export { app, server, soniox };
+app.post('/api-token', (req, res) => {
+  const sessionId = req.sessionId!;
+  const { api_key } = req.body as { api_key?: string };
+  if (!api_key || typeof api_key !== 'string' || !api_key.trim()) {
+    res.status(400).json({ error: 'api_key is required' });
+    return;
+  }
+  setSessionApiKey(sessionId, api_key.trim());
+  res.json(getSessionStatus(sessionId));
+});
+
+app.delete('/api-token', (req, res) => {
+  const sessionId = req.sessionId!;
+  clearSessionApiKey(sessionId);
+  res.json(getSessionStatus(sessionId));
+});
+
+// --- Register REST routes ---
+registerAuth(app);
+registerModels(app);
+registerFiles(app);
+registerTranscriptions(app);
+registerWebhooks(app);
+
+// --- Register WebSocket routes ---
+registerRealtime(wss);
+registerAgent(agentWss);
+registerPushToTalk(pttWss);
+
+export { app, server };
 
 if (require.main === module) {
   const port = process.env.PORT || 3000;

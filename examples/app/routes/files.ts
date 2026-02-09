@@ -1,13 +1,15 @@
-import type { SonioxNodeClient } from '@soniox/node';
 import type { Express } from 'express';
 
-export function register(app: Express, soniox: SonioxNodeClient) {
+import { getClientForRequest } from '../session';
+
+export function register(app: Express) {
   app.post('/files', (req, res, next) => {
     const chunks: Buffer[] = [];
     req.on('data', (chunk: Buffer) => chunks.push(chunk));
     req.on('end', () => {
       const buffer = Buffer.concat(chunks);
       const filename = (req.headers['x-filename'] as string) || 'audio.mp3';
+      const soniox = getClientForRequest(req);
       soniox.files
         .upload(buffer, { filename })
         .then((file) => res.status(201).json(file))
@@ -16,8 +18,9 @@ export function register(app: Express, soniox: SonioxNodeClient) {
     req.on('error', next);
   });
 
-  app.get('/files', async (_req, res, next) => {
+  app.get('/files', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const result = await soniox.files.list();
       const files = [];
       for await (const file of result) {
@@ -31,6 +34,7 @@ export function register(app: Express, soniox: SonioxNodeClient) {
 
   app.get('/files/:id', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const file = await soniox.files.get(req.params.id);
       if (!file) return res.status(404).json({ error: 'File not found' });
       res.json(file);
@@ -41,6 +45,7 @@ export function register(app: Express, soniox: SonioxNodeClient) {
 
   app.delete('/files/:id', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       await soniox.files.delete(req.params.id);
       res.status(204).end();
     } catch (err) {
@@ -48,8 +53,9 @@ export function register(app: Express, soniox: SonioxNodeClient) {
     }
   });
 
-  app.post('/files/purge', async (_req, res, next) => {
+  app.post('/files/purge', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const result = await soniox.files.purge({
         on_progress: (file, index) => {
           console.log(`Purging file ${index + 1}: ${file.id}`);

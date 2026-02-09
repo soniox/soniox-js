@@ -1,5 +1,6 @@
-import type { SonioxNodeClient } from '@soniox/node';
 import type { Express } from 'express';
+
+import { getClientForRequest } from '../session';
 
 interface TranscriptionBody {
   audio_url?: string;
@@ -13,9 +14,10 @@ interface WaitBody {
   timeout_ms?: number;
 }
 
-export function register(app: Express, soniox: SonioxNodeClient) {
+export function register(app: Express) {
   app.post('/transcriptions', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const body = req.body as TranscriptionBody;
 
       if (body.audio_url) {
@@ -46,6 +48,7 @@ export function register(app: Express, soniox: SonioxNodeClient) {
 
   app.get('/transcriptions', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const limit = req.query.limit ? Number(req.query.limit) : undefined;
       const result = await soniox.stt.list({ limit });
       res.json({
@@ -59,6 +62,7 @@ export function register(app: Express, soniox: SonioxNodeClient) {
 
   app.get('/transcriptions/:id', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const transcription = await soniox.stt.get(req.params.id);
       if (!transcription) return res.status(404).json({ error: 'Transcription not found' });
       res.json(transcription);
@@ -69,6 +73,7 @@ export function register(app: Express, soniox: SonioxNodeClient) {
 
   app.get('/transcriptions/:id/transcript', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const transcript = await soniox.stt.getTranscript(req.params.id);
       if (!transcript) return res.status(404).json({ error: 'Transcript not found' });
       res.json({
@@ -84,6 +89,7 @@ export function register(app: Express, soniox: SonioxNodeClient) {
 
   app.post('/transcriptions/:id/wait', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const body = req.body as WaitBody;
       const transcription = await soniox.stt.wait(req.params.id, {
         timeout_ms: body.timeout_ms,
@@ -96,6 +102,7 @@ export function register(app: Express, soniox: SonioxNodeClient) {
 
   app.delete('/transcriptions/:id', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       await soniox.stt.delete(req.params.id);
       res.status(204).end();
     } catch (err) {
@@ -103,8 +110,9 @@ export function register(app: Express, soniox: SonioxNodeClient) {
     }
   });
 
-  app.post('/transcriptions/purge', async (_req, res, next) => {
+  app.post('/transcriptions/purge', async (req, res, next) => {
     try {
+      const soniox = getClientForRequest(req);
       const result = await soniox.stt.purge({
         on_progress: (transcription, index) => {
           console.log(`Purging transcription ${index + 1}: ${transcription.id}`);

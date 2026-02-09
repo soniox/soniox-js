@@ -1,8 +1,10 @@
-import type { SonioxNodeClient } from '@soniox/node';
 import type { Express } from 'express';
 
-export function register(app: Express, soniox: SonioxNodeClient) {
+import { getClientForRequest } from '../session';
+
+export function register(app: Express) {
   app.post('/webhook', (req, res) => {
+    const soniox = getClientForRequest(req);
     const result = soniox.webhooks.handleExpress(req);
     res.status(result.status).json(result.ok ? { received: true } : { error: result.error });
 
