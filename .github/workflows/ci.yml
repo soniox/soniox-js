@@ -118,7 +118,7 @@ jobs:
           fi
 
       - name: Publish @soniox/node
-        run: npm publish --dry-run --provenance --access public
+        run: npm publish --provenance --access public
         working-directory: packages/node
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
