@@ -16,6 +16,8 @@ export default [
       '*.config.js',
       '**/tsdown.config.ts',
       'scripts/**',
+      'examples/**/*.jsx',
+      'examples/**/*.js',
     ],
   },
   ...tseslint.configs.recommendedTypeChecked,

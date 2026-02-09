@@ -248,7 +248,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
    * );
    *
    * // Stream from a Web fetch response
-   * const response = await fetch('https://example.com/audio.mp3');
+   * const response = await fetch('https://soniox.com/media/examples/coffee_shop.mp3');
    * await session.sendStream(response.body, { finish: true });
    * ```
    */

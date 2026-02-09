@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Soniox SDK Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      .animate-pulse {
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+    </style>
+  </head>
+  <body class="bg-white text-gray-900">
+    <div id="app"></div>
+    <script type="module" src="./app.jsx"></script>
+  </body>
+</html>

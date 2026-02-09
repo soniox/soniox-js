@@ -561,7 +561,7 @@ export class SonioxTranscription implements ISonioxTranscription {
    * ```typescript
    * const transcription = await client.stt.create({
    *     model: 'stt-async-v4',
-   *     audio_url: 'https://example.com/audio.mp3',
+   *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
    * });
    *
    * // Simple wait
@@ -728,7 +728,7 @@ export class SonioxSttApi {
    * // Transcribe from URL
    * const transcription = await client.stt.create({
    *     model: 'stt-async-v4',
-   *     audio_url: 'https://example.com/audio.mp3',
+   *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
    * });
    *
    * // Transcribe from uploaded file
@@ -741,7 +741,7 @@ export class SonioxSttApi {
    * // With speaker diarization
    * const transcription = await client.stt.create({
    *     model: 'stt-async-v4',
-   *     audio_url: 'https://example.com/audio.mp3',
+   *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
    *     enable_speaker_diarization: true,
    * });
    * ```
@@ -1030,7 +1030,7 @@ export class SonioxSttApi {
    * // Transcribe from URL and wait for completion
    * const result = await client.stt.transcribe({
    *     model: 'stt-async-v4',
-   *     audio_url: 'https://example.com/audio.mp3',
+   *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
    *     wait: true,
    * });
    *

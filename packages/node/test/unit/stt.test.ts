@@ -112,7 +112,7 @@ describe('SonioxTranscription', () => {
       });
       const mockHttp = createMockHttpClient(requestMock);
       const transcription = new SonioxTranscription(
-        createMockTranscriptionData({ audio_url: 'https://example.com/audio.mp3' }),
+        createMockTranscriptionData({ audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3' }),
         mockHttp
       );
 
@@ -593,7 +593,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
       await api.create({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
       });
 
       expect(requestMock).toHaveBeenCalledWith({
@@ -601,7 +601,7 @@ describe('SonioxTranscriptionsAPI', () => {
         path: '/v1/transcriptions',
         body: {
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
         },
       });
     });
@@ -618,7 +618,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
       const result = await api.create({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
       });
 
       expect(result).toBeInstanceOf(SonioxTranscription);
@@ -633,7 +633,7 @@ describe('SonioxTranscriptionsAPI', () => {
       await expect(
         api.create({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           client_reference_id: 'x'.repeat(257),
         })
       ).rejects.toThrow('client_reference_id exceeds maximum length of 256 characters (got 257)');
@@ -651,7 +651,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
       await api.create({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
         client_reference_id: 'x'.repeat(256),
       });
 
@@ -889,7 +889,7 @@ describe('SonioxTranscriptionsAPI', () => {
         .mockResolvedValueOnce({
           status: 200,
           headers: {},
-          data: createMockTranscriptionData({ audio_url: 'https://example.com/audio.mp3' }),
+          data: createMockTranscriptionData({ audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3' }),
         })
         .mockResolvedValueOnce({
           status: 204,
@@ -1022,7 +1022,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
       const result = await api.transcribe({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
       });
 
       expect(result).toBeInstanceOf(SonioxTranscription);
@@ -1032,7 +1032,7 @@ describe('SonioxTranscriptionsAPI', () => {
         path: '/v1/transcriptions',
         body: expect.objectContaining({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
         }),
       });
     });
@@ -1105,7 +1105,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
       const resultPromise = api.transcribe({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
         wait: true,
       });
 
@@ -1147,7 +1147,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
       const resultPromise = api.transcribe({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
         wait: true,
         fetch_transcript: false,
       });
@@ -1184,7 +1184,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
       const resultPromise = api.transcribe({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
         wait: true,
       });
 
@@ -1227,7 +1227,7 @@ describe('SonioxTranscriptionsAPI', () => {
       const controller = new AbortController();
       const resultPromise = api.transcribe({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
         wait: true,
         signal: controller.signal,
       });
@@ -1257,7 +1257,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
       const result = await api.transcribe({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
       });
 
       expect(result.status).toBe('queued');
@@ -1281,7 +1281,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
       await api.transcribe({
         model: 'stt-async-v4',
-        audio_url: 'https://example.com/audio.mp3',
+        audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
         webhook_url: 'https://example.com/webhook',
         webhook_auth_header_name: 'X-Webhook-Auth',
         webhook_auth_header_value: 'secret-token',
@@ -1292,7 +1292,7 @@ describe('SonioxTranscriptionsAPI', () => {
         path: '/v1/transcriptions',
         body: expect.objectContaining({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           webhook_url: 'https://example.com/webhook',
           webhook_auth_header_name: 'X-Webhook-Auth',
           webhook_auth_header_value: 'secret-token',
@@ -1322,7 +1322,7 @@ describe('SonioxTranscriptionsAPI', () => {
           api.transcribe({
             model: 'stt-async-v4',
             file: Buffer.from('test'),
-            audio_url: 'https://example.com/audio.mp3',
+            audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           } as unknown as TranscribeOptions)
         ).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
       });
@@ -1349,7 +1349,7 @@ describe('SonioxTranscriptionsAPI', () => {
         await expect(
           api.transcribe({
             model: 'stt-async-v4',
-            audio_url: 'https://example.com/audio.mp3',
+            audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
             file_id: 'existing-file-id',
           } as unknown as TranscribeOptions)
         ).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
@@ -1364,7 +1364,7 @@ describe('SonioxTranscriptionsAPI', () => {
           api.transcribe({
             model: 'stt-async-v4',
             file: Buffer.from('test'),
-            audio_url: 'https://example.com/audio.mp3',
+            audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
             file_id: 'existing-file-id',
           } as unknown as TranscribeOptions)
         ).rejects.toThrow('Only one of file, file_id, or audio_url can be provided');
@@ -1381,7 +1381,7 @@ describe('SonioxTranscriptionsAPI', () => {
         await expect(
           api.transcribe({
             model: 'stt-async-v4',
-            audio_url: 'https://example.com/audio.mp3',
+            audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
             webhook_url: 'https://example.com/webhook',
             webhook_auth_header_name: 'X-Webhook-Secret',
           })
@@ -1397,7 +1397,7 @@ describe('SonioxTranscriptionsAPI', () => {
         await expect(
           api.transcribe({
             model: 'stt-async-v4',
-            audio_url: 'https://example.com/audio.mp3',
+            audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
             webhook_url: 'https://example.com/webhook',
             webhook_auth_header_value: 'secret-token',
           })
@@ -1416,7 +1416,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           webhook_url: 'https://example.com/webhook',
           webhook_auth_header_name: 'X-Webhook-Secret',
           webhook_auth_header_value: 'secret-token',
@@ -1437,7 +1437,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           webhook_url: 'https://example.com/webhook',
         });
 
@@ -1454,7 +1454,7 @@ describe('SonioxTranscriptionsAPI', () => {
         await expect(
           api.transcribe({
             model: 'stt-async-v4',
-            audio_url: 'https://example.com/audio.mp3',
+            audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
             client_reference_id: 'x'.repeat(257),
           })
         ).rejects.toThrow('client_reference_id exceeds maximum length of 256 characters (got 257)');
@@ -1472,7 +1472,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           client_reference_id: 'x'.repeat(256),
         });
 
@@ -1493,7 +1493,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           webhook_url: 'https://example.com/webhook',
           webhook_query: { transcription_id: 'abc123', user_id: '456' },
         });
@@ -1519,7 +1519,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           webhook_url: 'https://example.com/webhook',
           webhook_query: 'key=value&other=data',
         });
@@ -1549,7 +1549,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           webhook_url: 'https://example.com/webhook',
           webhook_query: params,
         });
@@ -1575,7 +1575,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           webhook_url: 'https://example.com/webhook?existing=param',
           webhook_query: { new: 'value' },
         });
@@ -1601,7 +1601,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           webhook_url: 'https://example.com/webhook',
         });
 
@@ -1626,7 +1626,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           webhook_query: { ignored: 'value' },
         });
 
@@ -1762,7 +1762,7 @@ describe('SonioxTranscriptionsAPI', () => {
         const controller = new AbortController();
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           signal: controller.signal,
         });
 
@@ -1806,7 +1806,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           timeout_ms: 30000,
         });
 
@@ -1871,7 +1871,7 @@ describe('SonioxTranscriptionsAPI', () => {
         const controller = new AbortController();
         const result = await api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           wait: true,
           signal: controller.signal,
         });
@@ -1888,7 +1888,7 @@ describe('SonioxTranscriptionsAPI', () => {
           await expect(
             api.transcribe({
               model: 'stt-async-v4',
-              audio_url: 'https://example.com/audio.mp3',
+              audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
               timeout_ms: NaN,
             })
           ).rejects.toThrow('timeout_ms must be a finite positive number');
@@ -1902,7 +1902,7 @@ describe('SonioxTranscriptionsAPI', () => {
           await expect(
             api.transcribe({
               model: 'stt-async-v4',
-              audio_url: 'https://example.com/audio.mp3',
+              audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
               timeout_ms: Infinity,
             })
           ).rejects.toThrow('timeout_ms must be a finite positive number');
@@ -1916,7 +1916,7 @@ describe('SonioxTranscriptionsAPI', () => {
           await expect(
             api.transcribe({
               model: 'stt-async-v4',
-              audio_url: 'https://example.com/audio.mp3',
+              audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
               timeout_ms: -1000,
             })
           ).rejects.toThrow('timeout_ms must be a finite positive number');
@@ -1930,7 +1930,7 @@ describe('SonioxTranscriptionsAPI', () => {
           await expect(
             api.transcribe({
               model: 'stt-async-v4',
-              audio_url: 'https://example.com/audio.mp3',
+              audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
               timeout_ms: 0,
             })
           ).rejects.toThrow('timeout_ms must be a finite positive number');
@@ -2040,7 +2040,7 @@ describe('SonioxTranscriptionsAPI', () => {
           const controller = new AbortController();
           const result = await api.transcribe({
             model: 'stt-async-v4',
-            audio_url: 'https://example.com/audio.mp3',
+            audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
             timeout_ms: 30000,
             signal: controller.signal,
           });
@@ -2059,7 +2059,7 @@ describe('SonioxTranscriptionsAPI', () => {
         await expect(
           api.transcribe({
             model: 'stt-async-v4',
-            audio_url: 'https://example.com/audio.mp3',
+            audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
             cleanup: ['file'],
           })
         ).rejects.toThrow('cleanup can only be used when wait=true');
@@ -2093,7 +2093,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         const resultPromise = api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           wait: true,
           cleanup: ['file'],
         });
@@ -2138,7 +2138,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         const resultPromise = api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           wait: true,
           cleanup: ['transcription'],
         });
@@ -2189,7 +2189,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         const resultPromise = api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           wait: true,
           cleanup: ['file', 'transcription'],
         });
@@ -2216,12 +2216,18 @@ describe('SonioxTranscriptionsAPI', () => {
           .mockResolvedValueOnce({
             status: 201,
             headers: {},
-            data: createMockTranscriptionData({ status: 'queued', audio_url: 'https://example.com/audio.mp3' }),
+            data: createMockTranscriptionData({
+              status: 'queued',
+              audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
+            }),
           })
           .mockResolvedValueOnce({
             status: 200,
             headers: {},
-            data: createMockTranscriptionData({ status: 'completed', audio_url: 'https://example.com/audio.mp3' }),
+            data: createMockTranscriptionData({
+              status: 'completed',
+              audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
+            }),
           })
           .mockResolvedValueOnce({
             status: 200,
@@ -2236,7 +2242,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         const resultPromise = api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           wait: true,
           cleanup: ['file'],
         });
@@ -2299,7 +2305,7 @@ describe('SonioxTranscriptionsAPI', () => {
             data: createMockTranscriptionData({
               status: 'queued',
               file_id: 'api-created-file-id',
-              audio_url: 'https://example.com/audio.mp3',
+              audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
             }),
           })
           .mockRejectedValueOnce(new Error('Timeout during wait'));
@@ -2312,7 +2318,7 @@ describe('SonioxTranscriptionsAPI', () => {
         await expect(
           api.transcribe({
             model: 'stt-async-v4',
-            audio_url: 'https://example.com/audio.mp3',
+            audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
             wait: true,
             cleanup: ['file', 'transcription'],
           })
@@ -2360,7 +2366,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         const resultPromise = api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           wait: true,
           cleanup: ['file', 'transcription'],
         });
@@ -2407,7 +2413,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         const resultPromise = api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           wait: true,
           cleanup: [],
         });
@@ -2451,7 +2457,7 @@ describe('SonioxTranscriptionsAPI', () => {
 
         const resultPromise = api.transcribe({
           model: 'stt-async-v4',
-          audio_url: 'https://example.com/audio.mp3',
+          audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
           wait: true,
           cleanup: ['file', 'transcription'],
         });
