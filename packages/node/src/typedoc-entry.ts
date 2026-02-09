@@ -103,6 +103,7 @@ export type {
   RealtimeEvent,
   AudioFormat,
   AudioData,
+  SendStreamOptions,
   RealtimeSegmentOptions,
   RealtimeSegmentBufferOptions,
   RealtimeUtteranceBufferOptions,

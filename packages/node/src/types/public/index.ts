@@ -94,6 +94,7 @@ export type {
   RealtimeToken,
   RealtimeUtterance,
   RealtimeUtteranceBufferOptions,
+  SendStreamOptions,
   SttSessionConfig,
   SttSessionEvents,
   SttSessionOptions,

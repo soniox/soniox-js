@@ -474,6 +474,24 @@ export type SttSessionEvents = {
  */
 export type AudioData = Buffer | Uint8Array | ArrayBuffer;
 
+/**
+ * Options for streaming audio from an async iterable source.
+ */
+export type SendStreamOptions = {
+  /**
+   * Delay in milliseconds between sending chunks.
+   * Useful for simulating real-time pace when streaming pre-recorded files.
+   * Not needed for live audio sources.
+   */
+  pace_ms?: number | undefined;
+
+  /**
+   * When true, calls finish() automatically after the stream ends.
+   * @default false
+   */
+  finish?: boolean | undefined;
+};
+
 // =============================================================================
 // Realtime Client Options
 // =============================================================================
