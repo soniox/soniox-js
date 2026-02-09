@@ -1,7 +1,7 @@
 {
-  "name": "soniox-example-express",
+  "name": "soniox-example-app",
   "version": "1.0.0",
-  "description": "Soniox SDK Express.js example with integration tests",
+  "description": "Soniox SDK example app",
   "license": "MIT",
   "type": "commonjs",
   "scripts": {
