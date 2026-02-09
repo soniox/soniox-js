@@ -3,6 +3,7 @@ import type {
   RealtimeEvent,
   RealtimeResult,
   RealtimeToken,
+  SendStreamOptions,
   SttSessionConfig,
   SttSessionEvents,
   SttSessionOptions,
@@ -223,6 +224,47 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   }
 
   /**
+   * Stream audio data from an async iterable source.
+   *
+   * Reads chunks from the iterable and sends each via {@link sendAudio}.
+   * Works with Node.js ReadableStreams, Web ReadableStreams, async generators,
+   * and any other `AsyncIterable<AudioData>`.
+   *
+   * @param stream - Async iterable yielding audio chunks
+   * @param options - Optional pacing and auto-finish settings
+   * @throws {AbortError} If aborted during streaming
+   * @throws {StateError} If not connected
+   *
+   * @example
+   * ```typescript
+   * // Stream from a Node.js file
+   * import fs from 'fs';
+   * await session.sendStream(fs.createReadStream('audio.mp3'), { finish: true });
+   *
+   * // Stream with simulated real-time pacing
+   * await session.sendStream(
+   *   fs.createReadStream('audio.pcm_s16le', { highWaterMark: 3840 }),
+   *   { pace_ms: 120, finish: true }
+   * );
+   *
+   * // Stream from a Web fetch response
+   * const response = await fetch('https://example.com/audio.mp3');
+   * await session.sendStream(response.body, { finish: true });
+   * ```
+   */
+  async sendStream(stream: AsyncIterable<AudioData>, options?: SendStreamOptions): Promise<void> {
+    for await (const chunk of stream) {
+      this.sendAudio(chunk);
+      if (options?.pace_ms) {
+        await new Promise((resolve) => setTimeout(resolve, options.pace_ms));
+      }
+    }
+    if (options?.finish) {
+      await this.finish();
+    }
+  }
+
+  /**
    * Pause audio transmission and starts automatic keepalive messages
    */
   pause(): void {
@@ -292,8 +334,8 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       this.finishRejecter = reject;
     });
 
-    // Send empty frame to signal end of audio
-    this.sendMessage(new Uint8Array(0), false);
+    // Send empty string to signal end of audio
+    this.sendMessage('', false);
 
     return finishPromise;
   }
