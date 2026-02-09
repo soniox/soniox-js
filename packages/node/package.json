@@ -1,6 +1,6 @@
 {
   "name": "@soniox/node",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "homepage": "https://soniox.com/docs/stt/SDKs/node-SDK",
   "bugs": {
     "url": "https://github.com/soniox/soniox-js/issues"
