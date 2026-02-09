@@ -47,8 +47,5 @@
     "clean": "rm -rf dist",
     "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
