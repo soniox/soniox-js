@@ -11,6 +11,7 @@ export function AsyncTab() {
   const [transcriptions, setTranscriptions] = useState([]);
   const [selectedTranscription, setSelectedTranscription] = useState(null);
   const [transcript, setTranscript] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [logs, setLogs] = useState([]);
 
   const fileInputRef = useRef(null);
@@ -30,8 +31,35 @@ export function AsyncTab() {
     }
   }, [log]);
 
+  const fetchFiles = useCallback(async () => {
+    try {
+      const res = await fetch('/files');
+      const data = await res.json();
+      setUploadedFiles(Array.isArray(data) ? data : []);
+      log(`Loaded ${Array.isArray(data) ? data.length : 0} files`);
+    } catch (err) {
+      log(`Error loading files: ${err.message}`);
+    }
+  }, [log]);
+
+  const deleteFile = useCallback(
+    async (id) => {
+      log(`Deleting file ${id}...`);
+      try {
+        const res = await fetch(`/files/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        log(`File ${id} deleted`);
+        fetchFiles();
+      } catch (err) {
+        log(`Error: ${err.message}`);
+      }
+    },
+    [log, fetchFiles]
+  );
+
   useEffect(() => {
     fetchTranscriptions();
+    fetchFiles();
   }, []);
 
   const transcribeFromUrl = useCallback(async () => {
@@ -98,12 +126,13 @@ export function AsyncTab() {
       log(`Transcription created: ${data.id} (status: ${data.status})`);
       setSelectedTranscription(data);
       fetchTranscriptions();
+      fetchFiles();
     } catch (err) {
       log(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
-  }, [selectedFile, waitForCompletion, diarization, languageId, log, fetchTranscriptions]);
+  }, [selectedFile, waitForCompletion, diarization, languageId, log, fetchTranscriptions, fetchFiles]);
 
   const viewTranscript = useCallback(
     async (id) => {
@@ -176,6 +205,7 @@ export function AsyncTab() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Purge failed');
       log(`Purged ${data.deleted} file(s)`);
+      setUploadedFiles([]);
     } catch (err) {
       log(`Error: ${err.message}`);
     }
@@ -262,16 +292,13 @@ export function AsyncTab() {
       {/* Right column: Transcriptions list */}
       <div>
         <div className="items-center mb-3">
-          <h3 className="font-semibold text-lg">Transcriptions</h3>
+          <h3 className="font-semibold text-lg mb-2">Transcriptions</h3>
           <div className="flex gap-2">
             <Button onClick={fetchTranscriptions} variant="secondary">
               Refresh
             </Button>
             <Button onClick={purgeTranscriptions} variant="secondary">
-              Purge All
-            </Button>
-            <Button onClick={purgeFiles} variant="secondary">
-              Purge Files
+              Purge Transcriptions
             </Button>
           </div>
         </div>
@@ -372,6 +399,45 @@ export function AsyncTab() {
             </div>
           </Panel>
         )}
+
+        <div className="items-center mt-6 mb-3">
+          <h3 className="font-semibold text-lg mb-2">Uploaded Files</h3>
+          <div className="flex gap-2">
+            <Button onClick={fetchFiles} variant="secondary">
+              Refresh
+            </Button>
+            <Button onClick={purgeFiles} variant="secondary">
+              Purge Files
+            </Button>
+          </div>
+        </div>
+
+        <div className="border border-gray-300 rounded-lg max-h-48 overflow-y-auto">
+          {uploadedFiles.length === 0 ? (
+            <div className="p-4 text-gray-500 text-center">No files</div>
+          ) : (
+            uploadedFiles.map((f) => (
+              <div
+                key={f.id}
+                className="p-3 border-b border-gray-200 last:border-b-0 flex justify-between items-center"
+              >
+                <div className="truncate flex-1 mr-2">
+                  <div className="text-sm font-medium truncate">{f.filename}</div>
+                  <div className="text-xs text-gray-500">
+                    {f.id.substring(0, 8)}... &middot; {(f.size / 1024).toFixed(1)} KB &middot;{' '}
+                    {new Date(f.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <button
+                  className="text-xs text-red-600 hover:text-red-800 font-semibold whitespace-nowrap"
+                  onClick={() => deleteFile(f.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

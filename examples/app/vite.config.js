@@ -10,6 +10,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/api-token': 'http://localhost:3000',
       '/tmp-key': 'http://localhost:3000',
       '/models': 'http://localhost:3000',
       '/files': 'http://localhost:3000',

@@ -5,7 +5,7 @@ import { AgentTab } from './agent-tab';
 import { AsyncTab } from './async-tab';
 import { Button } from './components';
 
-function ApiTokenBar() {
+function ApiTokenBar({ onTokenChange }) {
   const [source, setSource] = useState(null); // 'custom' | 'env' | 'none' | null (loading)
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
@@ -39,12 +39,13 @@ function ApiTokenBar() {
       if (!res.ok) throw new Error(data.error || 'Failed to save');
       setSource(data.source);
       setApiKey('');
+      onTokenChange();
     } catch (err) {
       setError(err.message);
     } finally {
       setSaving(false);
     }
-  }, [apiKey]);
+  }, [apiKey, onTokenChange]);
 
   const clearToken = useCallback(async () => {
     setError('');
@@ -52,10 +53,11 @@ function ApiTokenBar() {
       const res = await fetch('/api-token', { method: 'DELETE' });
       const data = await res.json();
       setSource(data.source);
+      onTokenChange();
     } catch (err) {
       setError(err.message);
     }
-  }, []);
+  }, [onTokenChange]);
 
   if (source === null) return null; // still loading
 
@@ -98,6 +100,11 @@ function ApiTokenBar() {
 
 function App() {
   const [activeTab, setActiveTab] = useState('realtime');
+  const [tokenVersion, setTokenVersion] = useState(0);
+
+  const handleTokenChange = useCallback(() => {
+    setTokenVersion((v) => v + 1);
+  }, []);
 
   const tabs = [
     { id: 'realtime', label: 'Realtime' },
@@ -111,7 +118,7 @@ function App() {
       <p className="text-gray-500 mt-1">Explore Soniox speech-to-text capabilities.</p>
 
       <div className="mt-4">
-        <ApiTokenBar />
+        <ApiTokenBar onTokenChange={handleTokenChange} />
       </div>
 
       <div className="flex mt-2 border-b-2 border-gray-300">
@@ -126,9 +133,9 @@ function App() {
         ))}
       </div>
 
-      {activeTab === 'realtime' && <TranscriptionTab />}
-      {activeTab === 'async' && <AsyncTab />}
-      {activeTab === 'agent' && <AgentTab />}
+      {activeTab === 'realtime' && <TranscriptionTab key={tokenVersion} />}
+      {activeTab === 'async' && <AsyncTab key={tokenVersion} />}
+      {activeTab === 'agent' && <AgentTab key={tokenVersion} />}
     </div>
   );
 }
