@@ -6,6 +6,8 @@ import type {
   ISonioxTranscription,
   ListTranscriptionsOptions,
   ListTranscriptionsResponse,
+  PurgeResult,
+  PurgeTranscriptionsOptions,
   SegmentTranscriptOptions,
   SonioxTranscriptionData,
   TranscribeFromFileIdOptions,
@@ -1245,5 +1247,47 @@ export class SonioxSttApi {
     } finally {
       cleanupSignal();
     }
+  }
+
+  /**
+   * Permanently deletes all transcriptions.
+   * Iterates through all pages of transcriptions and deletes each one.
+   *
+   * @param options - Optional signal and progress callback.
+   * @returns The number of transcriptions deleted.
+   * @throws {SonioxHttpError} On API errors.
+   * @throws {Error} If the operation is aborted via signal.
+   *
+   * @example
+   * ```typescript
+   * // Delete all transcriptions
+   * const { deleted } = await client.stt.purge();
+   * console.log(`Deleted ${deleted} transcriptions.`);
+   *
+   * // With progress logging
+   * const { deleted } = await client.stt.purge({
+   *     on_progress: (transcription, index) => {
+   *         console.log(`Deleting transcription: ${transcription.id} (${index + 1})`);
+   *     },
+   * });
+   *
+   * // With cancellation
+   * const controller = new AbortController();
+   * const { deleted } = await client.stt.purge({ signal: controller.signal });
+   * ```
+   */
+  async purge(options: PurgeTranscriptionsOptions = {}): Promise<PurgeResult> {
+    const { signal, on_progress } = options;
+    const result = await this.list();
+    let deleted = 0;
+
+    for await (const transcription of result) {
+      signal?.throwIfAborted();
+      on_progress?.(transcription.toJSON(), deleted);
+      await this.delete(transcription);
+      deleted++;
+    }
+
+    return { deleted };
   }
 }

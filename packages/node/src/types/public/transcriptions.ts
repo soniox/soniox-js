@@ -666,6 +666,22 @@ export type TranscriptSegment = {
 };
 
 /**
+ * Options for purging all transcriptions.
+ */
+export type PurgeTranscriptionsOptions = {
+  /**
+   * AbortSignal for cancelling the purge operation.
+   */
+  signal?: AbortSignal | undefined;
+
+  /**
+   * Callback invoked before each transcription is deleted.
+   * Receives the transcription data and its 0-based index.
+   */
+  on_progress?: ((transcription: SonioxTranscriptionData, index: number) => void) | undefined;
+};
+
+/**
  * Type contract for SonioxTranscript class.
  * @see SonioxTranscript for full documentation.
  */

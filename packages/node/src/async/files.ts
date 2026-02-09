@@ -4,6 +4,8 @@ import type {
   FileIdentifier,
   ListFilesOptions,
   ListFilesResponse,
+  PurgeFilesOptions,
+  PurgeResult,
   SonioxFileData,
   UploadFileInput,
   UploadFileOptions,
@@ -535,5 +537,47 @@ export class SonioxFilesAPI {
         throw error;
       }
     }
+  }
+
+  /**
+   * Permanently deletes all uploaded files.
+   * Iterates through all pages of files and deletes each one.
+   *
+   * @param options - Optional signal and progress callback.
+   * @returns The number of files deleted.
+   * @throws {SonioxHttpError} On API errors.
+   * @throws {Error} If the operation is aborted via signal.
+   *
+   * @example
+   * ```typescript
+   * // Delete all files
+   * const { deleted } = await client.files.purge();
+   * console.log(`Deleted ${deleted} files.`);
+   *
+   * // With progress logging
+   * const { deleted } = await client.files.purge({
+   *     on_progress: (file, index) => {
+   *         console.log(`Deleting file: ${file.id} (${index + 1})`);
+   *     },
+   * });
+   *
+   * // With cancellation
+   * const controller = new AbortController();
+   * const { deleted } = await client.files.purge({ signal: controller.signal });
+   * ```
+   */
+  async purge(options: PurgeFilesOptions = {}): Promise<PurgeResult> {
+    const { signal, on_progress } = options;
+    const result = await this.list({ signal });
+    let deleted = 0;
+
+    for await (const file of result) {
+      signal?.throwIfAborted();
+      on_progress?.(file.toJSON(), deleted);
+      await this.delete(file, signal);
+      deleted++;
+    }
+
+    return { deleted };
   }
 }

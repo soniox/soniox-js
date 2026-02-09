@@ -104,3 +104,29 @@ export type UploadFileOptions = {
    */
   timeout_ms?: number | undefined;
 };
+
+/**
+ * Options for purging all files.
+ */
+export type PurgeFilesOptions = {
+  /**
+   * AbortSignal for cancelling the purge operation.
+   */
+  signal?: AbortSignal | undefined;
+
+  /**
+   * Callback invoked before each file is deleted.
+   * Receives the file data and its 0-based index.
+   */
+  on_progress?: ((file: SonioxFileData, index: number) => void) | undefined;
+};
+
+/**
+ * Result of a purge operation.
+ */
+export type PurgeResult = {
+  /**
+   * Number of resources deleted.
+   */
+  deleted: number;
+};
