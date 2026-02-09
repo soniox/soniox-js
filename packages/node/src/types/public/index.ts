@@ -24,7 +24,6 @@ export type {
   ListFilesOptions,
   ListFilesResponse,
   PurgeFilesOptions,
-  PurgeResult,
   SonioxFileData,
   UploadFileInput,
   UploadFileOptions,
@@ -100,6 +99,16 @@ export type {
   SttSessionOptions,
   SttSessionState,
 } from './realtime.js';
+
+/**
+ * Result of a purge operation.
+ */
+export type PurgeResult = {
+  /**
+   * Number of resources deleted.
+   */
+  deleted: number;
+};
 
 export type TemporaryApiKeyUsageType = 'transcribe_websocket';
 

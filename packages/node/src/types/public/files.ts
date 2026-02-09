@@ -120,13 +120,3 @@ export type PurgeFilesOptions = {
    */
   on_progress?: ((file: SonioxFileData, index: number) => void) | undefined;
 };
-
-/**
- * Result of a purge operation.
- */
-export type PurgeResult = {
-  /**
-   * Number of resources deleted.
-   */
-  deleted: number;
-};

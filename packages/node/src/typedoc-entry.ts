@@ -33,6 +33,7 @@ export type {
   FileIdentifier,
   UploadFileInput,
   UploadFileOptions,
+  PurgeFilesOptions,
 } from './types/public/index.js';
 
 // Public types — Transcriptions
@@ -64,6 +65,8 @@ export type {
   TranscriptionIdentifier,
   CleanupTarget,
   SegmentGroupKey,
+  PurgeTranscriptionsOptions,
+  PurgeResult,
 } from './types/public/index.js';
 
 // Public types — Models
