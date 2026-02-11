@@ -57,7 +57,7 @@ export class SonioxFile {
    * This operation is idempotent - succeeds even if the file doesn't exist.
    *
    * @param signal - Optional AbortSignal for cancellation
-   * @throws {SonioxHttpError} On API errors (except 404)
+   * @throws {@link SonioxHttpError} On API errors (except 404)
    *
    * @example
    * ```typescript
@@ -336,8 +336,8 @@ export class SonioxFilesAPI {
    * @param file - Buffer, Uint8Array, Blob, or ReadableStream
    * @param options - Upload options
    * @returns The uploaded file metadata
-   * @throws {SonioxHttpError} On API errors
-   * @throws {Error} On validation errors (file too large, invalid input)
+   * @throws {@link SonioxHttpError} On API errors
+   * @throws `Error` On validation errors (file too large, invalid input)
    *
    * @example Upload from file path (Node.js)
    * ```typescript
@@ -420,7 +420,7 @@ export class SonioxFilesAPI {
    *
    * @param options - Optional pagination and cancellation parameters
    * @returns FileListResult
-   * @throws {SonioxHttpError}
+   * @throws {@link SonioxHttpError}
    *
    * @example
    * ```typescript
@@ -474,7 +474,7 @@ export class SonioxFilesAPI {
    * @param file - The UUID of the file or a SonioxFile instance
    * @param signal - Optional AbortSignal for cancellation
    * @returns The file instance, or null if not found
-   * @throws {SonioxHttpError} On API errors (except 404)
+   * @throws {@link SonioxHttpError} On API errors (except 404)
    *
    * @example
    * ```typescript
@@ -507,7 +507,7 @@ export class SonioxFilesAPI {
    *
    * @param file - The UUID of the file or a SonioxFile instance
    * @param signal - Optional AbortSignal for cancellation
-   * @throws {SonioxHttpError} On API errors (except 404)
+   * @throws {@link SonioxHttpError} On API errors (except 404)
    *
    * @example
    * ```typescript
@@ -545,8 +545,8 @@ export class SonioxFilesAPI {
    *
    * @param options - Optional signal and progress callback.
    * @returns The number of files deleted.
-   * @throws {SonioxHttpError} On API errors.
-   * @throws {Error} If the operation is aborted via signal.
+   * @throws {@link SonioxHttpError} On API errors.
+   * @throws `Error` If the operation is aborted via signal.
    *
    * @example
    * ```typescript

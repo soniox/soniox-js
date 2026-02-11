@@ -205,7 +205,7 @@ export class FetchHttpClient implements HttpClient {
    *
    * @param request - Request configuration
    * @returns Promise resolving to the response
-   * @throws {SonioxHttpError}
+   * @throws {@link SonioxHttpError}
    */
   async request<T>(request: HttpRequest): Promise<HttpResponse<T>> {
     const startTime = Date.now();

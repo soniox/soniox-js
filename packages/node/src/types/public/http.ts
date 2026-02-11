@@ -165,7 +165,7 @@ export interface HttpClient {
    *
    * @param request - Request configuration
    * @returns Promise resolving to the response
-   * @throws {SonioxHttpError} On network errors, timeouts, HTTP errors, or parse errors
+   * @throws {@link SonioxHttpError} On network errors, timeouts, HTTP errors, or parse errors
    */
   request<T>(request: HttpRequest): Promise<HttpResponse<T>>;
 }

@@ -418,7 +418,7 @@ export class SonioxTranscription implements ISonioxTranscription {
    * Permanently deletes this transcription.
    * This operation is idempotent - succeeds even if the transcription doesn't exist.
    *
-   * @throws {SonioxHttpError} On API errors (except 404)
+   * @throws {@link SonioxHttpError} On API errors (except 404)
    *
    * @example
    * ```typescript
@@ -443,7 +443,7 @@ export class SonioxTranscription implements ISonioxTranscription {
    * Permanently deletes this transcription and its associated file (if any).
    * This operation is idempotent - succeeds even if resources don't exist.
    *
-   * @throws {SonioxHttpError} On API errors (except 404)
+   * @throws {@link SonioxHttpError} On API errors (except 404)
    *
    * @example
    * ```typescript
@@ -487,7 +487,7 @@ export class SonioxTranscription implements ISonioxTranscription {
    * @param options.force - If true, bypasses cached transcript and fetches from API
    * @param options.signal - Optional AbortSignal for request cancellation
    * @returns The transcript with text and detailed tokens, or null if not found.
-   * @throws {SonioxHttpError} On API errors (except 404).
+   * @throws {@link SonioxHttpError} On API errors (except 404).
    *
    * @example
    * ```typescript
@@ -530,7 +530,7 @@ export class SonioxTranscription implements ISonioxTranscription {
    * Re-fetches this transcription to get the latest status.
    * @param signal - Optional AbortSignal for request cancellation.
    * @returns A new SonioxTranscription instance with updated data.
-   * @throws {SonioxHttpError}
+   * @throws {@link SonioxHttpError}
    *
    * @example
    * ```typescript
@@ -554,8 +554,8 @@ export class SonioxTranscription implements ISonioxTranscription {
    *
    * @param options - Wait options including polling interval, timeout, and callbacks.
    * @returns The completed or errored transcription.
-   * @throws {Error} If the wait times out or is aborted.
-   * @throws {SonioxHttpError} On API errors.
+   * @throws `Error` If the wait times out or is aborted.
+   * @throws {@link SonioxHttpError} On API errors.
    *
    * @example
    * ```typescript
@@ -721,7 +721,7 @@ export class SonioxSttApi {
    *
    * @param options - Transcription options including model and audio source.
    * @returns The created transcription.
-   * @throws {SonioxHttpError} On API errors.
+   * @throws {@link SonioxHttpError} On API errors.
    *
    * @example
    * ```typescript
@@ -771,7 +771,7 @@ export class SonioxSttApi {
    *
    * @param options - Optional pagination and filter parameters.
    * @returns TranscriptionListResult with async iteration support.
-   * @throws {SonioxHttpError} On API errors.
+   * @throws {@link SonioxHttpError} On API errors.
    *
    * @example
    * ```typescript
@@ -811,7 +811,7 @@ export class SonioxSttApi {
    *
    * @param id - The UUID of the transcription or a SonioxTranscription instance.
    * @returns The transcription, or null if not found.
-   * @throws {SonioxHttpError} On API errors (except 404).
+   * @throws {@link SonioxHttpError} On API errors (except 404).
    *
    * @example
    * ```typescript
@@ -842,7 +842,7 @@ export class SonioxSttApi {
    * This operation is idempotent - succeeds even if the transcription doesn't exist.
    *
    * @param id - The UUID of the transcription or a SonioxTranscription instance
-   * @throws {SonioxHttpError} On API errors (except 404)
+   * @throws {@link SonioxHttpError} On API errors (except 404)
    *
    * @example
    * ```typescript
@@ -875,7 +875,7 @@ export class SonioxSttApi {
    * This operation is idempotent - succeeds even if resources don't exist.
    *
    * @param id - The UUID of the transcription or a SonioxTranscription instance
-   * @throws {SonioxHttpError} On API errors (except 404)
+   * @throws {@link SonioxHttpError} On API errors (except 404)
    *
    * @example
    * ```typescript
@@ -922,7 +922,7 @@ export class SonioxSttApi {
    *
    * @param id - The UUID of the transcription or a SonioxTranscription instance
    * @returns The transcript with text and detailed tokens, or null if not found
-   * @throws {SonioxHttpError} On API errors (except 404)
+   * @throws {@link SonioxHttpError} On API errors (except 404)
    *
    * @example
    * ```typescript
@@ -958,8 +958,8 @@ export class SonioxSttApi {
    * @param id - The UUID of the transcription or a SonioxTranscription instance.
    * @param options - Wait options including polling interval, timeout, and callbacks.
    * @returns The completed or errored transcription.
-   * @throws {Error} If the wait times out or is aborted.
-   * @throws {SonioxHttpError} On API errors.
+   * @throws `Error` If the wait times out or is aborted.
+   * @throws {@link SonioxHttpError} On API errors.
    *
    * @example
    * ```typescript
@@ -1022,8 +1022,8 @@ export class SonioxSttApi {
    *
    * @param options - Transcribe options including model, audio source, and wait settings.
    * @returns The transcription (completed if wait=true, otherwise in queued/processing state).
-   * @throws {SonioxHttpError} On API errors.
-   * @throws {Error} On validation errors or wait timeout.
+   * @throws {@link SonioxHttpError} On API errors.
+   * @throws `Error` On validation errors or wait timeout.
    *
    * @example
    * ```typescript
@@ -1255,8 +1255,8 @@ export class SonioxSttApi {
    *
    * @param options - Optional signal and progress callback.
    * @returns The number of transcriptions deleted.
-   * @throws {SonioxHttpError} On API errors.
-   * @throws {Error} If the operation is aborted via signal.
+   * @throws {@link SonioxHttpError} On API errors.
+   * @throws `Error` If the operation is aborted via signal.
    *
    * @example
    * ```typescript

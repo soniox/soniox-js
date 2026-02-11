@@ -75,6 +75,17 @@ function preProcess(content, filePath) {
     'SonioxWebhooksAPI',
     'SonioxAuthAPI',
     'SonioxRealtimeApi',
+    // Error classes — users catch these but don't construct them
+    'SonioxError',
+    'SonioxHttpError',
+    'RealtimeError',
+    'AuthError',
+    'BadRequestError',
+    'QuotaError',
+    'ConnectionError',
+    'NetworkError',
+    'AbortError',
+    'StateError',
   ]);
   if (internalAPIs.has(extractName(filePath))) {
     content = stripH2Section(content, 'Constructors');
@@ -222,6 +233,17 @@ const classOrder = [
   'Class.RealtimeSttSession.md',
   'Class.RealtimeSegmentBuffer.md',
   'Class.RealtimeUtteranceBuffer.md',
+  // Error classes
+  'Class.SonioxError.md',
+  'Class.SonioxHttpError.md',
+  'Class.RealtimeError.md',
+  'Class.AuthError.md',
+  'Class.BadRequestError.md',
+  'Class.QuotaError.md',
+  'Class.ConnectionError.md',
+  'Class.NetworkError.md',
+  'Class.AbortError.md',
+  'Class.StateError.md',
 ];
 
 const orderedClassFiles = classOrder.map((name) => classFiles.find((f) => basename(f) === name)).filter(Boolean);

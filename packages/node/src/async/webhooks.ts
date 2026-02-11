@@ -113,7 +113,7 @@ export function isWebhookEvent(payload: unknown): payload is WebhookEvent {
  *
  * @param payload - Raw payload to parse (object or JSON string)
  * @returns Validated WebhookEvent
- * @throws Error with descriptive message if payload is invalid
+ * @throws `Error` if payload is invalid
  *
  * @example
  * ```typescript

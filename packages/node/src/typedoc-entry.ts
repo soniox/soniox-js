@@ -22,8 +22,41 @@ export {
   RealtimeUtteranceBuffer,
 } from './realtime/index.js';
 
-// Public types — Client
-export type { SonioxNodeClientOptions, RealtimeOptions } from './types/public/index.js';
+// Errors — HTTP
+export { SonioxError, SonioxHttpError } from './http/errors.js';
+
+// Errors — Real-time
+export {
+  RealtimeError,
+  AuthError,
+  BadRequestError,
+  QuotaError,
+  ConnectionError,
+  NetworkError,
+  AbortError,
+  StateError,
+} from './realtime/errors.js';
+
+// Public types — Errors
+export type {
+  SonioxErrorCode,
+  HttpErrorCode,
+  RealtimeErrorCode,
+  HttpMethod,
+  HttpErrorDetails,
+} from './types/public/index.js';
+
+// Public types — Client & HTTP
+export type {
+  SonioxNodeClientOptions,
+  RealtimeOptions,
+  HttpClient,
+  HttpRequest,
+  HttpResponse,
+  HttpRequestBody,
+  HttpResponseType,
+  QueryParams,
+} from './types/public/index.js';
 
 // Public types — Files
 export type {
@@ -67,6 +100,8 @@ export type {
   SegmentGroupKey,
   PurgeTranscriptionsOptions,
   PurgeResult,
+  ISonioxTranscript,
+  ISonioxTranscription,
 } from './types/public/index.js';
 
 // Public types — Models
@@ -78,7 +113,11 @@ export type {
 } from './types/public/index.js';
 
 // Public types — Auth
-export type { TemporaryApiKeyRequest, TemporaryApiKeyResponse } from './types/public/index.js';
+export type {
+  TemporaryApiKeyRequest,
+  TemporaryApiKeyResponse,
+  TemporaryApiKeyUsageType,
+} from './types/public/index.js';
 
 // Public types — Webhooks
 export type {
@@ -88,6 +127,11 @@ export type {
   WebhookHandlerResult,
   WebhookHandlerResultWithFetch,
   HandleWebhookOptions,
+  WebhookHeaders,
+  ExpressLikeRequest,
+  FastifyLikeRequest,
+  HonoLikeContext,
+  NestJSLikeRequest,
 } from './types/public/index.js';
 
 // Public types — Real-time
@@ -107,4 +151,5 @@ export type {
   RealtimeSegmentOptions,
   RealtimeSegmentBufferOptions,
   RealtimeUtteranceBufferOptions,
+  RealtimeClientOptions,
 } from './types/public/index.js';

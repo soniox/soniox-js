@@ -177,9 +177,9 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   /**
    * Connect to the Soniox WebSocket API.
    *
-   * @throws {AbortError} If aborted
-   * @throws {NetworkError} If connection fails
-   * @throws {StateError} If already connected
+   * @throws {@link AbortError} If aborted
+   * @throws {@link NetworkError} If connection fails
+   * @throws {@link StateError} If already connected
    */
   async connect(): Promise<void> {
     if (this._state !== 'idle') {
@@ -204,8 +204,8 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
    * Send audio data to the server
    *
    * @param data - Audio data as Buffer, Uint8Array, or ArrayBuffer
-   * @throws {AbortError} If aborted
-   * @throws {StateError} If not connected
+   * @throws {@link AbortError} If aborted
+   * @throws {@link StateError} If not connected
    */
   sendAudio(data: AudioData): void {
     this.checkAborted();
@@ -232,8 +232,8 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
    *
    * @param stream - Async iterable yielding audio chunks
    * @param options - Optional pacing and auto-finish settings
-   * @throws {AbortError} If aborted during streaming
-   * @throws {StateError} If not connected
+   * @throws {@link AbortError} If aborted during streaming
+   * @throws {@link StateError} If not connected
    *
    * @example
    * ```typescript
