@@ -197,28 +197,26 @@ export function AsyncTab() {
     [log, selectedTranscription, fetchTranscriptions]
   );
 
-  const purgeFiles = useCallback(async () => {
+  const deleteAllFiles = useCallback(async () => {
     if (!confirm('Delete ALL uploaded files? This cannot be undone.')) return;
-    log('Purging all files...');
+    log('Deleting all files...');
     try {
-      const res = await fetch('/files/purge', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Purge failed');
-      log(`Purged ${data.deleted} file(s)`);
+      const res = await fetch('/files/delete_all', { method: 'POST' });
+      if (!res.ok) throw new Error('Delete failed');
+      log(`Deleted all files`);
       setUploadedFiles([]);
     } catch (err) {
       log(`Error: ${err.message}`);
     }
   }, [log]);
 
-  const purgeTranscriptions = useCallback(async () => {
+  const deleteAllTranscriptions = useCallback(async () => {
     if (!confirm('Delete ALL transcriptions? This cannot be undone.')) return;
-    log('Purging all transcriptions...');
+    log('Deleting all transcriptions...');
     try {
-      const res = await fetch('/transcriptions/purge', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Purge failed');
-      log(`Purged ${data.deleted} transcription(s)`);
+      const res = await fetch('/transcriptions/delete_all', { method: 'POST' });
+      if (!res.ok) throw new Error('Delete failed');
+      log(`Deleted all transcriptions`);
       setTranscriptions([]);
       setSelectedTranscription(null);
       setTranscript(null);
@@ -297,8 +295,8 @@ export function AsyncTab() {
             <Button onClick={fetchTranscriptions} variant="secondary">
               Refresh
             </Button>
-            <Button onClick={purgeTranscriptions} variant="secondary">
-              Purge Transcriptions
+            <Button onClick={deleteAllTranscriptions} variant="secondary">
+              Delete All Transcriptions
             </Button>
           </div>
         </div>
@@ -406,8 +404,8 @@ export function AsyncTab() {
             <Button onClick={fetchFiles} variant="secondary">
               Refresh
             </Button>
-            <Button onClick={purgeFiles} variant="secondary">
-              Purge Files
+            <Button onClick={deleteAllFiles} variant="secondary">
+              Delete All Files
             </Button>
           </div>
         </div>

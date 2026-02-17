@@ -1,4 +1,17 @@
+import type { TranscriptionContext, TranslationConfig, SegmentGroupKey } from '@soniox/core';
+
 import type { UploadFileInput } from './files.js';
+
+// Re-export shared transcription types from @soniox/core
+export type {
+  ContextGeneralEntry,
+  ContextTranslationTerm,
+  TranscriptionContext,
+  OneWayTranslationConfig,
+  TwoWayTranslationConfig,
+  TranslationConfig,
+  SegmentGroupKey,
+} from '@soniox/core';
 
 /**
  * Status of a transcription request.
@@ -12,104 +25,6 @@ export type TranscriptionStatus = 'queued' | 'processing' | 'completed' | 'error
  * - `'transcription'` - The transcription record
  */
 export type CleanupTarget = 'file' | 'transcription';
-
-/**
- * Key-value pair for general context information.
- */
-export type ContextGeneralEntry = {
-  /**
-   * The key describing the context type (e.g., "domain", "topic", "doctor").
-   */
-  key: string;
-
-  /**
-   * The value for the context key.
-   */
-  value: string;
-};
-
-/**
- * Custom translation term mapping.
- */
-export type ContextTranslationTerm = {
-  /**
-   * The source term to translate.
-   */
-  source: string;
-
-  /**
-   * The target translation for the term.
-   */
-  target: string;
-};
-
-/**
- * Additional context to improve transcription and translation accuracy.
- * All sections are optional - include only what's relevant for your use case.
- */
-export type TranscriptionContext = {
-  /**
-   * Structured key-value pairs describing domain, topic, intent, participant names, etc.
-   */
-  general?: ContextGeneralEntry[] | undefined;
-
-  /**
-   * Longer free-form background text, prior interaction history, reference documents, or meeting notes.
-   */
-  text?: string | undefined;
-
-  /**
-   * Domain-specific or uncommon words to recognize.
-   */
-  terms?: string[] | undefined;
-
-  /**
-   * Custom translations for ambiguous terms.
-   */
-  translation_terms?: ContextTranslationTerm[] | undefined;
-};
-
-/**
- * One-way translation configuration.
- * Translates all spoken languages into a single target language.
- */
-export type OneWayTranslationConfig = {
-  /**
-   * Translation type.
-   */
-  type: 'one_way';
-
-  /**
-   * Target language code for translation (e.g., "fr", "es", "de").
-   */
-  target_language: string;
-};
-
-/**
- * Two-way translation configuration.
- * Translates between two specified languages.
- */
-export type TwoWayTranslationConfig = {
-  /**
-   * Translation type.
-   */
-  type: 'two_way';
-
-  /**
-   * First language code.
-   */
-  language_a: string;
-
-  /**
-   * Second language code.
-   */
-  language_b: string;
-};
-
-/**
- * Translation configuration.
- */
-export type TranslationConfig = OneWayTranslationConfig | TwoWayTranslationConfig;
 
 /**
  * Raw transcription metadata from the API.
@@ -615,11 +530,6 @@ export type TranscriptResponse = {
 };
 
 /**
- * Fields that can be used to group tokens into segments
- */
-export type SegmentGroupKey = 'speaker' | 'language';
-
-/**
  * Options for segmenting a transcript
  */
 export type SegmentTranscriptOptions = {
@@ -666,11 +576,11 @@ export type TranscriptSegment = {
 };
 
 /**
- * Options for purging all transcriptions.
+ * Options for deleting all transcriptions.
  */
-export type PurgeTranscriptionsOptions = {
+export type DeleteAllTranscriptionsOptions = {
   /**
-   * AbortSignal for cancelling the purge operation.
+   * AbortSignal for cancelling the delete_all operation.
    */
   signal?: AbortSignal | undefined;
 
@@ -715,7 +625,7 @@ export interface ISonioxTranscription {
   readonly webhook_auth_header_value: string | null | undefined;
   readonly webhook_status_code: number | null | undefined;
   readonly client_reference_id: string | null | undefined;
-  readonly context: TranscriptionContext | string | null | undefined;
+  readonly context: TranscriptionContext | null | undefined;
   readonly transcript: ISonioxTranscript | null | undefined;
   toJSON(): SonioxTranscriptionData;
   delete(): Promise<void>;

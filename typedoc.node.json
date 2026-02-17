@@ -3,7 +3,7 @@
   "entryPoints": ["packages/node/src/typedoc-entry.ts"],
   "tsconfig": "packages/node/tsconfig.json",
   "plugin": ["typedoc-plugin-markdown"],
-  "out": "generated/docs/api-reference",
+  "out": "generated/docs/node/api-reference",
 
   "excludePrivate": true,
   "excludeProtected": true,

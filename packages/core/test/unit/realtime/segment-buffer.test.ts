@@ -1,5 +1,5 @@
-import { RealtimeSegmentBuffer } from '../../../src/realtime/segment-buffer';
-import type { RealtimeResult, RealtimeToken } from '../../../src/types/public/realtime';
+import { RealtimeSegmentBuffer } from '@soniox/core';
+import type { RealtimeResult, RealtimeToken } from '@soniox/core';
 
 describe('RealtimeSegmentBuffer', () => {
   const createToken = (text: string, overrides: Partial<RealtimeToken> = {}): RealtimeToken => ({

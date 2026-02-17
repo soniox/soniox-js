@@ -105,13 +105,13 @@ async function transcribeFile(audioUrl, audioPath, translation) {
 }
 
 async function deleteAllFiles() {
-  const { deleted } = await client.files.purge();
-  console.log(deleted === 0 ? 'No files to delete.' : `Deleted ${deleted} files.`);
+  await client.files.delete_all();
+  console.log('Deleted all files.');
 }
 
 async function deleteAllTranscriptions() {
-  const { deleted } = await client.stt.purge();
-  console.log(deleted === 0 ? 'No transcriptions to delete.' : `Deleted ${deleted} transcriptions.`);
+  await client.stt.delete_all();
+  console.log('Deleted all transcriptions.');
 }
 
 async function main() {

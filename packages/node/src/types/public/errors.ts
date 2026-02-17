@@ -5,28 +5,19 @@
  * for error handling across both REST (HTTP) and WebSocket (Real-time) APIs.
  */
 
+// Re-export shared error types from @soniox/core
+import type { RealtimeErrorCode } from '@soniox/core';
+export type { RealtimeErrorCode } from '@soniox/core';
+
 /**
  * Error codes for HTTP client errors
  */
 export type HttpErrorCode = 'network_error' | 'timeout' | 'aborted' | 'http_error' | 'parse_error';
 
 /**
- * Error codes for Real-time (WebSocket) API errors
+ * All possible SDK error codes (core real-time + HTTP-specific codes)
  */
-export type RealtimeErrorCode =
-  | 'auth_error'
-  | 'bad_request'
-  | 'quota_exceeded'
-  | 'connection_error'
-  | 'network_error'
-  | 'aborted'
-  | 'state_error'
-  | 'realtime_error';
-
-/**
- * All possible SDK error codes
- */
-export type SonioxErrorCode = HttpErrorCode | RealtimeErrorCode | 'soniox_error';
+export type SonioxErrorCode = RealtimeErrorCode | 'soniox_error' | HttpErrorCode;
 
 /**
  * HTTP methods supported by the client

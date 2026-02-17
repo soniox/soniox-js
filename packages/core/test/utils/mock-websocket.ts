@@ -81,7 +81,7 @@ let OriginalWebSocket: typeof WebSocket | undefined;
 export function installMockWebSocket(): void {
   OriginalWebSocket = global.WebSocket;
   MockWebSocket.reset();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   (global as any).WebSocket = MockWebSocket;
 }
 
@@ -90,7 +90,6 @@ export function installMockWebSocket(): void {
  * Call in afterEach.
  */
 export function restoreMockWebSocket(): void {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (global as any).WebSocket = OriginalWebSocket;
 }
 

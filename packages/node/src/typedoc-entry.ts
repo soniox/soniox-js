@@ -35,7 +35,7 @@ export {
   NetworkError,
   AbortError,
   StateError,
-} from './realtime/errors.js';
+} from './realtime/index.js';
 
 // Public types — Errors
 export type {
@@ -66,7 +66,7 @@ export type {
   FileIdentifier,
   UploadFileInput,
   UploadFileOptions,
-  PurgeFilesOptions,
+  DeleteAllFilesOptions,
 } from './types/public/index.js';
 
 // Public types — Transcriptions
@@ -98,8 +98,7 @@ export type {
   TranscriptionIdentifier,
   CleanupTarget,
   SegmentGroupKey,
-  PurgeTranscriptionsOptions,
-  PurgeResult,
+  DeleteAllTranscriptionsOptions,
   ISonioxTranscript,
   ISonioxTranscription,
 } from './types/public/index.js';

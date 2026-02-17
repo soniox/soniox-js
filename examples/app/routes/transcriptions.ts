@@ -110,15 +110,11 @@ export function register(app: Express) {
     }
   });
 
-  app.post('/transcriptions/purge', async (req, res, next) => {
+  app.post('/transcriptions/delete_all', async (req, res, next) => {
     try {
       const soniox = getClientForRequest(req);
-      const result = await soniox.stt.purge({
-        on_progress: (transcription, index) => {
-          console.log(`Purging transcription ${index + 1}: ${transcription.id}`);
-        },
-      });
-      res.json(result);
+      await soniox.stt.delete_all();
+      res.status(204).end();
     } catch (err) {
       next(err);
     }

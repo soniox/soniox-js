@@ -1,4 +1,5 @@
 import {
+  SonioxError,
   RealtimeError,
   AuthError,
   BadRequestError,
@@ -8,8 +9,7 @@ import {
   AbortError,
   StateError,
   mapErrorResponse,
-} from '../../../src/realtime/errors';
-import { SonioxError } from '../../../src/http/errors';
+} from '@soniox/core';
 
 describe('RealtimeError', () => {
   it('should create error with message only', () => {

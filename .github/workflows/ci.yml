@@ -111,14 +111,28 @@ jobs:
       - name: Validate version matches tag
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PKG_VERSION=$(node -p "require('./packages/node/package.json').version")
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
-            exit 1
-          fi
+          for pkg in node client react; do
+            PKG_VERSION=$(node -p "require('./packages/${pkg}/package.json').version")
+            if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+              echo "Tag version ($TAG_VERSION) does not match packages/${pkg}/package.json version ($PKG_VERSION)"
+              exit 1
+            fi
+          done
 
       - name: Publish @soniox/node
         run: npm publish --provenance --access public
         working-directory: packages/node
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @soniox/client (dry-run)
+        run: npm publish --provenance --access public --dry-run
+        working-directory: packages/client
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @soniox/react (dry-run)
+        run: npm publish --provenance --access public --dry-run
+        working-directory: packages/react
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

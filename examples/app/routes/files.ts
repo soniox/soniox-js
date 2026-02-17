@@ -53,15 +53,11 @@ export function register(app: Express) {
     }
   });
 
-  app.post('/files/purge', async (req, res, next) => {
+  app.post('/files/delete_all', async (req, res, next) => {
     try {
       const soniox = getClientForRequest(req);
-      const result = await soniox.files.purge({
-        on_progress: (file, index) => {
-          console.log(`Purging file ${index + 1}: ${file.id}`);
-        },
-      });
-      res.json(result);
+      await soniox.files.delete_all();
+      res.status(204).end();
     } catch (err) {
       next(err);
     }

@@ -66,7 +66,7 @@ describe('SonioxAuthAPI', () => {
             expires_in_seconds: 0,
             usage_type: 'transcribe_websocket',
           })
-        ).rejects.toThrow('expires_in_seconds must be between 1 and 3600');
+        ).rejects.toThrow('expires_in_seconds must be a finite number between 1 and 3600');
       });
 
       it('should reject negative expires_in_seconds', async () => {
@@ -78,7 +78,7 @@ describe('SonioxAuthAPI', () => {
             expires_in_seconds: -1,
             usage_type: 'transcribe_websocket',
           })
-        ).rejects.toThrow('expires_in_seconds must be between 1 and 3600');
+        ).rejects.toThrow('expires_in_seconds must be a finite number between 1 and 3600');
       });
 
       it('should reject expires_in_seconds greater than 3600', async () => {
@@ -90,7 +90,7 @@ describe('SonioxAuthAPI', () => {
             expires_in_seconds: 3601,
             usage_type: 'transcribe_websocket',
           })
-        ).rejects.toThrow('expires_in_seconds must be between 1 and 3600');
+        ).rejects.toThrow('expires_in_seconds must be a finite number between 1 and 3600');
       });
 
       it('should accept expires_in_seconds at minimum (1)', async () => {

@@ -11,9 +11,11 @@ export default [
     ignores: [
       '**/dist/**',
       '**/node_modules/**',
+      '**/.next/**',
+      '**/next-env.d.ts',
       'coverage/**',
-      '*.config.mjs',
-      '*.config.js',
+      '**/*.config.mjs',
+      '**/*.config.js',
       '**/tsdown.config.ts',
       'scripts/**',
       'examples/**/*.jsx',
@@ -24,7 +26,7 @@ export default [
   importPlugin.flatConfigs.recommended,
   prettierConfig,
   {
-    files: ['packages/*/src/**/*.ts', 'packages/*/src/**/*.tsx', 'examples/**/*.ts'],
+    files: ['packages/*/src/**/*.ts', 'packages/*/src/**/*.tsx', 'examples/**/*.ts', 'examples/**/*.tsx'],
     ignores: ['**/*.test.ts', '**/*.spec.ts'],
     languageOptions: {
       parser: tseslint.parser,
@@ -94,10 +96,15 @@ export default [
     },
   },
   {
-    files: ['examples/**/*.ts'],
+    files: ['examples/**/*.ts', 'examples/**/*.tsx'],
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
     },
   },
 ];

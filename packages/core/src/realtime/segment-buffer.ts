@@ -3,7 +3,7 @@ import type {
   RealtimeSegment,
   RealtimeSegmentBufferOptions,
   RealtimeToken,
-} from '../types/public/realtime.js';
+} from '../types/realtime.js';
 
 import { segmentRealtimeTokens } from './segments.js';
 

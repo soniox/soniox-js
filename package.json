@@ -13,7 +13,7 @@
     "examples/**"
   ],
   "scripts": {
-    "build": "tsc -b && npm run build --workspaces --if-present",
+    "build": "tsc -b --force && npm run build --workspaces --if-present",
     "clean": "tsc -b --clean && npm run clean --workspaces --if-present",
     "lint:dev": "eslint .",
     "lint": "npm run lint:dev -- --quiet",
@@ -23,12 +23,14 @@
     "test:integration": "jest --testPathPatterns='examples/'",
     "test:all": "jest",
     "test:coverage": "npm run test -- --coverage",
-    "docs": "typedoc && node scripts/consolidate-docs.mjs",
+    "docs": "typedoc --options typedoc.node.json && typedoc --options typedoc.client.json && typedoc --options typedoc.react.json && node scripts/consolidate-docs.mjs node && node scripts/consolidate-docs.mjs client && node scripts/consolidate-docs.mjs react",
     "typecheck": "tsc -b --force",
     "prepare": "husky",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.0.8",
     "@types/supertest": "^6.0.3",
@@ -41,6 +43,7 @@
     "eslint-plugin-import": "^2.31.0",
     "husky": "^9.1.7",
     "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
     "prettier": "^3.4.2",
     "supertest": "^7.2.2",
     "ts-jest": "^29.2.5",

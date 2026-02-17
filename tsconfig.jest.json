@@ -3,13 +3,18 @@
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "node",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["jest", "node"],
     "verbatimModuleSyntax": false,
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
       "@soniox/node": ["./packages/node/src"],
-      "@soniox/node/*": ["./packages/node/src/*"]
+      "@soniox/node/*": ["./packages/node/src/*"],
+      "@soniox/client": ["./packages/client/src"],
+      "@soniox/client/*": ["./packages/client/src/*"],
+      "@soniox/react": ["./packages/react/src"],
+      "@soniox/react/*": ["./packages/react/src/*"]
     }
   },
   "include": ["packages/**/*.ts", "packages/**/*.tsx", "examples/**/*.ts"],

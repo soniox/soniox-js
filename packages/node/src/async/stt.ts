@@ -6,8 +6,7 @@ import type {
   ISonioxTranscription,
   ListTranscriptionsOptions,
   ListTranscriptionsResponse,
-  PurgeResult,
-  PurgeTranscriptionsOptions,
+  DeleteAllTranscriptionsOptions,
   SegmentTranscriptOptions,
   SonioxTranscriptionData,
   TranscribeFromFileIdOptions,
@@ -656,7 +655,8 @@ export class TranscriptionListResult implements AsyncIterable<SonioxTranscriptio
   constructor(
     initialResponse: ListTranscriptionsResponse<SonioxTranscriptionData>,
     private readonly _http: HttpClient,
-    private readonly _options: ListTranscriptionsOptions
+    private readonly _options: ListTranscriptionsOptions,
+    private readonly _signal?: AbortSignal
   ) {
     this.transcriptions = initialResponse.transcriptions.map((data) => new SonioxTranscription(data, _http));
     this.next_page_cursor = initialResponse.next_page_cursor;
@@ -699,6 +699,7 @@ export class TranscriptionListResult implements AsyncIterable<SonioxTranscriptio
           limit: this._options.limit,
           cursor,
         },
+        ...(this._signal && { signal: this._signal }),
       });
 
       for (const data of response.data.transcriptions) {
@@ -793,7 +794,7 @@ export class SonioxSttApi {
    * }
    * ```
    */
-  async list(options: ListTranscriptionsOptions = {}): Promise<TranscriptionListResult> {
+  async list(options: ListTranscriptionsOptions = {}, signal?: AbortSignal): Promise<TranscriptionListResult> {
     const response = await this.http.request<ListTranscriptionsResponse<SonioxTranscriptionData>>({
       method: 'GET',
       path: '/v1/transcriptions',
@@ -801,9 +802,10 @@ export class SonioxSttApi {
         limit: options.limit,
         cursor: options.cursor,
       },
+      ...(signal && { signal }),
     });
 
-    return new TranscriptionListResult(response.data, this.http, options);
+    return new TranscriptionListResult(response.data, this.http, options, signal);
   }
 
   /**
@@ -821,12 +823,13 @@ export class SonioxSttApi {
    * }
    * ```
    */
-  async get(id: TranscriptionIdentifier): Promise<SonioxTranscription | null> {
+  async get(id: TranscriptionIdentifier, signal?: AbortSignal): Promise<SonioxTranscription | null> {
     const transcription_id = getTranscriptionId(id);
     try {
       const response = await this.http.request<SonioxTranscriptionData>({
         method: 'GET',
         path: `/v1/transcriptions/${transcription_id}`,
+        ...(signal && { signal }),
       });
       return new SonioxTranscription(response.data, this.http);
     } catch (error) {
@@ -856,12 +859,13 @@ export class SonioxSttApi {
    * }
    * ```
    */
-  async delete(id: TranscriptionIdentifier): Promise<void> {
+  async delete(id: TranscriptionIdentifier, signal?: AbortSignal): Promise<void> {
     const transcription_id = getTranscriptionId(id);
     try {
       await this.http.request<null>({
         method: 'DELETE',
         path: `/v1/transcriptions/${transcription_id}`,
+        ...(signal && { signal }),
       });
     } catch (error) {
       if (!isNotFoundError(error)) {
@@ -973,7 +977,7 @@ export class SonioxSttApi {
    * ```
    */
   async wait(id: TranscriptionIdentifier, options?: WaitOptions): Promise<SonioxTranscription> {
-    const transcription = await this.get(id);
+    const transcription = await this.get(id, options?.signal);
     if (!transcription) {
       throw new Error(`Transcription not found: ${getTranscriptionId(id)}`);
     }
@@ -1212,8 +1216,18 @@ export class SonioxSttApi {
         // Merge the combined signal with any existing wait_options.signal
         const waitOptions: WaitOptions = {
           ...options.wait_options,
-          signal: combinedSignal ?? options.wait_options?.signal,
         };
+        if (combinedSignal && waitOptions.signal) {
+          // Both signals exist — combine so either can cancel the wait
+          const controller = new AbortController();
+          const onAbort = () => controller.abort();
+          combinedSignal.addEventListener('abort', onAbort, { once: true });
+          waitOptions.signal.addEventListener('abort', onAbort, { once: true });
+          if (combinedSignal.aborted || waitOptions.signal.aborted) controller.abort();
+          waitOptions.signal = controller.signal;
+        } else if (combinedSignal) {
+          waitOptions.signal = combinedSignal;
+        }
         const completed = await transcription.wait(waitOptions);
 
         const shouldFetchTranscript = options.fetch_transcript !== false;
@@ -1253,41 +1267,59 @@ export class SonioxSttApi {
    * Permanently deletes all transcriptions.
    * Iterates through all pages of transcriptions and deletes each one.
    *
-   * @param options - Optional signal and progress callback.
-   * @returns The number of transcriptions deleted.
+   * @param options - Optional signal.
    * @throws {@link SonioxHttpError} On API errors.
    * @throws `Error` If the operation is aborted via signal.
    *
    * @example
    * ```typescript
    * // Delete all transcriptions
-   * const { deleted } = await client.stt.purge();
-   * console.log(`Deleted ${deleted} transcriptions.`);
-   *
-   * // With progress logging
-   * const { deleted } = await client.stt.purge({
-   *     on_progress: (transcription, index) => {
-   *         console.log(`Deleting transcription: ${transcription.id} (${index + 1})`);
-   *     },
-   * });
+   * await client.stt.delete_all();
+   * console.log(`Deleted all transcriptions.`);
    *
    * // With cancellation
    * const controller = new AbortController();
-   * const { deleted } = await client.stt.purge({ signal: controller.signal });
+   * await client.stt.delete_all({ signal: controller.signal });
    * ```
    */
-  async purge(options: PurgeTranscriptionsOptions = {}): Promise<PurgeResult> {
-    const { signal, on_progress } = options;
-    const result = await this.list();
-    let deleted = 0;
+  async delete_all(options: DeleteAllTranscriptionsOptions = {}): Promise<void> {
+    const { signal } = options;
+    const result = await this.list({}, signal);
 
     for await (const transcription of result) {
       signal?.throwIfAborted();
-      on_progress?.(transcription.toJSON(), deleted);
-      await this.delete(transcription);
-      deleted++;
+      await this.delete(transcription, signal);
     }
+  }
 
-    return { deleted };
+  /**
+   * Permanently deletes all transcriptions and their associated files.
+   * Iterates through all pages of transcriptions and calls {@link destroy}
+   * on each one, removing both the transcription and its uploaded file.
+   *
+   * @param options - Optional signal and progress callback.
+   * @returns The number of transcriptions destroyed.
+   * @throws {@link SonioxHttpError} On API errors.
+   * @throws `Error` If the operation is aborted via signal.
+   *
+   * @example
+   * ```typescript
+   * // Destroy all transcriptions and their files
+   * await client.stt.destroy_all();
+   * console.log(`Destroyed all transcriptions and their files.`);
+   *
+   * // With cancellation
+   * const controller = new AbortController();
+   * await client.stt.destroy_all({ signal: controller.signal });
+   * ```
+   */
+  async destroy_all(options: DeleteAllTranscriptionsOptions = {}): Promise<void> {
+    const { signal } = options;
+    const result = await this.list({}, signal);
+
+    for await (const transcription of result) {
+      signal?.throwIfAborted();
+      await this.destroy(transcription);
+    }
   }
 }

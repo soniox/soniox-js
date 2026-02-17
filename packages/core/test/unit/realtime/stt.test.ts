@@ -1,11 +1,10 @@
-import { RealtimeSttSession } from '../../../src/realtime/stt';
-import { StateError, AbortError, ConnectionError } from '../../../src/realtime/errors';
+import { RealtimeSttSession, StateError, AbortError, ConnectionError } from '@soniox/core';
 import { MockWebSocket, installMockWebSocket, restoreMockWebSocket } from '../../utils/mock-websocket';
 
 describe('RealtimeSttSession', () => {
   const mockApiKey = 'test-api-key';
   const mockWsBaseUrl = 'wss://test.soniox.com/transcribe-websocket';
-  const mockConfig = { model: 'stt-rt-preview' };
+  const mockConfig = { model: 'stt-rt-v4' };
 
   describe('initial state', () => {
     it('should start in idle state', () => {
@@ -141,6 +140,62 @@ describe('RealtimeSttSession', () => {
       session.resume();
       expect(session.paused).toBe(false);
     });
+
+    it('should warn about billing in non-production environment', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
+        session.pause();
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        expect(warnSpy).toHaveBeenCalledWith(
+          '[Soniox] You are billed for the full stream duration even when session is paused.'
+        );
+      } finally {
+        warnSpy.mockRestore();
+        process.env.NODE_ENV = originalNodeEnv;
+      }
+    });
+
+    it('should warn only once per session', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
+
+        session.pause();
+        session.resume();
+        session.pause();
+        session.resume();
+        session.pause();
+
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        warnSpy.mockRestore();
+        process.env.NODE_ENV = originalNodeEnv;
+      }
+    });
+
+    it('should not warn in production environment', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
+        session.pause();
+
+        expect(warnSpy).not.toHaveBeenCalled();
+      } finally {
+        warnSpy.mockRestore();
+        process.env.NODE_ENV = originalNodeEnv;
+      }
+    });
   });
 
   describe('keepalive', () => {
@@ -154,9 +209,9 @@ describe('RealtimeSttSession', () => {
       restoreMockWebSocket();
     });
 
-    it('should send keepalive when enabled', async () => {
+    it('should send keepalive when paused', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig, {
-        keepalive: true,
         keepalive_interval_ms: 1000,
       });
 
@@ -165,10 +220,28 @@ describe('RealtimeSttSession', () => {
       ws.open();
       await connectPromise;
 
+      session.pause();
       jest.advanceTimersByTime(1000);
 
       const keepaliveMessage = JSON.stringify({ type: 'keepalive' });
       expect(ws.sent).toContain(keepaliveMessage);
+      warnSpy.mockRestore();
+    });
+
+    it('should not send keepalive when not paused', async () => {
+      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig, {
+        keepalive_interval_ms: 1000,
+      });
+
+      const connectPromise = session.connect();
+      const ws = MockWebSocket.instances[0];
+      ws.open();
+      await connectPromise;
+
+      jest.advanceTimersByTime(3000);
+
+      const keepaliveMessage = JSON.stringify({ type: 'keepalive' });
+      expect(ws.sent).not.toContain(keepaliveMessage);
     });
   });
 
@@ -219,7 +292,7 @@ describe('RealtimeSttSession', () => {
       const streamPromise = session.sendStream(asyncChunks(chunks), { finish: true });
 
       // Flush microtasks so the async generator completes and finish() is called
-      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setTimeout(r, 0));
 
       // Now finish() has been called; simulate server finished response so it resolves
       ws.message(

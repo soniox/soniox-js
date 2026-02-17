@@ -13,8 +13,12 @@ export class SonioxAuthAPI {
    */
   async createTemporaryKey(request: TemporaryApiKeyRequest, signal?: AbortSignal): Promise<TemporaryApiKeyResponse> {
     // Validate expires_in_seconds range
-    if (request.expires_in_seconds < 1 || request.expires_in_seconds > 3600) {
-      throw new Error('expires_in_seconds must be between 1 and 3600');
+    if (
+      !Number.isFinite(request.expires_in_seconds) ||
+      request.expires_in_seconds < 1 ||
+      request.expires_in_seconds > 3600
+    ) {
+      throw new Error('expires_in_seconds must be a finite number between 1 and 3600');
     }
 
     const response = await this.http.request<TemporaryApiKeyResponse>({

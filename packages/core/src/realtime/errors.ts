@@ -3,8 +3,8 @@
  * All real-time errors extend SonioxError
  */
 
-import { SonioxError } from '../http/errors.js';
-import type { RealtimeErrorCode } from '../types/public/errors.js';
+import { SonioxError } from '../errors.js';
+import type { RealtimeErrorCode } from '../types/errors.js';
 
 /**
  * Base error class for all real-time (WebSocket) SDK errors

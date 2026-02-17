@@ -2,83 +2,15 @@
  * HTTP error handling for the Soniox SDK
  */
 
-import type { HttpErrorCode, HttpErrorDetails, HttpMethod, SonioxErrorCode } from '../types/public/errors.js';
+import { SonioxError } from '@soniox/core';
+
+import type { HttpErrorCode, HttpErrorDetails, HttpMethod } from '../types/public/errors.js';
+
+// Re-export SonioxError for consumers that import from this module
+export { SonioxError } from '@soniox/core';
 
 /** Maximum body text length to include in error details (4KB) */
 const MAX_BODY_TEXT_LENGTH = 4096;
-
-/**
- * Base error class for all Soniox SDK errors.
- *
- * All SDK errors extend this class for error handling across both REST (HTTP) and WebSocket (Real-time) APIs.
- *
- * @example
- * ```typescript
- * try {
- *   await client.transcribe(file);
- *   await session.connect();
- * } catch (error) {
- *   if (error instanceof SonioxError) {
- *     console.log(error.code);       // 'auth_error', 'network_error', etc.
- *     console.log(error.statusCode); // 401, 500, etc. (when applicable)
- *     console.log(error.toJSON());   // Consistent serialization
- *   }
- * }
- * ```
- */
-export class SonioxError extends Error {
-  /**
-   * Error code describing the type of error
-   */
-  readonly code: SonioxErrorCode;
-
-  /**
-   * HTTP status code when applicable (e.g., 401 for auth errors, 500 for server errors).
-   */
-  readonly statusCode: number | undefined;
-
-  /**
-   * The underlying error that caused this error, if any.
-   */
-  readonly cause: unknown;
-
-  constructor(message: string, code: SonioxErrorCode = 'soniox_error', statusCode?: number, cause?: unknown) {
-    super(message);
-    this.name = 'SonioxError';
-    this.code = code;
-    this.statusCode = statusCode;
-    this.cause = cause;
-
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
-
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-
-  /**
-   * Creates a human-readable string representation
-   */
-  override toString(): string {
-    const parts = [`${this.name} [${this.code}]: ${this.message}`];
-    if (this.statusCode !== undefined) {
-      parts.push(`  Status: ${this.statusCode}`);
-    }
-    return parts.join('\n');
-  }
-
-  /**
-   * Converts to a plain object for logging/serialization
-   */
-  toJSON(): Record<string, unknown> {
-    return {
-      name: this.name,
-      code: this.code,
-      message: this.message,
-      ...(this.statusCode !== undefined && { statusCode: this.statusCode }),
-    };
-  }
-}
 
 /**
  * HTTP error class for all HTTP-related failures (REST API).
