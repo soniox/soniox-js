@@ -1,4 +1,4 @@
-import { AsyncEventQueue } from '../../../src/realtime/async-queue';
+import { AsyncEventQueue } from '@soniox/core';
 
 describe('AsyncEventQueue', () => {
   describe('push', () => {

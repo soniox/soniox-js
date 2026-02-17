@@ -261,7 +261,7 @@ export class FetchHttpClient implements HttpClient {
         headers,
         signal,
         ...(preparedBody !== undefined && { body: preparedBody }),
-      });
+      } as RequestInit);
 
       // Clear timeout
       if (timeoutId) {

@@ -1,6 +1,6 @@
-import type { RealtimeClientOptions, SttSessionConfig, SttSessionOptions } from '../types/public/realtime.js';
+import { RealtimeSttSession } from '@soniox/core';
 
-import { RealtimeSttSession } from './stt.js';
+import type { RealtimeClientOptions, SttSessionConfig, SttSessionOptions } from '../types/public/realtime.js';
 
 /**
  * Real-time API factory for creating STT sessions.
@@ -8,7 +8,7 @@ import { RealtimeSttSession } from './stt.js';
  * @example
  * ```typescript
  * const session = client.realtime.stt({
- *   model: 'stt-rt-preview',
+ *   model: 'stt-rt-v4',
  *   enable_endpoint_detection: true,
  * });
  *
@@ -41,12 +41,12 @@ export class SonioxRealtimeApi {
 }
 
 // Re-export session class
-export { RealtimeSttSession } from './stt.js';
+export { RealtimeSttSession } from '@soniox/core';
 
 // Re-export helpers
-export { segmentRealtimeTokens } from './segments.js';
-export { RealtimeSegmentBuffer } from './segment-buffer.js';
-export { RealtimeUtteranceBuffer } from './utterance-buffer.js';
+export { segmentRealtimeTokens } from '@soniox/core';
+export { RealtimeSegmentBuffer } from '@soniox/core';
+export { RealtimeUtteranceBuffer } from '@soniox/core';
 
 // Re-export errors
 export {
@@ -58,4 +58,4 @@ export {
   NetworkError,
   AbortError,
   StateError,
-} from './errors.js';
+} from '@soniox/core';

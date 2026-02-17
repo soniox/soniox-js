@@ -794,7 +794,7 @@ describe('SonioxFilesAPI', () => {
     });
   });
 
-  describe('purge()', () => {
+  describe('delete_all()', () => {
     it('should delete all files across pages', async () => {
       const requestMock = jest
         .fn()
@@ -826,13 +826,13 @@ describe('SonioxFilesAPI', () => {
       const mockHttp = createMockHttpClient(requestMock);
       const api = new SonioxFilesAPI(mockHttp);
 
-      const result = await api.purge();
+      const result = await api.delete_all();
 
-      expect(result).toEqual({ deleted: 3 });
+      expect(result).toBeUndefined();
       expect(requestMock).toHaveBeenCalledTimes(5);
     });
 
-    it('should return { deleted: 0 } when no files exist', async () => {
+    it('should return undefined when no files exist', async () => {
       const requestMock = jest.fn().mockResolvedValueOnce({
         status: 200,
         headers: {},
@@ -841,39 +841,11 @@ describe('SonioxFilesAPI', () => {
       const mockHttp = createMockHttpClient(requestMock);
       const api = new SonioxFilesAPI(mockHttp);
 
-      const result = await api.purge();
+      const result = await api.delete_all();
 
-      expect(result).toEqual({ deleted: 0 });
+      expect(result).toBeUndefined();
       // Only the list() call
       expect(requestMock).toHaveBeenCalledTimes(1);
-    });
-
-    it('should call on_progress for each file with correct index', async () => {
-      const requestMock = jest
-        .fn()
-        .mockResolvedValueOnce({
-          status: 200,
-          headers: {},
-          data: {
-            files: [
-              createMockFileData({ id: 'file-1', filename: 'a.mp3' }),
-              createMockFileData({ id: 'file-2', filename: 'b.mp3' }),
-            ],
-            next_page_cursor: null,
-          },
-        })
-        // delete calls
-        .mockResolvedValue({ status: 204, headers: {}, data: null });
-
-      const mockHttp = createMockHttpClient(requestMock);
-      const api = new SonioxFilesAPI(mockHttp);
-      const onProgress = jest.fn();
-
-      await api.purge({ on_progress: onProgress });
-
-      expect(onProgress).toHaveBeenCalledTimes(2);
-      expect(onProgress).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: 'file-1', filename: 'a.mp3' }), 0);
-      expect(onProgress).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: 'file-2', filename: 'b.mp3' }), 1);
     });
 
     it('should respect abort signal and stop early', async () => {
@@ -891,7 +863,7 @@ describe('SonioxFilesAPI', () => {
       const controller = new AbortController();
       controller.abort();
 
-      await expect(api.purge({ signal: controller.signal })).rejects.toThrow();
+      await expect(api.delete_all({ signal: controller.signal })).rejects.toThrow();
       // Only the list() call, no deletes
       expect(requestMock).toHaveBeenCalledTimes(1);
     });

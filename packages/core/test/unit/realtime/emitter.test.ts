@@ -1,4 +1,4 @@
-import { TypedEmitter } from '../../../src/realtime/emitter';
+import { TypedEmitter } from '@soniox/core';
 
 // Define test event types
 interface TestEvents {

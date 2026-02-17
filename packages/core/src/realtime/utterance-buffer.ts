@@ -3,7 +3,7 @@ import type {
   RealtimeSegment,
   RealtimeUtterance,
   RealtimeUtteranceBufferOptions,
-} from '../types/public/realtime.js';
+} from '../types/realtime.js';
 
 import { RealtimeSegmentBuffer } from './segment-buffer.js';
 

@@ -1,5 +1,5 @@
-import { segmentRealtimeTokens } from '../../../src/realtime/segments';
-import type { RealtimeToken } from '../../../src/types/public/realtime';
+import { segmentRealtimeTokens } from '@soniox/core';
+import type { RealtimeToken } from '@soniox/core';
 
 describe('segmentRealtimeTokens', () => {
   const createToken = (text: string, overrides: Partial<RealtimeToken> = {}): RealtimeToken => ({

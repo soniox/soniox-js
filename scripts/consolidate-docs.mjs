@@ -8,15 +8,102 @@
  * Fixes internal links, strips HTML anchors, removes implementation details,
  * and reshapes heading hierarchy.
  *
+ * Usage:
+ *   node scripts/consolidate-docs.mjs <package>
+ *
+ * Where <package> is one of: node, client, react
+ *
  * MDX angle-bracket sanitisation is handled by TypeDoc's `sanitizeComments`
- * option — see typedoc.json.
+ * option — see typedoc.*.json.
  */
 
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
-const INPUT_DIR = join(import.meta.dirname, '../generated/docs/api-reference');
-const OUTPUT_DIR = join(import.meta.dirname, '../generated/docs');
+// ── per-package configuration ───────────────────────────────────────────────
+
+const PACKAGE_CONFIGS = {
+  node: {
+    sdkLabel: 'Soniox Node SDK',
+    /** Classes whose constructors are internal (users access via client properties or catch them) */
+    internalAPIs: new Set([
+      'SonioxFilesAPI',
+      'SonioxSttApi',
+      'SonioxModelsAPI',
+      'SonioxWebhooksAPI',
+      'SonioxAuthAPI',
+      'SonioxRealtimeApi',
+      // Error classes — users catch these but don't construct them
+      'SonioxError',
+      'SonioxHttpError',
+      'RealtimeError',
+      'AuthError',
+      'BadRequestError',
+      'QuotaError',
+      'ConnectionError',
+      'NetworkError',
+      'AbortError',
+      'StateError',
+    ]),
+    /** Desired class ordering in classes.mdx */
+    classOrder: [
+      'Class.SonioxNodeClient.md',
+      'Class.SonioxFilesAPI.md',
+      'Class.SonioxSttApi.md',
+      'Class.SonioxModelsAPI.md',
+      'Class.SonioxWebhooksAPI.md',
+      'Class.SonioxAuthAPI.md',
+      'Class.SonioxRealtimeApi.md',
+      'Class.SonioxFile.md',
+      'Class.SonioxTranscription.md',
+      'Class.SonioxTranscript.md',
+      'Class.FileListResult.md',
+      'Class.TranscriptionListResult.md',
+      'Class.RealtimeSttSession.md',
+      'Class.RealtimeSegmentBuffer.md',
+      'Class.RealtimeUtteranceBuffer.md',
+      // Error classes
+      'Class.SonioxError.md',
+      'Class.SonioxHttpError.md',
+      'Class.RealtimeError.md',
+      'Class.AuthError.md',
+      'Class.BadRequestError.md',
+      'Class.QuotaError.md',
+      'Class.ConnectionError.md',
+      'Class.NetworkError.md',
+      'Class.AbortError.md',
+      'Class.StateError.md',
+    ],
+  },
+  client: {
+    sdkLabel: 'Soniox Client SDK',
+    /** Classes whose constructors are internal (users access via client methods or catch them) */
+    internalAPIs: new Set([]),
+    /** Desired class ordering in classes.mdx */
+    classOrder: [],
+  },
+  react: {
+    sdkLabel: 'Soniox React SDK',
+    /** Classes whose constructors are internal */
+    internalAPIs: new Set([]),
+    /** Desired class ordering in classes.mdx */
+    classOrder: [],
+  },
+};
+
+// ── resolve package from CLI ────────────────────────────────────────────────
+
+const pkg = process.argv[2];
+if (!pkg || !PACKAGE_CONFIGS[pkg]) {
+  console.error(`Usage: node scripts/consolidate-docs.mjs <package>`);
+  console.error(`  package: ${Object.keys(PACKAGE_CONFIGS).join(', ')}`);
+  process.exit(1);
+}
+
+const config = PACKAGE_CONFIGS[pkg];
+const ROOT = import.meta.dirname;
+const INPUT_DIR = join(ROOT, `../generated/docs/${pkg}/api-reference`);
+const OUTPUT_DIR = join(ROOT, `../generated/docs/${pkg}`);
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,7 +125,7 @@ function buildLinkMap(classFiles, typeFiles) {
 /** Extract the display name from the first heading of a file */
 function extractName(filePath) {
   const content = readFileSync(filePath, 'utf-8');
-  const m = content.match(/^#\s+(?:Class|Type Alias|Interface):\s*(.+)$/m);
+  const m = content.match(/^#\s+(?:Class|Type Alias|Interface|Function):\s*(.+)$/m);
   return m ? m[1].trim() : basename(filePath, '.md');
 }
 
@@ -68,26 +155,7 @@ function preProcess(content, filePath) {
   content = stripH2Section(content, 'Implements');
 
   // Strip constructors for internal API classes (users don't construct them)
-  const internalAPIs = new Set([
-    'SonioxFilesAPI',
-    'SonioxSttApi',
-    'SonioxModelsAPI',
-    'SonioxWebhooksAPI',
-    'SonioxAuthAPI',
-    'SonioxRealtimeApi',
-    // Error classes — users catch these but don't construct them
-    'SonioxError',
-    'SonioxHttpError',
-    'RealtimeError',
-    'AuthError',
-    'BadRequestError',
-    'QuotaError',
-    'ConnectionError',
-    'NetworkError',
-    'AbortError',
-    'StateError',
-  ]);
-  if (internalAPIs.has(extractName(filePath))) {
+  if (config.internalAPIs.has(extractName(filePath))) {
     content = stripH2Section(content, 'Constructors');
   }
 
@@ -98,7 +166,7 @@ function preProcess(content, filePath) {
   content = content.replace(/<a id="[^"]*"><\/a>\s*/g, '');
 
   // Rewrite top heading: "# Class: Foo" → "## Foo"
-  content = content.replace(/^#\s+(?:Class|Type Alias|Interface):\s*(.+)$/m, '## $1');
+  content = content.replace(/^#\s+(?:Class|Type Alias|Interface|Function):\s*(.+)$/m, '## $1');
 
   return content;
 }
@@ -211,42 +279,14 @@ const allFiles = readdirSync(INPUT_DIR)
 const classFiles = allFiles.filter((f) => basename(f).startsWith('Class.'));
 const typeAliasFiles = allFiles.filter((f) => basename(f).startsWith('TypeAlias.'));
 const interfaceFiles = allFiles.filter((f) => basename(f).startsWith('Interface.'));
-const typeFiles = [...typeAliasFiles, ...interfaceFiles].sort();
+const functionFiles = allFiles.filter((f) => basename(f).startsWith('Function.'));
+const typeFiles = [...typeAliasFiles, ...interfaceFiles, ...functionFiles].sort();
 
 const linkMap = buildLinkMap(classFiles, typeFiles);
 
 // ── Desired class order ─────────────────────────────────────────────────────
 
-const classOrder = [
-  'Class.SonioxNodeClient.md',
-  'Class.SonioxFilesAPI.md',
-  'Class.SonioxSttApi.md',
-  'Class.SonioxModelsAPI.md',
-  'Class.SonioxWebhooksAPI.md',
-  'Class.SonioxAuthAPI.md',
-  'Class.SonioxRealtimeApi.md',
-  'Class.SonioxFile.md',
-  'Class.SonioxTranscription.md',
-  'Class.SonioxTranscript.md',
-  'Class.FileListResult.md',
-  'Class.TranscriptionListResult.md',
-  'Class.RealtimeSttSession.md',
-  'Class.RealtimeSegmentBuffer.md',
-  'Class.RealtimeUtteranceBuffer.md',
-  // Error classes
-  'Class.SonioxError.md',
-  'Class.SonioxHttpError.md',
-  'Class.RealtimeError.md',
-  'Class.AuthError.md',
-  'Class.BadRequestError.md',
-  'Class.QuotaError.md',
-  'Class.ConnectionError.md',
-  'Class.NetworkError.md',
-  'Class.AbortError.md',
-  'Class.StateError.md',
-];
-
-const orderedClassFiles = classOrder.map((name) => classFiles.find((f) => basename(f) === name)).filter(Boolean);
+const orderedClassFiles = config.classOrder.map((name) => classFiles.find((f) => basename(f) === name)).filter(Boolean);
 for (const f of classFiles) {
   if (!orderedClassFiles.includes(f)) orderedClassFiles.push(f);
 }
@@ -257,7 +297,7 @@ const classSections = orderedClassFiles.map((f) => processClassFile(f, linkMap))
 
 const classesContent = `---
 title: "Classes"
-description: "Soniox Node SDK — Class Reference"
+description: "${config.sdkLabel} — Class Reference"
 ---
 
 ${classSections.join('\n\n---\n\n')}
@@ -265,12 +305,12 @@ ${classSections.join('\n\n---\n\n')}
 
 // ── Build types.mdx ─────────────────────────────────────────────────────────
 
-const orderedTypeFiles = [...typeAliasFiles.sort(), ...interfaceFiles.sort()];
+const orderedTypeFiles = [...typeAliasFiles.sort(), ...interfaceFiles.sort(), ...functionFiles.sort()];
 const typeSections = orderedTypeFiles.map((f) => processTypeFile(f, linkMap));
 
 const typesContent = `---
 title: "Types"
-description: "Soniox Node SDK — Types Reference"
+description: "${config.sdkLabel} — Types Reference"
 ---
 
 ${typeSections.join('\n\n---\n\n')}
@@ -281,5 +321,9 @@ ${typeSections.join('\n\n---\n\n')}
 writeFileSync(join(OUTPUT_DIR, 'classes.mdx'), classesContent);
 writeFileSync(join(OUTPUT_DIR, 'types.mdx'), typesContent);
 
-console.log(`✓ classes.mdx  (${orderedClassFiles.length} classes, ${(classesContent.length / 1024).toFixed(1)} KB)`);
-console.log(`✓ types.mdx    (${orderedTypeFiles.length} types, ${(typesContent.length / 1024).toFixed(1)} KB)`);
+console.log(
+  `[${pkg}] ✓ classes.mdx  (${orderedClassFiles.length} classes, ${(classesContent.length / 1024).toFixed(1)} KB)`
+);
+console.log(
+  `[${pkg}] ✓ types.mdx    (${orderedTypeFiles.length} types, ${(typesContent.length / 1024).toFixed(1)} KB)`
+);

@@ -1,5 +1,5 @@
-import { segmentTokens } from '../async/segments.js';
-import type { RealtimeSegment, RealtimeSegmentOptions, RealtimeToken } from '../types/public/realtime.js';
+import { segmentTokens } from '../segments.js';
+import type { RealtimeSegment, RealtimeSegmentOptions, RealtimeToken } from '../types/realtime.js';
 
 /**
  * Groups real-time tokens into segments based on specified grouping keys.

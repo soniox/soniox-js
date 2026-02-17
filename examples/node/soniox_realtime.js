@@ -128,7 +128,7 @@ async function runSession(audioPath, audioFormat, translation) {
     console.error('Session error:', err);
   });
 
-  // Connect to the Soniox realtime API.
+  // Connect to the Soniox real-time API.
   console.log('Connecting to Soniox...');
   await session.connect();
   console.log('Session started.');

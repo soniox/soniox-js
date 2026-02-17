@@ -1,5 +1,5 @@
-import { RealtimeUtteranceBuffer } from '../../../src/realtime/utterance-buffer';
-import type { RealtimeResult, RealtimeToken } from '../../../src/types/public/realtime';
+import { RealtimeUtteranceBuffer } from '@soniox/core';
+import type { RealtimeResult, RealtimeToken } from '@soniox/core';
 
 describe('RealtimeUtteranceBuffer', () => {
   const createToken = (text: string, overrides: Partial<RealtimeToken> = {}): RealtimeToken => ({

@@ -8,7 +8,7 @@ import type {
   SttSessionEvents,
   SttSessionOptions,
   SttSessionState,
-} from '../types/public/realtime.js';
+} from '../types/realtime.js';
 
 import { AsyncEventQueue } from './async-queue.js';
 import { TypedEmitter } from './emitter.js';
@@ -17,9 +17,12 @@ import { AbortError, ConnectionError, StateError, mapErrorResponse } from './err
 // Default keepalive interval
 const DEFAULT_KEEPALIVE_INTERVAL_MS = 5000;
 
+// Minimum allowed keepalive interval to prevent network flooding
+const MIN_KEEPALIVE_INTERVAL_MS = 1000;
+
 /**
  * Convert audio data to Uint8Array
- * Handles Buffer, Uint8Array, and ArrayBuffer
+ * Handles Uint8Array and ArrayBuffer
  */
 function toUint8Array(data: AudioData): Uint8Array {
   if (data instanceof ArrayBuffer) {
@@ -106,19 +109,19 @@ function filterSpecialTokens(tokens: RealtimeToken[]): RealtimeToken[] {
  *
  * Provides WebSocket-based streaming transcription with support for:
  * - Event-based and async iterator consumption
- * - Pause/resume with automatic keepalive
+ * - Pause/resume with automatic keepalive while paused
  * - AbortSignal cancellation
  *
  * @example
  * ```typescript
- * const session = client.realtime.stt({ model: 'stt-rt-preview' });
+ * const session = new RealtimeSttSession(apiKey, wsUrl, { model: 'stt-rt-v4' });
  *
  * session.on('result', (result) => {
  *   console.log(result.tokens.map(t => t.text).join(''));
  * });
  *
  * await session.connect();
- * await session.sendAudio(audioChunk);
+ * session.sendAudio(audioChunk);
  * await session.finish();
  * ```
  */
@@ -130,12 +133,12 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   private readonly wsBaseUrl: string;
   private readonly config: SttSessionConfig;
   private readonly keepaliveIntervalMs: number;
-  private readonly keepaliveEnabled: boolean;
   private readonly signal: AbortSignal | undefined;
 
   private ws: WebSocket | null = null;
   private _state: SttSessionState = 'idle';
   private _paused = false;
+  private _pauseWarned = false;
   private keepaliveInterval: ReturnType<typeof setInterval> | null = null;
 
   // Finish promise handling
@@ -149,8 +152,11 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
     this.apiKey = apiKey;
     this.wsBaseUrl = wsBaseUrl;
     this.config = config;
-    this.keepaliveIntervalMs = options?.keepalive_interval_ms ?? DEFAULT_KEEPALIVE_INTERVAL_MS;
-    this.keepaliveEnabled = options?.keepalive ?? false;
+    const keepaliveMs = options?.keepalive_interval_ms ?? DEFAULT_KEEPALIVE_INTERVAL_MS;
+    this.keepaliveIntervalMs =
+      Number.isFinite(keepaliveMs) && keepaliveMs > 0
+        ? Math.max(keepaliveMs, MIN_KEEPALIVE_INTERVAL_MS)
+        : DEFAULT_KEEPALIVE_INTERVAL_MS;
     this.signal = options?.signal;
 
     // Set up abort signal handler (store reference for cleanup)
@@ -178,7 +184,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
    * Connect to the Soniox WebSocket API.
    *
    * @throws {@link AbortError} If aborted
-   * @throws {@link NetworkError} If connection fails
+   * @throws {@link ConnectionError} If connection fails
    * @throws {@link StateError} If already connected
    */
   async connect(): Promise<void> {
@@ -195,7 +201,10 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       this.emitter.emit('connected');
       this.updateKeepalive();
     } catch (error) {
-      this.setState('error');
+      if (!this.isTerminalState(this._state)) {
+        const err = error instanceof Error ? error : new ConnectionError('Connection failed', error);
+        this.cleanup('error', err);
+      }
       throw error;
     }
   }
@@ -203,7 +212,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   /**
    * Send audio data to the server
    *
-   * @param data - Audio data as Buffer, Uint8Array, or ArrayBuffer
+   * @param data - Audio data as Uint8Array or ArrayBuffer
    * @throws {@link AbortError} If aborted
    * @throws {@link StateError} If not connected
    */
@@ -226,31 +235,10 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   /**
    * Stream audio data from an async iterable source.
    *
-   * Reads chunks from the iterable and sends each via {@link sendAudio}.
-   * Works with Node.js ReadableStreams, Web ReadableStreams, async generators,
-   * and any other `AsyncIterable<AudioData>`.
-   *
    * @param stream - Async iterable yielding audio chunks
    * @param options - Optional pacing and auto-finish settings
    * @throws {@link AbortError} If aborted during streaming
    * @throws {@link StateError} If not connected
-   *
-   * @example
-   * ```typescript
-   * // Stream from a Node.js file
-   * import fs from 'fs';
-   * await session.sendStream(fs.createReadStream('audio.mp3'), { finish: true });
-   *
-   * // Stream with simulated real-time pacing
-   * await session.sendStream(
-   *   fs.createReadStream('audio.pcm_s16le', { highWaterMark: 3840 }),
-   *   { pace_ms: 120, finish: true }
-   * );
-   *
-   * // Stream from a Web fetch response
-   * const response = await fetch('https://soniox.com/media/examples/coffee_shop.mp3');
-   * await session.sendStream(response.body, { finish: true });
-   * ```
    */
   async sendStream(stream: AsyncIterable<AudioData>, options?: SendStreamOptions): Promise<void> {
     for await (const chunk of stream) {
@@ -271,6 +259,13 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
     if (this._paused) return;
 
     this._paused = true;
+
+    if (!this._pauseWarned && typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
+      this._pauseWarned = true;
+      // eslint-disable-next-line no-console
+      console.warn('[Soniox] You are billed for the full stream duration even when session is paused.');
+    }
+
     this.updateKeepalive();
   }
 
@@ -344,6 +339,10 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
    * Close (cancel) the session immediately without waiting
    */
   close(): void {
+    if (this.isTerminalState(this._state)) {
+      return;
+    }
+
     this.emitter.emit('disconnected', 'client_closed');
     this.settleFinish(new StateError('Session canceled'));
     this.cleanup('canceled');
@@ -623,9 +622,8 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
 
   private updateKeepalive(): void {
     const isActiveState = this._state === 'connected' || this._state === 'finishing';
-    const shouldRun = isActiveState && (this._paused || this.keepaliveEnabled);
 
-    if (shouldRun) {
+    if (isActiveState && this._paused) {
       this.startKeepalive();
     } else {
       this.stopKeepalive();

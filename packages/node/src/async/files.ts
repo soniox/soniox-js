@@ -4,8 +4,7 @@ import type {
   FileIdentifier,
   ListFilesOptions,
   ListFilesResponse,
-  PurgeFilesOptions,
-  PurgeResult,
+  DeleteAllFilesOptions,
   SonioxFileData,
   UploadFileInput,
   UploadFileOptions,
@@ -551,33 +550,21 @@ export class SonioxFilesAPI {
    * @example
    * ```typescript
    * // Delete all files
-   * const { deleted } = await client.files.purge();
-   * console.log(`Deleted ${deleted} files.`);
-   *
-   * // With progress logging
-   * const { deleted } = await client.files.purge({
-   *     on_progress: (file, index) => {
-   *         console.log(`Deleting file: ${file.id} (${index + 1})`);
-   *     },
-   * });
-   *
+   * await client.files.delete_all();
+   * console.log(`Deleted all files.`);
+
    * // With cancellation
    * const controller = new AbortController();
-   * const { deleted } = await client.files.purge({ signal: controller.signal });
+   * await client.files.delete_all({ signal: controller.signal });
    * ```
    */
-  async purge(options: PurgeFilesOptions = {}): Promise<PurgeResult> {
-    const { signal, on_progress } = options;
+  async delete_all(options: DeleteAllFilesOptions = {}): Promise<void> {
+    const { signal } = options;
     const result = await this.list({ signal });
-    let deleted = 0;
 
     for await (const file of result) {
       signal?.throwIfAborted();
-      on_progress?.(file.toJSON(), deleted);
       await this.delete(file, signal);
-      deleted++;
     }
-
-    return { deleted };
   }
 }
