@@ -7,7 +7,7 @@
   "scripts": {
     "dev:server": "tsx --watch --env-file=.env server.ts",
     "dev:web": "vite",
-    "build": "vite build",
+    "build-demo": "vite build",
     "start": "npm run build && tsx --env-file=.env server.ts"
   },
   "dependencies": {
