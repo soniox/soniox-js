@@ -588,6 +588,87 @@ describe('RecordingStore token accumulation', () => {
     expect(store.getSnapshot().partialTokens).toHaveLength(0);
   });
 
+  it('finalTokens accumulates all final tokens in order', () => {
+    const store = new RecordingStoreClass();
+    const listeners = attachMock(store);
+
+    for (const handler of listeners['result']!) {
+      handler(
+        makeResult([
+          { text: 'Hello', is_final: true },
+          { text: ' wor', is_final: false },
+        ])
+      );
+    }
+    expect(store.getSnapshot().finalTokens).toHaveLength(1);
+    expect(store.getSnapshot().finalTokens[0].text).toBe('Hello');
+
+    for (const handler of listeners['result']!) {
+      handler(
+        makeResult([
+          { text: ' world', is_final: true },
+          { text: ' how', is_final: false },
+        ])
+      );
+    }
+    const snap = store.getSnapshot();
+    expect(snap.finalTokens).toHaveLength(2);
+    expect(snap.finalTokens[0].text).toBe('Hello');
+    expect(snap.finalTokens[1].text).toBe(' world');
+  });
+
+  it('finalTokens preserves language metadata in order', () => {
+    const store = new RecordingStoreClass();
+    const listeners = attachMock(store);
+
+    for (const handler of listeners['result']!) {
+      handler(
+        makeResult([
+          { text: 'Hello', is_final: true, language: 'en' },
+          { text: 'Bonjour', is_final: true, language: 'fr' },
+          { text: 'Hola', is_final: true, language: 'es' },
+        ])
+      );
+    }
+
+    const snap = store.getSnapshot();
+    expect(snap.finalTokens).toHaveLength(3);
+    expect(snap.finalTokens[0].language).toBe('en');
+    expect(snap.finalTokens[1].language).toBe('fr');
+    expect(snap.finalTokens[2].language).toBe('es');
+  });
+
+  it('finalTokens is cleared by reset()', () => {
+    const store = new RecordingStoreClass();
+    const listeners = attachMock(store);
+
+    for (const handler of listeners['result']!) {
+      handler(makeResult([{ text: 'Hello', is_final: true }]));
+    }
+    expect(store.getSnapshot().finalTokens).toHaveLength(1);
+
+    store.reset();
+    expect(store.getSnapshot().finalTokens).toHaveLength(0);
+  });
+
+  it('finalTokens is cleared by clearTranscript()', () => {
+    const store = new RecordingStoreClass();
+    const listeners = attachMock(store);
+
+    for (const handler of listeners['result']!) {
+      handler(makeResult([{ text: 'Hello', is_final: true }]));
+    }
+    expect(store.getSnapshot().finalTokens).toHaveLength(1);
+
+    store.clearTranscript();
+    expect(store.getSnapshot().finalTokens).toHaveLength(0);
+  });
+
+  it('SSR snapshot has empty finalTokens', () => {
+    const store = new RecordingStoreClass();
+    expect(store.getServerSnapshot().finalTokens).toEqual([]);
+  });
+
   it('reset clears all token and group state', () => {
     const store = new RecordingStoreClass();
     store.setGroupBy((token) => token.language ?? 'unknown');

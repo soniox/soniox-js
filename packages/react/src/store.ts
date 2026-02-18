@@ -64,6 +64,14 @@ export interface RecordingSnapshot {
   /** Non-final tokens from the latest result. */
   readonly partialTokens: readonly RealtimeToken[];
   /**
+   * All finalized tokens in chronological order.
+   *
+   * Useful for rendering per-token metadata (language, speaker, etc.)
+   * in the order tokens were spoken. Pair with `partialTokens` for the
+   * complete ordered stream.
+   */
+  readonly finalTokens: readonly RealtimeToken[];
+  /**
    * Tokens grouped by the active `groupBy` strategy.
    *
    * Auto-populated when `translation` config is provided:
@@ -104,6 +112,7 @@ const IDLE_SNAPSHOT: RecordingSnapshot = Object.freeze({
   utterances: Object.freeze([]) as readonly RealtimeUtterance[],
   tokens: EMPTY_TOKENS,
   partialTokens: EMPTY_TOKENS,
+  finalTokens: EMPTY_TOKENS,
   groups: EMPTY_GROUPS,
   result: null,
   error: null,
@@ -130,6 +139,9 @@ export class RecordingStore {
 
   // Partial token tracking (always small — replaced each result).
   private _partialTokens: RealtimeToken[] = [];
+
+  // All finalized tokens in chronological order.
+  private _finalTokens: RealtimeToken[] = [];
 
   // Token grouping — groups accumulate finalText as a string (O(text length)),
   // and only keep current partial tokens (small, replaced each result).
@@ -196,10 +208,12 @@ export class RecordingStore {
         this._tokens = result.tokens;
         this._result = result;
 
-        // Replace partial tokens (always small — just the current non-finals).
+        // Separate final and partial tokens from this result.
         const newPartials: RealtimeToken[] = [];
         for (const token of result.tokens) {
-          if (!token.is_final) {
+          if (token.is_final) {
+            this._finalTokens.push(token);
+          } else {
             newPartials.push(token);
           }
         }
@@ -373,6 +387,7 @@ export class RecordingStore {
     this._utterances = [];
     this._tokens = [];
     this._partialTokens = [];
+    this._finalTokens = [];
     this._groupsByKey.clear();
     this._result = null;
     this._error = null;
@@ -390,6 +405,7 @@ export class RecordingStore {
     this._utterances = [];
     this._tokens = [];
     this._partialTokens = [];
+    this._finalTokens = [];
     this._groupsByKey.clear();
     this._result = null;
     this._currentUtteranceSegmentCount = 0;
@@ -433,6 +449,7 @@ export class RecordingStore {
       utterances: Object.freeze([...this._utterances]),
       tokens: Object.freeze([...this._tokens]),
       partialTokens: Object.freeze([...this._partialTokens]),
+      finalTokens: Object.freeze([...this._finalTokens]),
       groups,
       result: this._result,
       error: this._error,

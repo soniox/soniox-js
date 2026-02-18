@@ -333,6 +333,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     utterances: snapshot.utterances,
     tokens: snapshot.tokens,
     partialTokens: snapshot.partialTokens,
+    finalTokens: snapshot.finalTokens,
     groups: snapshot.groups,
     result: snapshot.result,
     error: snapshot.error,
