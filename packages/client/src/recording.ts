@@ -22,6 +22,7 @@ export type RecordingState =
   | 'starting'
   | 'connecting'
   | 'recording'
+  | 'paused'
   | 'stopping'
   | 'stopped'
   | 'error'
@@ -54,6 +55,12 @@ export type RecordingEvents = {
 
   /** Recording state transition. */
   state_change: (update: { old_state: RecordingState; new_state: RecordingState }) => void;
+
+  /** Audio source was muted externally (e.g. OS-level or hardware mute). */
+  source_muted: () => void;
+
+  /** Audio source was unmuted after an external mute. */
+  source_unmuted: () => void;
 };
 
 /**
@@ -117,6 +124,7 @@ export class Recording {
   private audioBuffer: ArrayBuffer[] = [];
   private _state: RecordingState = 'idle';
   private isBuffering = true;
+  private _isSourceMuted = false;
 
   // Stop promise handling
   private stopResolver: (() => void) | null = null;
@@ -247,6 +255,37 @@ export class Recording {
     this.session?.finalize(options);
   }
 
+  /**
+   * Pause recording.
+   *
+   * Pauses the audio source (stops microphone capture) and pauses the
+   * session (activates automatic keepalive to prevent server disconnect).
+   */
+  pause(): void {
+    if (this._state !== 'recording') return;
+    this.source.pause?.();
+    this.session?.pause();
+    this.setState('paused');
+  }
+
+  /**
+   * Resume recording after pause.
+   *
+   * Resumes the audio source and session. Audio capture and transmission
+   * continue from where they left off.
+   */
+  resume(): void {
+    if (this._state !== 'paused') return;
+    this.source.resume?.();
+    // Keep session paused (keepalive active) if the source is still muted
+    // externally — no audio will flow anyway.  handleSourceUnmuted() will
+    // resume the session when the mic comes back.
+    if (!this._isSourceMuted) {
+      this.session?.resume();
+    }
+    this.setState('recording');
+  }
+
   private async run(): Promise<void> {
     // Check abort before starting
     if (this.signal?.aborted) {
@@ -264,6 +303,8 @@ export class Recording {
       await this.source.start({
         onData: (chunk) => this.handleAudioData(chunk),
         onError: (err) => this.handleError(err),
+        onMuted: () => this.handleSourceMuted(),
+        onUnmuted: () => this.handleSourceUnmuted(),
       });
     } catch (error) {
       this.signal?.removeEventListener('abort', onAbort);
@@ -377,6 +418,28 @@ export class Recording {
     }
   }
 
+  private handleSourceMuted(): void {
+    if (this._state !== 'recording' && this._state !== 'paused') return;
+    this._isSourceMuted = true;
+    // Only toggle session keepalive when in recording state.
+    // When paused, session is already paused (keepalive already active).
+    if (this._state === 'recording') {
+      this.session?.pause();
+    }
+    this.emitter.emit('source_muted');
+  }
+
+  private handleSourceUnmuted(): void {
+    if (this._state !== 'recording' && this._state !== 'paused') return;
+    this._isSourceMuted = false;
+    // Only resume session when in recording state.
+    // When paused, user pause takes precedence — don't resume.
+    if (this._state === 'recording') {
+      this.session?.resume();
+    }
+    this.emitter.emit('source_unmuted');
+  }
+
   private wireSessionEvents(session: RealtimeSttSession): void {
     session.on('result', (result) => this.emitter.emit('result', result));
     session.on('token', (token) => this.emitter.emit('token', token));
@@ -425,6 +488,7 @@ export class Recording {
     this.setState(finalState);
     this.audioBuffer = [];
     this.isBuffering = false;
+    this._isSourceMuted = false;
   }
 
   private setState(newState: RecordingState): void {

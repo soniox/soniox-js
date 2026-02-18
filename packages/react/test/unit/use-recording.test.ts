@@ -21,6 +21,7 @@ class MockAudioSource implements AudioSource {
   handlers: AudioSourceHandlers | null = null;
   started = false;
   stopped = false;
+  paused = false;
 
   async start(handlers: AudioSourceHandlers): Promise<void> {
     this.handlers = handlers;
@@ -31,12 +32,28 @@ class MockAudioSource implements AudioSource {
     this.stopped = true;
   }
 
+  pause(): void {
+    this.paused = true;
+  }
+
+  resume(): void {
+    this.paused = false;
+  }
+
   emitData(chunk: ArrayBuffer): void {
     this.handlers?.onData(chunk);
   }
 
   emitError(error: Error): void {
     this.handlers?.onError(error);
+  }
+
+  emitMuted(): void {
+    this.handlers?.onMuted?.();
+  }
+
+  emitUnmuted(): void {
+    this.handlers?.onUnmuted?.();
   }
 }
 
@@ -461,6 +478,8 @@ describe('useRecording', () => {
       start: result.current.start,
       stop: result.current.stop,
       cancel: result.current.cancel,
+      pause: result.current.pause,
+      resume: result.current.resume,
       finalize: result.current.finalize,
       clearTranscript: result.current.clearTranscript,
     };
@@ -470,6 +489,8 @@ describe('useRecording', () => {
     expect(result.current.start).toBe(first.start);
     expect(result.current.stop).toBe(first.stop);
     expect(result.current.cancel).toBe(first.cancel);
+    expect(result.current.pause).toBe(first.pause);
+    expect(result.current.resume).toBe(first.resume);
     expect(result.current.finalize).toBe(first.finalize);
     expect(result.current.clearTranscript).toBe(first.clearTranscript);
   });
@@ -763,5 +784,187 @@ describe('useRecording standalone (no Provider)', () => {
 
     // Should work — Provider client takes precedence.
     expect(result.current.state).toBe('idle');
+  });
+});
+
+// =============================================================================
+// Pause / Resume
+// =============================================================================
+
+describe('useRecording pause/resume', () => {
+  it('pause() transitions isPaused to true and state to paused', async () => {
+    const { wrapper } = createWrapper();
+    const source = new MockAudioSource();
+
+    const { result } = renderHook(() => useRecording({ model: 'test', source }), { wrapper });
+
+    await act(async () => {
+      result.current.start();
+      await tick(50);
+    });
+
+    expect(result.current.state).toBe('recording');
+    expect(result.current.isPaused).toBe(false);
+
+    await act(async () => {
+      result.current.pause();
+      await tick(10);
+    });
+
+    expect(result.current.state).toBe('paused');
+    expect(result.current.isPaused).toBe(true);
+    expect(result.current.isRecording).toBe(false);
+    expect(result.current.isActive).toBe(true);
+  });
+
+  it('resume() transitions back to recording', async () => {
+    const { wrapper } = createWrapper();
+    const source = new MockAudioSource();
+
+    const { result } = renderHook(() => useRecording({ model: 'test', source }), { wrapper });
+
+    await act(async () => {
+      result.current.start();
+      await tick(50);
+    });
+
+    await act(async () => {
+      result.current.pause();
+      await tick(10);
+    });
+
+    expect(result.current.isPaused).toBe(true);
+
+    await act(async () => {
+      result.current.resume();
+      await tick(10);
+    });
+
+    expect(result.current.state).toBe('recording');
+    expect(result.current.isPaused).toBe(false);
+    expect(result.current.isRecording).toBe(true);
+  });
+
+  it('pause() is a no-op when not recording', async () => {
+    const { wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useRecording({ model: 'test' }), { wrapper });
+
+    act(() => {
+      result.current.pause();
+    });
+
+    expect(result.current.state).toBe('idle');
+    expect(result.current.isPaused).toBe(false);
+  });
+});
+
+// =============================================================================
+// Source mute detection
+// =============================================================================
+
+describe('useRecording source mute', () => {
+  it('isSourceMuted updates when source_muted / source_unmuted fire', async () => {
+    const { wrapper } = createWrapper();
+    const source = new MockAudioSource();
+
+    const { result } = renderHook(() => useRecording({ model: 'test', source }), { wrapper });
+
+    await act(async () => {
+      result.current.start();
+      await tick(50);
+    });
+
+    expect(result.current.isSourceMuted).toBe(false);
+
+    await act(async () => {
+      source.emitMuted();
+      await tick(10);
+    });
+
+    expect(result.current.isSourceMuted).toBe(true);
+
+    await act(async () => {
+      source.emitUnmuted();
+      await tick(10);
+    });
+
+    expect(result.current.isSourceMuted).toBe(false);
+  });
+
+  it('onSourceMuted / onSourceUnmuted callbacks are invoked', async () => {
+    const { wrapper } = createWrapper();
+    const source = new MockAudioSource();
+    const events: string[] = [];
+
+    const { result } = renderHook(
+      () =>
+        useRecording({
+          model: 'test',
+          source,
+          onSourceMuted: () => events.push('muted'),
+          onSourceUnmuted: () => events.push('unmuted'),
+        }),
+      { wrapper }
+    );
+
+    await act(async () => {
+      result.current.start();
+      await tick(50);
+    });
+
+    await act(async () => {
+      source.emitMuted();
+      await tick(10);
+    });
+
+    await act(async () => {
+      source.emitUnmuted();
+      await tick(10);
+    });
+
+    expect(events).toEqual(['muted', 'unmuted']);
+  });
+
+  it('new recording with resetOnStart: false starts with isSourceMuted === false', async () => {
+    const { wrapper } = createWrapper();
+    const source = new MockAudioSource();
+
+    const { result } = renderHook(() => useRecording({ model: 'test', source, resetOnStart: false }), { wrapper });
+
+    // First recording — get to recording state and mute
+    await act(async () => {
+      result.current.start();
+      await tick(50);
+    });
+
+    await act(async () => {
+      source.emitMuted();
+      await tick(10);
+    });
+
+    expect(result.current.isSourceMuted).toBe(true);
+
+    // Cancel and start a new recording — isSourceMuted should be reset
+    await act(async () => {
+      result.current.cancel();
+      await tick(10);
+    });
+
+    await act(async () => {
+      result.current.start();
+      await tick(10);
+    });
+
+    expect(result.current.isSourceMuted).toBe(false);
+  });
+
+  it('SSR snapshot has isPaused and isSourceMuted as false', async () => {
+    const { RecordingStore } = await import('../../src/store');
+    const store = new RecordingStore();
+    const snap = store.getServerSnapshot();
+
+    expect(snap.isPaused).toBe(false);
+    expect(snap.isSourceMuted).toBe(false);
   });
 });

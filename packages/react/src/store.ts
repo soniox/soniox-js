@@ -77,6 +77,10 @@ export interface RecordingSnapshot {
   readonly result: RealtimeResult | null;
   /** Latest error, if any. */
   readonly error: Error | null;
+  /** `true` when `state === 'paused'`. */
+  readonly isPaused: boolean;
+  /** `true` when the audio source is muted externally (e.g. OS-level or hardware mute). */
+  readonly isSourceMuted: boolean;
 }
 
 interface MutableGroupState {
@@ -103,6 +107,8 @@ const IDLE_SNAPSHOT: RecordingSnapshot = Object.freeze({
   groups: EMPTY_GROUPS,
   result: null,
   error: null,
+  isPaused: false,
+  isSourceMuted: false,
 });
 
 type Listener = () => void;
@@ -120,6 +126,7 @@ export class RecordingStore {
   private _tokens: RealtimeToken[] = [];
   private _result: RealtimeResult | null = null;
   private _error: Error | null = null;
+  private _isSourceMuted = false;
 
   // Partial token tracking (always small — replaced each result).
   private _partialTokens: RealtimeToken[] = [];
@@ -144,6 +151,8 @@ export class RecordingStore {
   onStateChange: ((update: { old_state: RecordingState; new_state: RecordingState }) => void) | null = null;
   onFinished: (() => void) | null = null;
   onConnected: (() => void) | null = null;
+  onSourceMuted: (() => void) | null = null;
+  onSourceUnmuted: (() => void) | null = null;
 
   // ---------------------------------------------------------------------------
   // useSyncExternalStore contract
@@ -178,6 +187,7 @@ export class RecordingStore {
   attach(recording: Recording): void {
     this.detach();
     this.recording = recording;
+    this._isSourceMuted = false;
 
     const handlers: BoundHandlers = {
       result: (result: RealtimeResult) => {
@@ -293,6 +303,18 @@ export class RecordingStore {
       connected: () => {
         this.onConnected?.();
       },
+
+      source_muted: () => {
+        this._isSourceMuted = true;
+        this.notify();
+        this.onSourceMuted?.();
+      },
+
+      source_unmuted: () => {
+        this._isSourceMuted = false;
+        this.notify();
+        this.onSourceUnmuted?.();
+      },
     };
 
     recording.on('result', handlers.result);
@@ -301,6 +323,8 @@ export class RecordingStore {
     recording.on('error', handlers.error);
     recording.on('state_change', handlers.state_change);
     recording.on('connected', handlers.connected);
+    recording.on('source_muted', handlers.source_muted);
+    recording.on('source_unmuted', handlers.source_unmuted);
 
     this.boundHandlers = handlers;
   }
@@ -316,6 +340,8 @@ export class RecordingStore {
       r.off('error', h.error);
       r.off('state_change', h.state_change);
       r.off('connected', h.connected);
+      r.off('source_muted', h.source_muted);
+      r.off('source_unmuted', h.source_unmuted);
     }
     this.recording = null;
     this.boundHandlers = null;
@@ -350,6 +376,7 @@ export class RecordingStore {
     this._groupsByKey.clear();
     this._result = null;
     this._error = null;
+    this._isSourceMuted = false;
     this._currentUtteranceSegmentCount = 0;
     this.utteranceBuffer = new RealtimeUtteranceBuffer();
     this.notify();
@@ -409,6 +436,8 @@ export class RecordingStore {
       groups,
       result: this._result,
       error: this._error,
+      isPaused: this._state === 'paused',
+      isSourceMuted: this._isSourceMuted,
     });
 
     this.snapshot = next;
@@ -426,4 +455,6 @@ interface BoundHandlers {
   error: (error: Error) => void;
   state_change: (update: { old_state: RecordingState; new_state: RecordingState }) => void;
   connected: () => void;
+  source_muted: () => void;
+  source_unmuted: () => void;
 }

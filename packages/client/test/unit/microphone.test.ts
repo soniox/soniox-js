@@ -47,9 +47,35 @@ class MockMediaRecorder {
 // Set up global MediaRecorder mock
 (globalThis as any).MediaRecorder = MockMediaRecorder;
 
-function createMockStream(): MediaStream {
+function createMockTrack() {
+  const listeners = new Map<string, AnyFn[]>();
   return {
-    getTracks: () => [{ stop: jest.fn() }],
+    stop: jest.fn(),
+    addEventListener: (event: string, handler: AnyFn) => {
+      const handlers = listeners.get(event) ?? [];
+      handlers.push(handler);
+      listeners.set(event, handlers);
+    },
+    removeEventListener: (event: string, handler: AnyFn) => {
+      const handlers = listeners.get(event) ?? [];
+      listeners.set(
+        event,
+        handlers.filter((h) => h !== handler)
+      );
+    },
+    fire: (event: string) => {
+      const handlers = listeners.get(event) ?? [];
+      for (const h of handlers) h();
+    },
+    getListenerCount: (event: string) => (listeners.get(event) ?? []).length,
+  };
+}
+
+function createMockStream(track?: ReturnType<typeof createMockTrack>): MediaStream {
+  const t = track ?? createMockTrack();
+  return {
+    getTracks: () => [t],
+    getAudioTracks: () => [t],
   } as unknown as MediaStream;
 }
 
@@ -132,8 +158,10 @@ describe('MicrophoneSource', () => {
 
     it('stops tracks on the stream', async () => {
       const mockStop = jest.fn();
+      const mockTrack = { stop: mockStop, addEventListener: jest.fn(), removeEventListener: jest.fn() };
       const mockStream = {
-        getTracks: () => [{ stop: mockStop }],
+        getTracks: () => [mockTrack],
+        getAudioTracks: () => [mockTrack],
       } as unknown as MediaStream;
 
       Object.defineProperty(navigator, 'mediaDevices', {
@@ -168,6 +196,77 @@ describe('MicrophoneSource', () => {
 
       source.pause?.call(source);
       source.resume?.call(source);
+    });
+  });
+
+  describe('mute detection', () => {
+    it('fires onMuted when audio track emits mute', async () => {
+      const track = createMockTrack();
+      const mockStream = createMockStream(track);
+      Object.defineProperty(navigator, 'mediaDevices', {
+        value: { getUserMedia: jest.fn().mockResolvedValue(mockStream) },
+        writable: true,
+        configurable: true,
+      });
+
+      const onMuted = jest.fn();
+      await source.start({ onData: jest.fn(), onError: jest.fn(), onMuted });
+
+      track.fire('mute');
+      expect(onMuted).toHaveBeenCalledTimes(1);
+    });
+
+    it('fires onUnmuted when audio track emits unmute', async () => {
+      const track = createMockTrack();
+      const mockStream = createMockStream(track);
+      Object.defineProperty(navigator, 'mediaDevices', {
+        value: { getUserMedia: jest.fn().mockResolvedValue(mockStream) },
+        writable: true,
+        configurable: true,
+      });
+
+      const onUnmuted = jest.fn();
+      await source.start({ onData: jest.fn(), onError: jest.fn(), onUnmuted });
+
+      track.fire('unmute');
+      expect(onUnmuted).toHaveBeenCalledTimes(1);
+    });
+
+    it('cleans up mute listeners on stop()', async () => {
+      const track = createMockTrack();
+      const mockStream = createMockStream(track);
+      Object.defineProperty(navigator, 'mediaDevices', {
+        value: { getUserMedia: jest.fn().mockResolvedValue(mockStream) },
+        writable: true,
+        configurable: true,
+      });
+
+      const onMuted = jest.fn();
+      const onUnmuted = jest.fn();
+      await source.start({ onData: jest.fn(), onError: jest.fn(), onMuted, onUnmuted });
+
+      source.stop();
+
+      track.fire('mute');
+      track.fire('unmute');
+      expect(onMuted).not.toHaveBeenCalled();
+      expect(onUnmuted).not.toHaveBeenCalled();
+    });
+
+    it('works without onMuted/onUnmuted handlers', async () => {
+      const track = createMockTrack();
+      const mockStream = createMockStream(track);
+      Object.defineProperty(navigator, 'mediaDevices', {
+        value: { getUserMedia: jest.fn().mockResolvedValue(mockStream) },
+        writable: true,
+        configurable: true,
+      });
+
+      await source.start({ onData: jest.fn(), onError: jest.fn() });
+
+      // Should not throw when mute/unmute fire without handlers
+      expect(() => track.fire('mute')).not.toThrow();
+      expect(() => track.fire('unmute')).not.toThrow();
     });
   });
 });

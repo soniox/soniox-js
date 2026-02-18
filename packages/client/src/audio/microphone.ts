@@ -66,6 +66,8 @@ export class MicrophoneSource implements AudioSource {
   // Bound event handlers for cleanup
   private boundOnData: ((event: BlobEvent) => void) | null = null;
   private boundOnError: ((event: Event) => void) | null = null;
+  private boundOnMute: (() => void) | null = null;
+  private boundOnUnmute: (() => void) | null = null;
 
   // Guards against concurrent start() calls (see below).
   private startGeneration = 0;
@@ -128,6 +130,24 @@ export class MicrophoneSource implements AudioSource {
 
     this.stream = stream;
 
+    // Attach mute/unmute listeners to the audio track
+    const track = stream.getAudioTracks()[0];
+    if (track) {
+      const { onMuted, onUnmuted } = handlers;
+      this.boundOnMute = onMuted
+        ? () => {
+            onMuted();
+          }
+        : null;
+      this.boundOnUnmute = onUnmuted
+        ? () => {
+            onUnmuted();
+          }
+        : null;
+      if (this.boundOnMute) track.addEventListener('mute', this.boundOnMute);
+      if (this.boundOnUnmute) track.addEventListener('unmute', this.boundOnUnmute);
+    }
+
     // Create MediaRecorder
     try {
       const recorder = new MediaRecorder(stream, this.recorderOptions);
@@ -157,6 +177,8 @@ export class MicrophoneSource implements AudioSource {
       stream.getTracks().forEach((track) => track.stop());
       this.stream = null;
       this.mediaRecorder = null;
+      this.boundOnMute = null;
+      this.boundOnUnmute = null;
       throw new AudioUnavailableError(err instanceof Error ? err.message : 'Failed to start MediaRecorder', err);
     }
   }
@@ -194,8 +216,17 @@ export class MicrophoneSource implements AudioSource {
       this.mediaRecorder = null;
     }
 
-    // Stop all tracks
+    // Remove mute/unmute listeners and stop all tracks
     if (this.stream) {
+      if (this.boundOnMute || this.boundOnUnmute) {
+        const track = this.stream.getAudioTracks()[0];
+        if (track) {
+          if (this.boundOnMute) track.removeEventListener('mute', this.boundOnMute);
+          if (this.boundOnUnmute) track.removeEventListener('unmute', this.boundOnUnmute);
+        }
+        this.boundOnMute = null;
+        this.boundOnUnmute = null;
+      }
       this.stream.getTracks().forEach((track) => track.stop());
       this.stream = null;
     }

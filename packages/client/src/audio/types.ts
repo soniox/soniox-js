@@ -20,6 +20,16 @@ export type AudioSourceHandlers = {
    * @param error - The error that occurred
    */
   onError: (error: Error) => void;
+
+  /**
+   * Called when the audio source is muted externally (e.g. OS-level or hardware mute).
+   */
+  onMuted?: () => void;
+
+  /**
+   * Called when the audio source is unmuted after an external mute.
+   */
+  onUnmuted?: () => void;
 };
 
 /**

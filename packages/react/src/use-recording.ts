@@ -103,6 +103,12 @@ export interface UseRecordingConfig extends SttSessionConfig {
 
   /** Called when the WebSocket connects. */
   onConnected?: (() => void) | undefined;
+
+  /** Called when the audio source is muted externally (e.g. OS-level or hardware mute). */
+  onSourceMuted?: (() => void) | undefined;
+
+  /** Called when the audio source is unmuted after an external mute. */
+  onSourceUnmuted?: (() => void) | undefined;
 }
 
 export interface UseRecordingReturn extends RecordingSnapshot {
@@ -112,6 +118,10 @@ export interface UseRecordingReturn extends RecordingSnapshot {
   stop: () => Promise<void>;
   /** Immediately cancel — does not wait for final results. */
   cancel: () => void;
+  /** Pause recording — pauses audio capture and activates keepalive. */
+  pause: () => void;
+  /** Resume recording after pause. */
+  resume: () => void;
   /** Request the server to finalize current non-final tokens. */
   finalize: (options?: { trailing_silence_ms?: number }) => void;
   /** Clear transcript state (finalText, partialText, utterances, segments). */
@@ -199,6 +209,8 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
   store.onStateChange = config.onStateChange ?? null;
   store.onFinished = config.onFinished ?? null;
   store.onConnected = config.onConnected ?? null;
+  store.onSourceMuted = config.onSourceMuted ?? null;
+  store.onSourceUnmuted = config.onSourceUnmuted ?? null;
 
   // Platform support (computed once).
   const supportRef = useRef<{ isSupported: boolean; reason: UnsupportedReason | undefined }>(undefined);
@@ -245,6 +257,8 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       onStateChange: _onStateChange,
       onFinished: _onFinished,
       onConnected: _onConnected,
+      onSourceMuted: _onSourceMuted,
+      onSourceUnmuted: _onSourceUnmuted,
       ...sttConfig
     } = cfg;
 
@@ -277,6 +291,14 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     // overwriting the state to 'error' via Recording.handleError).
     recordingRef.current?.cancel();
     abortRef.current?.abort();
+  }, []);
+
+  const pause = useCallback((): void => {
+    recordingRef.current?.pause();
+  }, []);
+
+  const resume = useCallback((): void => {
+    recordingRef.current?.resume();
   }, []);
 
   const finalize = useCallback((options?: { trailing_silence_ms?: number }): void => {
@@ -314,11 +336,15 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     groups: snapshot.groups,
     result: snapshot.result,
     error: snapshot.error,
+    isPaused: snapshot.isPaused,
+    isSourceMuted: snapshot.isSourceMuted,
 
     // Actions
     start,
     stop,
     cancel,
+    pause,
+    resume,
     finalize,
     clearTranscript,
 
