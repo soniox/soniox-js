@@ -78,9 +78,24 @@ const PACKAGE_CONFIGS = {
   client: {
     sdkLabel: 'Soniox Client SDK',
     /** Classes whose constructors are internal (users access via client methods or catch them) */
-    internalAPIs: new Set([]),
+    internalAPIs: new Set([
+      'Recording',
+      // Error classes — users catch these but don't construct them
+      'AudioPermissionError',
+      'AudioDeviceError',
+      'AudioUnavailableError',
+    ]),
     /** Desired class ordering in classes.mdx */
-    classOrder: [],
+    classOrder: [
+      'Class.SonioxClient.md',
+      'Class.Recording.md',
+      'Class.MicrophoneSource.md',
+      'Class.BrowserPermissionResolver.md',
+      // Error classes
+      'Class.AudioPermissionError.md',
+      'Class.AudioDeviceError.md',
+      'Class.AudioUnavailableError.md',
+    ],
   },
   react: {
     sdkLabel: 'Soniox React SDK',

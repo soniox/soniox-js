@@ -5,7 +5,10 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": ".",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@soniox/client": ["../client/src/index.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],

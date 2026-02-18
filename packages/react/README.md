@@ -1,8 +1,8 @@
-# @soniox/react
+# @soniox/client
 
-Official Soniox React SDK
+Official Soniox React SDK for React, React Native and Next.js
 
-Works in browsers, React Native, and Next.js.
+[Full React SDK Documentation](https://soniox.com/docs/stt/SDKs/react-SDK)
 
 ## Installation
 
@@ -10,12 +10,4 @@ Works in browsers, React Native, and Next.js.
 npm install @soniox/react
 ```
 
-`react >= 18` is required as a peer dependency.
-
-## Quick Start
-
-TBD
-
-## License
-
-MIT
+For the full documentation please go to our docs: [Full React SDK Documentation](https://soniox.com/docs/stt/SDKs/react-SDK)
