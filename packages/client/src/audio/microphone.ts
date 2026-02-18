@@ -5,14 +5,14 @@
 import { AudioDeviceError, AudioPermissionError, AudioUnavailableError } from './errors.js';
 import type { AudioSource, AudioSourceHandlers } from './types.js';
 
-const DEFAULT_TIMESLICE_MS = 120;
+const DEFAULT_TIMESLICE_MS = 60;
 
 const DEFAULT_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   echoCancellation: false,
   noiseSuppression: false,
   autoGainControl: false,
   channelCount: 1,
-  sampleRate: 44100,
+  sampleRate: 16000,
 };
 
 /**
@@ -33,7 +33,7 @@ export type MicrophoneSourceOptions = {
 
   /**
    * Time interval in milliseconds between audio data chunks.
-   * @default 120
+   * @default 60
    */
   timesliceMs?: number | undefined;
 };
