@@ -259,6 +259,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
     if (this._paused) return;
 
     this._paused = true;
+    this.finalize();
 
     if (!this._pauseWarned && typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
       this._pauseWarned = true;
