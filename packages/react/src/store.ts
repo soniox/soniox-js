@@ -129,6 +129,8 @@ export class RecordingStore {
   // Mutable working state — frozen into snapshot on notify().
   private _state: RecordingState = 'idle';
   private _finalText = '';
+  private _flushedText = '';
+  private _windowFinalText = '';
   private _partialText = '';
   private _segments: RealtimeSegment[] = [];
   private _utterances: RealtimeUtterance[] = [];
@@ -147,6 +149,10 @@ export class RecordingStore {
   // and only keep current partial tokens (small, replaced each result).
   private _groupByFn: GroupByFn | null = null;
   private _groupsByKey = new Map<string, MutableGroupState>();
+
+  // Track previous result tokens to detect when the server flushes finalized
+  // tokens from the result window (happens even without endpoint detection).
+  private _prevResultTokens: RealtimeToken[] = [];
 
   // Utterance accumulation
   private utteranceBuffer = new RealtimeUtteranceBuffer();
@@ -200,23 +206,52 @@ export class RecordingStore {
     this.detach();
     this.recording = recording;
     this._isSourceMuted = false;
+    this._prevResultTokens = [];
 
     const handlers: BoundHandlers = {
       result: (result: RealtimeResult) => {
-        const allTokensText = result.tokens.map((t) => t.text).join('');
-        this._partialText = allTokensText;
+        // Accumulate text from finalized tokens the server flushed out of
+        // the result window.  Stored in _flushedText (not _finalText) so
+        // the endpoint handler can clear it — the utterance already covers
+        // the same span.
+        const prev = this._prevResultTokens;
+        const curr = result.tokens;
+        if (prev.length > 0) {
+          if (curr.length === 0) {
+            for (const t of prev) {
+              if (t.is_final) this._flushedText += t.text;
+            }
+          } else if (curr[0] !== undefined) {
+            const windowStart = curr[0].start_ms;
+            if (windowStart != null) {
+              for (const t of prev) {
+                if (t.is_final && t.start_ms != null && t.start_ms < windowStart) {
+                  this._flushedText += t.text;
+                }
+              }
+            }
+          }
+        }
+        this._prevResultTokens = curr;
+
         this._tokens = result.tokens;
         this._result = result;
 
         // Separate final and partial tokens from this result.
+        let windowFinalText = '';
+        let partialText = '';
         const newPartials: RealtimeToken[] = [];
         for (const token of result.tokens) {
           if (token.is_final) {
+            windowFinalText += token.text;
             this._finalTokens.push(token);
           } else {
+            partialText += token.text;
             newPartials.push(token);
           }
         }
+        this._windowFinalText = windowFinalText;
+        this._partialText = partialText;
         this._partialTokens = newPartials;
 
         // Route tokens to groups if a groupBy function is active.
@@ -253,6 +288,9 @@ export class RecordingStore {
       },
 
       endpoint: () => {
+        this._prevResultTokens = [];
+        this._flushedText = '';
+        this._windowFinalText = '';
         const utterance = this.utteranceBuffer.markEndpoint();
         if (utterance !== undefined) {
           this._utterances = [...this._utterances, utterance];
@@ -283,12 +321,16 @@ export class RecordingStore {
       },
 
       finished: () => {
-        // Flush any remaining partial text into final.
+        // Flush remaining window text into final.
+        this._finalText += this._flushedText + this._windowFinalText;
         if (this._partialText.trim()) {
           this._finalText += this._partialText;
         }
+        this._flushedText = '';
+        this._windowFinalText = '';
         this._partialText = '';
         this._partialTokens = [];
+        this._prevResultTokens = [];
 
         // Move remaining partial tokens' text to finalText in groups.
         for (const group of this._groupsByKey.values()) {
@@ -382,12 +424,15 @@ export class RecordingStore {
   reset(): void {
     this._state = 'idle';
     this._finalText = '';
+    this._flushedText = '';
+    this._windowFinalText = '';
     this._partialText = '';
     this._segments = [];
     this._utterances = [];
     this._tokens = [];
     this._partialTokens = [];
     this._finalTokens = [];
+    this._prevResultTokens = [];
     this._groupsByKey.clear();
     this._result = null;
     this._error = null;
@@ -400,12 +445,15 @@ export class RecordingStore {
   /** Clear transcript fields only, keeping state and error. */
   clearTranscript(): void {
     this._finalText = '';
+    this._flushedText = '';
+    this._windowFinalText = '';
     this._partialText = '';
     this._segments = [];
     this._utterances = [];
     this._tokens = [];
     this._partialTokens = [];
     this._finalTokens = [];
+    this._prevResultTokens = [];
     this._groupsByKey.clear();
     this._result = null;
     this._currentUtteranceSegmentCount = 0;
@@ -442,8 +490,8 @@ export class RecordingStore {
       state: this._state,
       isActive,
       isRecording: this._state === 'recording',
-      text: this._finalText + this._partialText,
-      finalText: this._finalText,
+      text: this._finalText + this._flushedText + this._windowFinalText + this._partialText,
+      finalText: this._finalText + this._flushedText + this._windowFinalText,
       partialText: this._partialText,
       segments: Object.freeze([...this._segments]),
       utterances: Object.freeze([...this._utterances]),
