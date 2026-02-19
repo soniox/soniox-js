@@ -18,6 +18,8 @@ export function TranscriptionTab() {
   const audioRef = useRef({ ctx: null, stream: null, processor: null, source: null, gain: null });
   const modeRef = useRef('raw');
   const segmentsRef = useRef(null);
+  const committedRef = useRef('');
+  const prevResultTokensRef = useRef([]);
 
   useEffect(() => {
     if (segmentsRef.current) segmentsRef.current.scrollTop = segmentsRef.current.scrollHeight;
@@ -41,17 +43,43 @@ export function TranscriptionTab() {
       const msg = JSON.parse(data);
       if (msg.type === 'result') {
         const result = msg.result || {};
-        const text = (result.tokens || []).map((t) => t.text).join('');
-        if (text) setPartial(text);
+        const tokens = result.tokens || [];
+
+        // Detect tokens the server flushed from the result window.
+        const prev = prevResultTokensRef.current;
+        if (prev.length > 0) {
+          if (tokens.length === 0) {
+            for (const t of prev) {
+              if (t.is_final) committedRef.current += t.text;
+            }
+          } else if (tokens[0].start_ms != null) {
+            const windowStart = tokens[0].start_ms;
+            for (const t of prev) {
+              if (t.is_final && t.start_ms != null && t.start_ms < windowStart) {
+                committedRef.current += t.text;
+              }
+            }
+          }
+        }
+        prevResultTokensRef.current = tokens;
+
+        const text = tokens.map((t) => t.text).join('');
+        setPartial(text);
         if (modeRef.current !== 'raw' && msg.segments?.length) {
           setSegments((prev) => [...prev, ...msg.segments]);
           msg.segments.forEach((s) => log(`Segment: "${s.text.substring(0, 30)}..." (speaker=${s.speaker || '-'})`));
         }
         if (result.finished) {
+          if (committedRef.current) {
+            setPartial((prev) => committedRef.current + prev);
+            committedRef.current = '';
+          }
           flushPartial();
           log('Session finished');
         }
       } else if (msg.type === 'endpoint') {
+        committedRef.current = '';
+        prevResultTokensRef.current = [];
         if (modeRef.current !== 'raw' && msg.segments?.length) {
           setSegments((prev) => [...prev, ...msg.segments]);
           msg.segments.forEach((s) => log(`Segment: "${s.text.substring(0, 30)}..." (speaker=${s.speaker || '-'})`));
@@ -71,6 +99,8 @@ export function TranscriptionTab() {
     setPartial('');
     setSegments([]);
     setLogs([]);
+    committedRef.current = '';
+    prevResultTokensRef.current = [];
     modeRef.current = segmentMode;
     setStatus('connecting');
 
@@ -196,8 +226,11 @@ export function TranscriptionTab() {
         Status: <span className="text-blue-600">{status}</span>
       </div>
 
-      <Panel title="Live partial">
-        <pre className="whitespace-pre-wrap break-words font-mono text-blue-600">{partial}</pre>
+      <Panel title="Live transcript">
+        <div className="whitespace-pre-wrap break-words font-mono min-h-[2rem]">
+          <span>{committedRef.current}</span>
+          <span className="text-blue-600">{partial}</span>
+        </div>
       </Panel>
 
       <Panel title="Final transcript / Segments">

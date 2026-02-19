@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
+import { useMicrophonePermission, useAudioLevel } from '@soniox/react';
 import { Input, Select, Button, Panel } from './components';
 import { downsampleBuffer, TARGET_SAMPLE_RATE } from './audio';
 
 export function AgentTab() {
+  const mic = useMicrophonePermission({ autoCheck: true });
+
   const [model, setModel] = useState('stt-rt-v4');
   const [language, setLanguage] = useState('');
   const [mode, setMode] = useState('auto'); // 'auto' or 'ptt' (push-to-talk)
@@ -211,9 +214,18 @@ export function AgentTab() {
 
   const isRunning = agentState !== 'idle';
   const isPTT = modeRef.current === 'ptt';
+  const { volume } = useAudioLevel({ active: isRunning });
+  const micDenied = mic.isDenied && !mic.canRequest;
 
   return (
     <>
+      {mic.isDenied && (
+        <div className="mt-6 p-3 bg-red-50 border border-red-200 rounded-lg text-sm">
+          <span className="text-red-700 font-semibold">Microphone access denied.</span>
+          {!mic.canRequest && <span className="text-red-600 ml-1">Enable it in browser settings and reload.</span>}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-6 items-end">
         <Input label="STT Model" value={model} onChange={setModel} />
         <Input label="Language" value={language} onChange={setLanguage} placeholder="en" />
@@ -226,7 +238,7 @@ export function AgentTab() {
             { value: 'ptt', label: 'Push-to-talk' },
           ]}
         />
-        <Button onClick={start} disabled={isRunning}>
+        <Button onClick={start} disabled={isRunning || micDenied}>
           Start
         </Button>
         <div className="flex gap-2">
@@ -280,6 +292,17 @@ export function AgentTab() {
             <span>
               Status: <strong>{recording ? 'recording' : finalizing ? 'finalizing...' : 'ready'}</strong>
             </span>
+          </div>
+        )}
+        {isRunning && (
+          <div className="flex items-center gap-2 flex-1 min-w-[100px]">
+            <span className="text-xs text-gray-500">Vol</span>
+            <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500 rounded-full transition-all duration-75"
+                style={{ width: `${volume * 100}%` }}
+              />
+            </div>
           </div>
         )}
       </div>

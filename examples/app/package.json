@@ -8,10 +8,12 @@
     "dev:server": "tsx --watch --env-file=.env server.ts",
     "dev:web": "vite",
     "build-demo": "vite build",
-    "start": "npm run build && tsx --env-file=.env server.ts"
+    "start": "npm run build-demo && tsx --env-file=.env server.ts"
   },
   "dependencies": {
     "@soniox/node": "^1.0.0",
+    "@soniox/react": "^1.0.0",
+    "@soniox/client": "^1.0.0",
     "express": "^5.2.1",
     "preact": "^10.19.3",
     "ws": "^8.18.3"

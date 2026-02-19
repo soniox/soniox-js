@@ -1,5 +1,7 @@
 import { render } from 'preact';
 import { useState, useEffect, useCallback } from 'preact/hooks';
+import { SonioxProvider } from '@soniox/react';
+import { ClientTab } from './client-tab';
 import { TranscriptionTab } from './realtime-tab';
 import { AgentTab } from './agent-tab';
 import { AsyncTab } from './async-tab';
@@ -99,7 +101,7 @@ function ApiTokenBar({ onTokenChange }) {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState('realtime');
+  const [activeTab, setActiveTab] = useState('client');
   const [tokenVersion, setTokenVersion] = useState(0);
 
   const handleTokenChange = useCallback(() => {
@@ -107,6 +109,7 @@ function App() {
   }, []);
 
   const tabs = [
+    { id: 'client', label: 'Client SDK' },
     { id: 'realtime', label: 'Realtime' },
     { id: 'async', label: 'Async' },
     { id: 'agent', label: 'Voice Agent' },
@@ -121,21 +124,32 @@ function App() {
         <ApiTokenBar onTokenChange={handleTokenChange} />
       </div>
 
-      <div className="flex mt-2 border-b-2 border-gray-300">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`px-6 py-3 font-semibold -mb-0.5 border-b-2 transition-colors ${activeTab === tab.id ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <SonioxProvider
+        key={tokenVersion}
+        apiKey={async () => {
+          const res = await fetch('/tmp-key');
+          if (!res.ok) throw new Error('Failed to fetch temporary API key');
+          const data = await res.json();
+          return data.api_key;
+        }}
+      >
+        <div className="flex mt-2 border-b-2 border-gray-300">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              className={`px-6 py-3 font-semibold -mb-0.5 border-b-2 transition-colors ${activeTab === tab.id ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-      {activeTab === 'realtime' && <TranscriptionTab key={tokenVersion} />}
-      {activeTab === 'async' && <AsyncTab key={tokenVersion} />}
-      {activeTab === 'agent' && <AgentTab key={tokenVersion} />}
+        {activeTab === 'client' && <ClientTab />}
+        {activeTab === 'realtime' && <TranscriptionTab key={tokenVersion} />}
+        {activeTab === 'async' && <AsyncTab key={tokenVersion} />}
+        {activeTab === 'agent' && <AgentTab key={tokenVersion} />}
+      </SonioxProvider>
     </div>
   );
 }
