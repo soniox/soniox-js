@@ -1,4 +1,4 @@
-# JavaScript Example
+# Soniox Web SDK Example
 
 This is a minimal example of how to use the `@soniox/client` library in a vanilla JavaScript project.
 
