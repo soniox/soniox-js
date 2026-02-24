@@ -103,6 +103,12 @@ export type SttSessionConfig = {
   enable_endpoint_detection?: boolean | undefined;
 
   /**
+   * Maximum delay between the end of speech and returned endpoint.
+   * Allowed values for maximum delay are between 500ms and 3000ms. The default value is 2000ms
+   */
+  max_endpoint_delay_ms?: number | undefined;
+
+  /**
    * Optional tracking identifier (max 256 chars).
    */
   client_reference_id?: string | undefined;
