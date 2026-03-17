@@ -1,5 +1,6 @@
 import { Recording } from '../../src/recording';
 import type { AudioSource, AudioSourceHandlers } from '../../src/audio/types';
+import type { ResolvedConnectionConfig } from '@soniox/core';
 
 class MockAudioSource implements AudioSource {
   handlers: AudioSourceHandlers | null = null;
@@ -108,6 +109,43 @@ class MockWebSocket {
 // Install mock WebSocket globally
 (globalThis as any).WebSocket = MockWebSocket;
 
+function staticResolver(
+  apiKey = 'temp:test-key',
+  wsUrl = 'wss://test.example.com/transcribe-websocket',
+  sessionDefaults: Record<string, unknown> = {}
+): () => Promise<ResolvedConnectionConfig> {
+  return async () => ({
+    api_key: apiKey,
+    api_domain: 'https://api.soniox.com',
+    stt_ws_url: wsUrl,
+    session_defaults: sessionDefaults,
+  });
+}
+
+function delayedResolver(
+  delayMs: number,
+  apiKey = 'temp:delayed-key',
+  wsUrl = 'wss://test.example.com/transcribe-websocket'
+): () => Promise<ResolvedConnectionConfig> {
+  return () =>
+    new Promise((resolve) =>
+      setTimeout(
+        () =>
+          resolve({
+            api_key: apiKey,
+            api_domain: 'https://api.soniox.com',
+            stt_ws_url: wsUrl,
+            session_defaults: {},
+          }),
+        delayMs
+      )
+    );
+}
+
+function failingResolver(error: Error): () => Promise<ResolvedConnectionConfig> {
+  return () => Promise.reject(error);
+}
+
 describe('Recording', () => {
   let source: MockAudioSource;
 
@@ -118,7 +156,7 @@ describe('Recording', () => {
   it('transitions through starting -> connecting -> recording states', async () => {
     const states: string[] = [];
 
-    const recording = new Recording('temp:test-key', 'wss://test.example.com', { model: 'test' }, source, {
+    const recording = new Recording(staticResolver(), { model: 'test' }, source, {
       buffer_queue_size: 100,
     });
 
@@ -135,32 +173,26 @@ describe('Recording', () => {
   });
 
   it('starts with idle state', () => {
-    const recording = new Recording('temp:key', 'wss://test.example.com', { model: 'test' }, source);
+    const recording = new Recording(staticResolver(), { model: 'test' }, source);
     expect(recording.state).toBe('idle');
   });
 
-  it('buffers audio during key fetch and connection', async () => {
-    let resolveKey: (key: string) => void;
-    const keyPromise = new Promise<string>((resolve) => {
-      resolveKey = resolve;
-    });
-
-    // Recording is created just for its side effect of starting the source
-    new Recording(() => keyPromise, 'wss://test.example.com', { model: 'test' }, source, { buffer_queue_size: 100 });
+  it('buffers audio during config resolution and connection', async () => {
+    const recording = new Recording(delayedResolver(50), { model: 'test' }, source, { buffer_queue_size: 100 });
 
     // Wait for source to start
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(source.started).toBe(true);
 
-    // Simulate audio data arriving while key is being fetched
+    // Simulate audio data arriving while config is being resolved
     source.emitData(new ArrayBuffer(100));
     source.emitData(new ArrayBuffer(200));
 
-    // Resolve the key
-    resolveKey!('temp:resolved-key');
-
     // Wait for connection
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Recording should have progressed past buffering
+    void recording;
   });
 
   it('emits error when audio source fails to start', async () => {
@@ -172,7 +204,7 @@ describe('Recording', () => {
     };
 
     const errors: Error[] = [];
-    const recording = new Recording('temp:key', 'wss://test.example.com', { model: 'test' }, failingSource);
+    const recording = new Recording(staticResolver(), { model: 'test' }, failingSource);
 
     recording.on('error', (err) => errors.push(err));
 
@@ -183,26 +215,21 @@ describe('Recording', () => {
     expect(recording.state).toBe('error');
   });
 
-  it('emits error when api key resolution fails', async () => {
+  it('emits error when config resolution fails', async () => {
     const errors: Error[] = [];
-    const recording = new Recording(
-      () => Promise.reject(new Error('Key fetch failed')),
-      'wss://test.example.com',
-      { model: 'test' },
-      source
-    );
+    const recording = new Recording(failingResolver(new Error('Config fetch failed')), { model: 'test' }, source);
 
     recording.on('error', (err) => errors.push(err));
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(errors).toHaveLength(1);
-    expect(errors[0]!.message).toBe('Key fetch failed');
+    expect(errors[0]!.message).toBe('Config fetch failed');
     expect(recording.state).toBe('error');
   });
 
   it('cancel stops the source and transitions to canceled state', async () => {
-    const recording = new Recording('temp:key', 'wss://test.example.com', { model: 'test' }, source);
+    const recording = new Recording(staticResolver(), { model: 'test' }, source);
 
     // Wait for lifecycle to start
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -214,7 +241,7 @@ describe('Recording', () => {
   });
 
   it('cancel is safe to call multiple times', () => {
-    const _recording = new Recording('temp:key', 'wss://test.example.com', { model: 'test' }, source);
+    const _recording = new Recording(staticResolver(), { model: 'test' }, source);
     _recording.cancel();
     _recording.cancel();
     expect(_recording.state).toBe('canceled');
@@ -226,7 +253,7 @@ describe('Recording', () => {
 
   describe('pause/resume', () => {
     async function createConnectedRecording() {
-      const recording = new Recording('temp:test-key', 'wss://test.example.com', { model: 'test' }, source, {
+      const recording = new Recording(staticResolver(), { model: 'test' }, source, {
         buffer_queue_size: 100,
       });
 
@@ -256,7 +283,7 @@ describe('Recording', () => {
     });
 
     it('pause() from non-recording states is a no-op', async () => {
-      const recording = new Recording('temp:key', 'wss://test.example.com', { model: 'test' }, source);
+      const recording = new Recording(staticResolver(), { model: 'test' }, source);
       // Still idle/starting
       recording.pause();
       expect(recording.state).not.toBe('paused');
@@ -303,7 +330,7 @@ describe('Recording', () => {
 
   describe('source mute events', () => {
     async function createConnectedRecording() {
-      const recording = new Recording('temp:test-key', 'wss://test.example.com', { model: 'test' }, source, {
+      const recording = new Recording(staticResolver(), { model: 'test' }, source, {
         buffer_queue_size: 100,
       });
 
@@ -381,13 +408,37 @@ describe('Recording', () => {
     });
 
     it('source_muted is ignored in non-recording states', () => {
-      const recording = new Recording('temp:key', 'wss://test.example.com', { model: 'test' }, source);
+      const recording = new Recording(staticResolver(), { model: 'test' }, source);
       const events: string[] = [];
       recording.on('source_muted', () => events.push('muted'));
 
       // Still starting — source_muted should be ignored
       source.emitMuted();
       expect(events).toEqual([]);
+    });
+  });
+
+  describe('function-form session_config', () => {
+    it('receives resolved config with session_defaults and returns sttConfig', async () => {
+      const serverDefaults = { model: 'stt-rt-v5', language_hints: ['en'] };
+      const configFn = jest.fn((resolved: ResolvedConnectionConfig) => ({
+        ...resolved.session_defaults,
+        enable_endpoint_detection: true,
+      }));
+
+      const resolver = staticResolver('temp:test-key', 'wss://test.example.com/transcribe-websocket', serverDefaults);
+      const recording = new Recording(resolver, configFn, source);
+
+      // Flush microtask queue so run() resolves config and calls the function
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(configFn).toHaveBeenCalledTimes(1);
+      const arg = configFn.mock.calls[0][0];
+      expect(arg.session_defaults).toEqual(serverDefaults);
+      expect(arg.api_key).toBe('temp:test-key');
+
+      void recording.stop();
+      await new Promise((r) => setTimeout(r, 0));
     });
   });
 });

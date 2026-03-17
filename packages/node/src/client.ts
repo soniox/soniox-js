@@ -1,9 +1,10 @@
+import { resolveConnectionConfig } from '@soniox/core';
+
 import { SonioxAuthAPI } from './async/auth.js';
 import { SonioxFilesAPI } from './async/files.js';
 import { SonioxModelsAPI } from './async/models.js';
 import { SonioxSttApi } from './async/stt.js';
 import { SonioxWebhooksAPI } from './async/webhooks.js';
-import { SONIOX_API_BASE_URL, SONIOX_API_WS_URL } from './constants.js';
 import { FetchHttpClient } from './http/fetch-adapter.js';
 import { SonioxRealtimeApi } from './realtime/index.js';
 import type { SonioxNodeClientOptions } from './types/public/index.js';
@@ -16,9 +17,11 @@ import type { SonioxNodeClientOptions } from './types/public/index.js';
  * ```typescript
  * import { SonioxNodeClient } from '@soniox/node';
  *
- * const client = new SonioxNodeClient({
- *   api_key: 'your-api-key',
- * });
+ * // Default (US) region
+ * const client = new SonioxNodeClient({ api_key: 'your-api-key' });
+ *
+ * // EU region
+ * const client = new SonioxNodeClient({ api_key: 'your-api-key', region: 'eu' });
  * ```
  */
 export class SonioxNodeClient {
@@ -37,7 +40,10 @@ export class SonioxNodeClient {
       );
     }
 
-    const baseURL = options.base_url ?? process.env['SONIOX_API_BASE_URL'] ?? SONIOX_API_BASE_URL;
+    // Resolve region-based defaults (used as fallback when explicit URLs are not set)
+    const regionDefaults = resolveConnectionConfig({ api_key: apiKey, region: options.region });
+
+    const baseURL = options.base_url ?? process.env['SONIOX_API_BASE_URL'] ?? regionDefaults.api_domain;
     const http =
       options.http_client ??
       new FetchHttpClient({
@@ -54,7 +60,7 @@ export class SonioxNodeClient {
     this.webhooks = new SonioxWebhooksAPI(this.stt);
     this.auth = new SonioxAuthAPI(http);
 
-    const wsBaseUrl = options.realtime?.ws_base_url ?? process.env['SONIOX_WS_URL'] ?? SONIOX_API_WS_URL;
+    const wsBaseUrl = options.realtime?.ws_base_url ?? process.env['SONIOX_WS_URL'] ?? regionDefaults.stt_ws_url;
 
     this.realtime = new SonioxRealtimeApi({
       api_key: apiKey,

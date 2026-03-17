@@ -58,12 +58,12 @@ const resumeBtn = $('resumeBtn');
 const cancelBtn = $('cancelBtn');
 
 const client = new SonioxClient({
-  api_key: async () => {
+  config: () => {
     const apiKey = apiKeyInput.value.trim();
     if (!apiKey) {
-      throw new Error('Please enter your API key.');
+      return Promise.reject(new Error('Please enter your API key.'));
     }
-    return apiKey;
+    return Promise.resolve({ api_key: apiKey });
   },
 });
 

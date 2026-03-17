@@ -7,6 +7,10 @@
 // Base error
 export { SonioxError } from './errors.js';
 
+// Connection config + region resolution
+export { resolveConnectionConfig } from './connection.js';
+export type { SonioxRegion, SonioxConnectionConfig, ResolvedConnectionConfig } from './connection.js';
+
 // Segment utility
 export { segmentTokens } from './segments.js';
 

@@ -853,7 +853,7 @@ describe('useRecording standalone (no Provider)', () => {
 
     expect(() => {
       renderHook(() => useRecording({ model: 'test' }));
-    }).toThrow('useRecording requires either a <SonioxProvider> ancestor or an `apiKey` prop');
+    }).toThrow('useRecording requires either a <SonioxProvider> ancestor or a `config` prop');
 
     errorSpy.mockRestore();
   });
@@ -865,6 +865,30 @@ describe('useRecording standalone (no Provider)', () => {
 
     // Should work — Provider client takes precedence.
     expect(result.current.state).toBe('idle');
+  });
+});
+
+describe('useRecording sessionConfig function', () => {
+  it('passes sessionConfig function through to record() as session_config', async () => {
+    const { wrapper } = createWrapper();
+    const source = new MockAudioSource();
+
+    const sessionConfigFn = jest.fn((resolved: any) => ({
+      ...resolved.session_defaults,
+      model: 'custom-model',
+    }));
+
+    const { result } = renderHook(() => useRecording({ model: 'fallback', source, sessionConfig: sessionConfigFn }), {
+      wrapper,
+    });
+
+    await act(async () => {
+      result.current.start();
+      await tick(50);
+    });
+
+    // The sessionConfig function should have been called during config resolution
+    expect(sessionConfigFn).toHaveBeenCalled();
   });
 });
 

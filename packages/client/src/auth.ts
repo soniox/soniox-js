@@ -10,6 +10,8 @@
  * - `() => Promise<string>` - An async function that fetches a fresh temporary key
  *   from your backend. Called once per recording session.
  *
+ * @deprecated Use {@link SonioxConnectionConfig} with `SonioxClientOptions.config` instead.
+ *
  * @example
  * ```typescript
  * // Static key (for demos or SSR-injected keys)
@@ -34,6 +36,7 @@ export type ApiKeyConfig = string | (() => Promise<string>);
  * @param config - The API key configuration
  * @returns The resolved API key string
  * @throws If the function rejects or returns a non-string value
+ * @deprecated Use {@link SonioxConnectionConfig} with `SonioxClientOptions.config` instead.
  */
 export async function resolveApiKey(config: ApiKeyConfig): Promise<string> {
   if (typeof config === 'function') {

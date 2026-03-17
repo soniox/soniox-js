@@ -1,6 +1,12 @@
+import type { SonioxRegion } from '@soniox/core';
+
 // Import and re-export HTTP types
 import type { HttpClient } from './http.js';
 import type { SttSessionOptions } from './realtime.js';
+
+// Connection config types (from @soniox/core)
+export type { SonioxRegion, SonioxConnectionConfig, ResolvedConnectionConfig } from '@soniox/core';
+export { resolveConnectionConfig } from '@soniox/core';
 
 // Error types
 export type { HttpErrorCode, HttpErrorDetails, HttpMethod, RealtimeErrorCode, SonioxErrorCode } from './errors.js';
@@ -162,9 +168,21 @@ export type SonioxNodeClientOptions = {
   api_key?: string;
 
   /**
+   * Deployment region. Determines which regional endpoints are used
+   * for both the REST API and real-time WebSocket connections.
+   *
+   * Leave `undefined` for the default (US) region.
+   * Explicit `base_url` / `realtime.ws_base_url` take precedence over
+   * region-derived URLs.
+   *
+   * @see https://soniox.com/docs/stt/data-residency
+   */
+  region?: SonioxRegion | undefined;
+
+  /**
    * Base URL for the REST API.
    * Falls back to SONIOX_API_BASE_URL environment variable,
-   * then to 'https://api.soniox.com'.
+   * then to the region-derived URL, then to 'https://api.soniox.com'.
    */
   base_url?: string;
 

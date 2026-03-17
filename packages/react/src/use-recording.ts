@@ -13,11 +13,13 @@ import type {
   RecordingState,
   RealtimeResult,
   RealtimeToken,
+  ResolvedConnectionConfig,
   SttSessionConfig,
   SttSessionOptions,
   AudioSource,
   ApiKeyConfig,
   SonioxClientOptions,
+  SonioxConnectionConfig,
   PermissionResolver,
   TranslationConfig,
 } from '@soniox/client';
@@ -36,21 +38,31 @@ import type { UnsupportedReason } from './support.js';
  * recording-specific and React-specific options.
  *
  * Can be used **with or without** a `<SonioxProvider>`:
- * - **With Provider:** omit `apiKey` — the client is read from context.
- * - **Without Provider:** pass `apiKey` directly — a client is created internally.
+ * - **With Provider:** omit `config`/`apiKey` — the client is read from context.
+ * - **Without Provider:** pass `config` (or legacy `apiKey`) — a client is created internally.
  */
 export interface UseRecordingConfig extends SttSessionConfig {
   /**
+   * Connection configuration — sync object or async function.
+   * Required when not using `<SonioxProvider>`.
+   */
+  config?: SonioxConnectionConfig | (() => Promise<SonioxConnectionConfig>) | undefined;
+
+  /**
    * API key — string or async function that fetches a temporary key.
    * Required when not using `<SonioxProvider>`.
+   * @deprecated Use `config` instead.
    */
   apiKey?: ApiKeyConfig | undefined;
 
-  /** WebSocket URL override (only used when `apiKey` is provided). */
+  /**
+   * WebSocket URL override (only used when `apiKey` is provided).
+   * @deprecated Use `config.stt_ws_url` or `config.region` instead.
+   */
   wsBaseUrl?: string | undefined;
 
   /**
-   * Permission resolver override (only used when `apiKey` is provided).
+   * Permission resolver override (only used when creating an inline client).
    * Pass `null` to explicitly disable.
    */
   permissions?: PermissionResolver | null | undefined;
@@ -83,6 +95,26 @@ export interface UseRecordingConfig extends SttSessionConfig {
    * - `two_way` → `'language'`
    */
   groupBy?: 'translation' | 'language' | 'speaker' | ((token: RealtimeToken) => string) | undefined;
+
+  /**
+   * Function that receives the resolved connection config (including
+   * `session_defaults` from the server) and returns session config overrides.
+   *
+   * When provided, its return value is used as the session config for the
+   * recording, and any flat session config fields on this object are ignored.
+   *
+   * @example
+   * ```tsx
+   * const { start } = useRecording({
+   *   config: asyncConfigFn,
+   *   sessionConfig: (resolved) => ({
+   *     ...resolved.session_defaults,
+   *     enable_endpoint_detection: true,
+   *   }),
+   * });
+   * ```
+   */
+  sessionConfig?: ((resolved: ResolvedConnectionConfig) => SttSessionConfig) | undefined;
 
   // -- Event callbacks (dispatched via refs, never stale) ---------------------
 
@@ -142,12 +174,21 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
   // Resolve client: prefer context (Provider), fall back to inline config.
   const contextClient = useContext(SonioxContext);
   const inlineClientRef = useRef<SonioxClient | undefined>(undefined);
-  const initialInlineConfigRef = useRef<{ apiKey: unknown; wsBaseUrl: unknown } | undefined>(undefined);
+  const initialInlineConfigRef = useRef<{ config: unknown; apiKey: unknown; wsBaseUrl: unknown } | undefined>(
+    undefined
+  );
 
-  if (contextClient === null && config.apiKey !== undefined && inlineClientRef.current === undefined) {
-    const opts: SonioxClientOptions = { api_key: config.apiKey };
-    if (config.wsBaseUrl !== undefined) {
-      opts.ws_base_url = config.wsBaseUrl;
+  const hasInlineConfig = config.config !== undefined || config.apiKey !== undefined;
+
+  if (contextClient === null && hasInlineConfig && inlineClientRef.current === undefined) {
+    const opts: SonioxClientOptions = {};
+    if (config.config !== undefined) {
+      opts.config = config.config;
+    } else if (config.apiKey !== undefined) {
+      opts.api_key = config.apiKey;
+      if (config.wsBaseUrl !== undefined) {
+        opts.ws_base_url = config.wsBaseUrl;
+      }
     }
     if (config.permissions === null) {
       // Explicitly disabled — leave undefined.
@@ -157,7 +198,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       opts.permissions = new BrowserPermissionResolver();
     }
     inlineClientRef.current = new SonioxClient(opts);
-    initialInlineConfigRef.current = { apiKey: config.apiKey, wsBaseUrl: config.wsBaseUrl };
+    initialInlineConfigRef.current = { config: config.config, apiKey: config.apiKey, wsBaseUrl: config.wsBaseUrl };
   }
 
   // Dev-mode: warn if inline connection config changes after the client was created.
@@ -167,12 +208,12 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     initialInlineConfigRef.current !== undefined
   ) {
     const init = initialInlineConfigRef.current;
-    if (init.apiKey !== config.apiKey || init.wsBaseUrl !== config.wsBaseUrl) {
+    if (init.config !== config.config || init.apiKey !== config.apiKey || init.wsBaseUrl !== config.wsBaseUrl) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[@soniox/react] useRecording connection config (apiKey, wsBaseUrl) changed after mount. ' +
+        '[@soniox/react] useRecording connection config (config, apiKey, wsBaseUrl) changed after mount. ' +
           'The client is created once and will not be recreated. ' +
-          'Use an async apiKey function for dynamic credentials, or remount the component with a React key.'
+          'Use an async config function for dynamic credentials, or remount the component with a React key.'
       );
     }
   }
@@ -180,8 +221,8 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
   const client = contextClient ?? inlineClientRef.current;
   if (client === undefined) {
     throw new Error(
-      'useRecording requires either a <SonioxProvider> ancestor or an `apiKey` prop. ' +
-        'Pass apiKey directly: useRecording({ apiKey, model }) or wrap your tree in <SonioxProvider>.'
+      'useRecording requires either a <SonioxProvider> ancestor or a `config` prop. ' +
+        'Pass config directly: useRecording({ config, model }) or wrap your tree in <SonioxProvider>.'
     );
   }
 
@@ -243,6 +284,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
 
     // Extract hook-only props from config; pass the rest as SttSessionConfig.
     const {
+      config: _config,
       apiKey: _apiKey,
       wsBaseUrl: _wsBaseUrl,
       permissions: _permissions,
@@ -251,6 +293,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       buffer_queue_size,
       resetOnStart: _resetOnStart,
       groupBy: _groupBy,
+      sessionConfig,
       onResult: _onResult,
       onEndpoint: _onEndpoint,
       onError: _onError,
@@ -270,6 +313,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       ...(source !== undefined ? { source } : {}),
       ...(session_options !== undefined ? { session_options } : {}),
       ...(buffer_queue_size !== undefined ? { buffer_queue_size } : {}),
+      ...(sessionConfig !== undefined ? { session_config: sessionConfig } : {}),
       signal: controller.signal,
     });
 
