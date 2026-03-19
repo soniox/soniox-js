@@ -249,4 +249,28 @@ export class MicrophoneSource implements AudioSource {
       this.mediaRecorder.resume();
     }
   }
+
+  /**
+   * Reinitialize the MediaRecorder on the existing stream so the next
+   * chunks contain a fresh container header (required after reconnecting
+   * to a new server session).
+   */
+  restart(): void {
+    if (!this.stream || !this.mediaRecorder) return;
+
+    // Detach listeners from the old recorder and stop it.
+    const oldRecorder = this.mediaRecorder;
+    if (this.boundOnData) oldRecorder.removeEventListener('dataavailable', this.boundOnData);
+    if (this.boundOnError) oldRecorder.removeEventListener('error', this.boundOnError);
+    if (oldRecorder.state !== 'inactive') {
+      oldRecorder.stop();
+    }
+
+    // Create a new recorder on the same stream.
+    const recorder = new MediaRecorder(this.stream, this.recorderOptions);
+    this.mediaRecorder = recorder;
+    if (this.boundOnData) recorder.addEventListener('dataavailable', this.boundOnData);
+    if (this.boundOnError) recorder.addEventListener('error', this.boundOnError);
+    recorder.start(this.timesliceMs);
+  }
 }

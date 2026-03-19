@@ -8,6 +8,7 @@ class MockAudioSource implements AudioSource {
   started = false;
   stopped = false;
   paused = false;
+  restartCount = 0;
 
   async start(handlers: AudioSourceHandlers): Promise<void> {
     this.handlers = handlers;
@@ -24,6 +25,10 @@ class MockAudioSource implements AudioSource {
 
   resume(): void {
     this.paused = false;
+  }
+
+  restart(): void {
+    this.restartCount++;
   }
 
   /** Simulate sending audio data */
@@ -650,7 +655,7 @@ describe('Recording', () => {
       expect(events).toContain('reconnected');
     });
 
-    it('buffers audio during reconnect and drains to new session', async () => {
+    it('discards buffered audio on reconnect and restarts source encoder', async () => {
       const recording = await createConnectedRecording({ reconnect_base_delay_ms: 50 });
 
       MockWebSocket.instances[0]!.simulateClose();
@@ -662,9 +667,13 @@ describe('Recording', () => {
       await flushReconnect(50);
 
       expect(recording.state).toBe('recording');
+      // Stale buffer audio must NOT be sent to the new session —
+      // it lacks the container header the server needs.
       const ws2 = MockWebSocket.instances[1]!;
       const audioSent = ws2.sent.filter((d) => d instanceof Uint8Array);
-      expect(audioSent.length).toBe(2);
+      expect(audioSent.length).toBe(0);
+      // Source encoder should have been restarted.
+      expect(source.restartCount).toBe(1);
     });
 
     it('preserves paused state across reconnect', async () => {
@@ -681,6 +690,8 @@ describe('Recording', () => {
       await flushReconnect(50);
 
       expect(recording.state).toBe('paused');
+      expect(source.restartCount).toBe(1);
+      expect(source.paused).toBe(true);
 
       const ws2 = MockWebSocket.instances[1]!;
       const audioSent = ws2.sent.filter((d) => d instanceof Uint8Array);
@@ -688,8 +699,10 @@ describe('Recording', () => {
 
       recording.resume();
       expect(recording.state).toBe('recording');
+      // Old buffer was discarded (stale encoder data); no audio
+      // should have been sent to the new session yet.
       const audioAfterResume = ws2.sent.filter((d) => d instanceof Uint8Array);
-      expect(audioAfterResume.length).toBe(1);
+      expect(audioAfterResume.length).toBe(0);
     });
 
     it('preserves mute state across reconnect', async () => {

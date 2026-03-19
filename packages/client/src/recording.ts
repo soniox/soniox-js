@@ -719,6 +719,16 @@ export class Recording {
     // Signal store to reset window-tracking state before new results arrive.
     this.emitter.emit('session_restart', { reset_transcript: this.resetTranscriptOnReconnect });
 
+    // Discard buffered audio — it contains continuation chunks from
+    // the old encoder stream and lacks the container header the new
+    // server session needs to initialize its decoder.
+    this.audioBuffer = [];
+
+    // Reinitialize the audio encoder so subsequent chunks carry a fresh
+    // container header. Sources that produce a header-less format (raw PCM)
+    // can omit restart().
+    this.source.restart?.();
+
     // Read mute state at restoration time so hardware changes during
     // backoff / connect are not lost.
     const currentlyMuted = this._isSourceMuted;
@@ -730,15 +740,11 @@ export class Recording {
 
     if (wasPaused) {
       // Restore paused state — do NOT drain buffer yet.
-      // Buffer stays populated; it will drain when user calls resume().
+      this.source.pause?.();
       this.setState('paused', 'reconnected');
     } else {
       this.setState('recording', 'reconnected');
       this.isBuffering = false;
-      for (const chunk of this.audioBuffer) {
-        if (this.isTerminalState()) break;
-        session.sendAudio(chunk);
-      }
       this.audioBuffer = [];
     }
 
