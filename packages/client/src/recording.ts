@@ -534,8 +534,7 @@ export class Recording {
   private handleAudioData(chunk: ArrayBuffer): void {
     if (this.isBuffering) {
       if (this.audioBuffer.length >= this.maxBufferSize) {
-        this.handleError(new Error('Audio buffer queue size exceeded before connection was established'));
-        return;
+        this.audioBuffer.shift();
       }
       this.audioBuffer.push(chunk);
       return;
