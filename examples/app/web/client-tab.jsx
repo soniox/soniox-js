@@ -82,6 +82,18 @@ function VolumeBar({ active }) {
   );
 }
 
+function ReconnectLog({ events }) {
+  if (events.length === 0) return null;
+
+  return (
+    <Panel title="Reconnection log">
+      <pre className="whitespace-pre-wrap break-words font-mono text-sm max-h-48 overflow-y-auto">
+        {events.join('\n')}
+      </pre>
+    </Panel>
+  );
+}
+
 function RecordingUI() {
   const [model, setModel] = useState('stt-rt-v4');
   const [language, setLanguage] = useState('');
@@ -90,6 +102,12 @@ function RecordingUI() {
   const [groupBy, setGroupBy] = useState('');
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState('es');
+  const [autoReconnect, setAutoReconnect] = useState(true);
+  const [reconnectEvents, setReconnectEvents] = useState([]);
+
+  const logReconnectEvent = (msg) => {
+    setReconnectEvents((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 49)]);
+  };
 
   const translationConfig =
     translationEnabled && targetLanguage.trim()
@@ -106,7 +124,23 @@ function RecordingUI() {
     enable_language_identification: true,
     translation: translationConfig,
     groupBy: effectiveGroupBy,
-    onError: (err) => console.error('[ClientTab] Recording error:', err),
+    auto_reconnect: autoReconnect,
+    max_reconnect_attempts: 5,
+    onError: (err) => {
+      console.error('[ClientTab] Recording error:', err);
+      logReconnectEvent(`Error: ${err.message}`);
+    },
+    onReconnecting: (event) => {
+      logReconnectEvent(`Reconnecting... attempt ${event.attempt}/${event.max_attempts} (delay ${event.delay_ms}ms)`);
+    },
+    onReconnected: (event) => {
+      logReconnectEvent(`Reconnected after ${event.attempt} attempt(s)`);
+    },
+    onStateChange: (update) => {
+      if (update.reason === 'connection_lost') {
+        logReconnectEvent(`Connection lost (state: ${update.old_state} → ${update.new_state})`);
+      }
+    },
   });
 
   const hasGroups = Object.keys(recording.groups).length > 0;
@@ -132,6 +166,7 @@ function RecordingUI() {
         <Checkbox label="Endpoint detection" checked={endpointEnabled} onChange={setEndpointEnabled} />
         <Checkbox label="Speaker diarization" checked={diarization} onChange={setDiarization} />
         <Checkbox label="Translation" checked={translationEnabled} onChange={setTranslationEnabled} />
+        <Checkbox label="Auto-reconnect" checked={autoReconnect} onChange={setAutoReconnect} />
         {translationEnabled && (
           <Input
             label="Target language"
@@ -164,6 +199,16 @@ function RecordingUI() {
         <Button onClick={recording.clearTranscript} variant="secondary">
           Clear
         </Button>
+        <Button
+          onClick={() => {
+            logReconnectEvent('Simulating WebSocket disconnect...');
+            recording.__debugForceDisconnect();
+          }}
+          disabled={!recording.isRecording && !recording.isPaused}
+          variant="secondary"
+        >
+          Simulate Disconnect
+        </Button>
       </div>
 
       {/* State indicators */}
@@ -183,6 +228,11 @@ function RecordingUI() {
           </span>
         </div>
         {recording.isPaused && <span className="text-amber-600 font-semibold">Paused</span>}
+        {recording.isReconnecting && (
+          <span className="text-orange-600 font-semibold animate-pulse">
+            Reconnecting (attempt {recording.reconnectAttempt})
+          </span>
+        )}
         {recording.isSourceMuted && <span className="text-red-600 font-semibold">Mic muted (external)</span>}
         {!recording.isSupported && (
           <span className="text-red-600 text-xs">MicrophoneSource unavailable: {recording.unsupportedReason}</span>
@@ -274,6 +324,8 @@ function RecordingUI() {
           </div>
         </Panel>
       )}
+
+      <ReconnectLog events={reconnectEvents} />
     </>
   );
 }

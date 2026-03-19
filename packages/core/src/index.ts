@@ -31,6 +31,7 @@ export {
   AbortError,
   StateError,
   mapErrorResponse,
+  isRetriableError,
 } from './realtime/index.js';
 
 // Types
@@ -49,6 +50,7 @@ export type {
   RealtimeUtteranceBufferOptions,
   SegmentGroupKey,
   SendStreamOptions,
+  StateChangeReason,
   SttSessionConfig,
   SttSessionEvents,
   SttSessionOptions,

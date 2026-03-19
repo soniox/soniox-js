@@ -405,8 +405,99 @@ describe('RealtimeSttSession', () => {
       await connectPromise;
 
       expect(handler).toHaveBeenCalledTimes(2);
-      expect(handler).toHaveBeenNthCalledWith(1, { old_state: 'idle', new_state: 'connecting' });
-      expect(handler).toHaveBeenNthCalledWith(2, { old_state: 'connecting', new_state: 'connected' });
+      expect(handler).toHaveBeenNthCalledWith(1, {
+        old_state: 'idle',
+        new_state: 'connecting',
+        reason: 'user_action',
+      });
+      expect(handler).toHaveBeenNthCalledWith(2, {
+        old_state: 'connecting',
+        new_state: 'connected',
+        reason: 'connected',
+      });
+    });
+
+    it('should include reason in state_change for close', async () => {
+      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
+      const handler = jest.fn();
+
+      session.on('state_change', handler);
+
+      const connectPromise = session.connect();
+      const ws = MockWebSocket.instances[0];
+      ws.open();
+      await connectPromise;
+
+      session.close();
+
+      const lastCall = handler.mock.calls[handler.mock.calls.length - 1][0];
+      expect(lastCall).toEqual({
+        old_state: 'connected',
+        new_state: 'canceled',
+        reason: 'user_action',
+      });
+    });
+
+    it('should include reason in state_change for finish', async () => {
+      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
+      const handler = jest.fn();
+
+      session.on('state_change', handler);
+
+      const connectPromise = session.connect();
+      const ws = MockWebSocket.instances[0];
+      ws.open();
+      await connectPromise;
+
+      const finishPromise = session.finish();
+
+      const finishingCall = handler.mock.calls[handler.mock.calls.length - 1][0];
+      expect(finishingCall).toEqual({
+        old_state: 'connected',
+        new_state: 'finishing',
+        reason: 'user_action',
+      });
+
+      ws.message(
+        JSON.stringify({
+          tokens: [],
+          final_audio_proc_ms: 0,
+          total_audio_proc_ms: 0,
+          finished: true,
+        })
+      );
+      await finishPromise;
+
+      const finishedCall = handler.mock.calls[handler.mock.calls.length - 1][0];
+      expect(finishedCall).toEqual({
+        old_state: 'finishing',
+        new_state: 'finished',
+        reason: 'finished',
+      });
+    });
+
+    it('should emit error on unexpected WS close in connected state', async () => {
+      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
+      const errorHandler = jest.fn();
+      const stateHandler = jest.fn();
+
+      session.on('error', errorHandler);
+      session.on('state_change', stateHandler);
+
+      const connectPromise = session.connect();
+      const ws = MockWebSocket.instances[0];
+      ws.open();
+      await connectPromise;
+
+      ws.close('server_shutdown');
+
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+      expect(errorHandler.mock.calls[0][0]).toBeInstanceOf(ConnectionError);
+      expect(errorHandler.mock.calls[0][0].message).toBe('WebSocket closed unexpectedly');
+
+      const lastStateChange = stateHandler.mock.calls[stateHandler.mock.calls.length - 1][0];
+      expect(lastStateChange.new_state).toBe('closed');
+      expect(lastStateChange.reason).toBe('connection_lost');
     });
 
     it('should emit finished when server signals completion', async () => {

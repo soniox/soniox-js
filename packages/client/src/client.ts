@@ -207,7 +207,18 @@ export class SonioxClient {
 
   private createRecording(options: RecordOptions): Recording {
     // Extract recording-specific options from the combined config
-    const { source, signal, buffer_queue_size, session_options, session_config, ...sttConfig } = options;
+    const {
+      source,
+      signal,
+      buffer_queue_size,
+      session_options,
+      session_config,
+      auto_reconnect,
+      max_reconnect_attempts,
+      reconnect_base_delay_ms,
+      reset_transcript_on_reconnect,
+      ...sttConfig
+    } = options;
 
     const audioSource = source ?? new MicrophoneSource();
 
@@ -222,6 +233,10 @@ export class SonioxClient {
         ...(signal !== undefined ? { signal } : {}),
       },
       ...(signal !== undefined ? { signal } : {}),
+      ...(auto_reconnect !== undefined ? { auto_reconnect } : {}),
+      ...(max_reconnect_attempts !== undefined ? { max_reconnect_attempts } : {}),
+      ...(reconnect_base_delay_ms !== undefined ? { reconnect_base_delay_ms } : {}),
+      ...(reset_transcript_on_reconnect !== undefined ? { reset_transcript_on_reconnect } : {}),
     });
   }
 

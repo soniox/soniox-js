@@ -9,6 +9,7 @@ import {
   AbortError,
   StateError,
   mapErrorResponse,
+  isRetriableError,
 } from '@soniox/core';
 
 describe('RealtimeError', () => {
@@ -215,6 +216,46 @@ describe('StateError', () => {
 
     expect(error).toBeInstanceOf(RealtimeError);
     expect(error).toBeInstanceOf(StateError);
+  });
+});
+
+describe('isRetriableError', () => {
+  it('should return true for ConnectionError', () => {
+    expect(isRetriableError(new ConnectionError('WebSocket failed'))).toBe(true);
+  });
+
+  it('should return true for NetworkError', () => {
+    expect(isRetriableError(new NetworkError('Service unavailable', 503))).toBe(true);
+  });
+
+  it('should return false for AuthError', () => {
+    expect(isRetriableError(new AuthError('Invalid API key', 401))).toBe(false);
+  });
+
+  it('should return false for BadRequestError', () => {
+    expect(isRetriableError(new BadRequestError('Invalid config', 400))).toBe(false);
+  });
+
+  it('should return false for QuotaError', () => {
+    expect(isRetriableError(new QuotaError('Rate limit exceeded', 429))).toBe(false);
+  });
+
+  it('should return false for AbortError', () => {
+    expect(isRetriableError(new AbortError())).toBe(false);
+  });
+
+  it('should return false for StateError', () => {
+    expect(isRetriableError(new StateError('Invalid state'))).toBe(false);
+  });
+
+  it('should return false for generic Error', () => {
+    expect(isRetriableError(new Error('generic'))).toBe(false);
+  });
+
+  it('should return false for non-error values', () => {
+    expect(isRetriableError('string error')).toBe(false);
+    expect(isRetriableError(null)).toBe(false);
+    expect(isRetriableError(undefined)).toBe(false);
   });
 });
 

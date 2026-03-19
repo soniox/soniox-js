@@ -4,6 +4,7 @@ import type {
   RealtimeResult,
   RealtimeToken,
   SendStreamOptions,
+  StateChangeReason,
   SttSessionConfig,
   SttSessionEvents,
   SttSessionOptions,
@@ -194,17 +195,17 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
     }
 
     this.checkAborted();
-    this.setState('connecting');
+    this.setState('connecting', 'user_action');
 
     try {
       await this.createWebSocket();
-      this.setState('connected');
+      this.setState('connected', 'connected');
       this.emitter.emit('connected');
       this.updateKeepalive();
     } catch (error) {
       if (!this.isTerminalState(this._state)) {
         const err = error instanceof Error ? error : new ConnectionError('Connection failed', error);
-        this.cleanup('error', err);
+        this.cleanup('error', err, 'error');
       }
       throw error;
     }
@@ -322,7 +323,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       this.resume();
     }
 
-    this.setState('finishing');
+    this.setState('finishing', 'user_action');
     this.updateKeepalive();
 
     // Wait for finished response
@@ -347,7 +348,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
 
     this.emitter.emit('disconnected', 'client_closed');
     this.settleFinish(new StateError('Session canceled'));
-    this.cleanup('canceled');
+    this.cleanup('canceled', undefined, 'user_action');
   }
 
   /**
@@ -379,6 +380,14 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
    */
   [Symbol.asyncIterator](): AsyncIterator<RealtimeEvent> {
     return this.eventQueue[Symbol.asyncIterator]();
+  }
+
+  /**
+   * @internal Debug-only: forcefully close the underlying WebSocket to
+   * simulate an unexpected network disconnection.
+   */
+  __debugForceDisconnect(): void {
+    this.ws?.close(4999, 'debug: simulated disconnect');
   }
 
   private async createWebSocket(): Promise<void> {
@@ -480,13 +489,13 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
         this.emitter.emit('finished');
         this.eventQueue.push({ kind: 'finished' });
         this.settleFinish();
-        this.cleanup('finished');
+        this.cleanup('finished', undefined, 'finished');
       }
     } catch (error) {
       const err = error as Error;
       this.emitter.emit('error', err);
       this.settleFinish(err);
-      this.cleanup('error', err);
+      this.cleanup('error', err, 'error');
     }
   }
 
@@ -501,38 +510,52 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       const error = new ConnectionError('WebSocket closed before finished response', event);
       this.emitter.emit('error', error);
       this.settleFinish(error);
-      this.cleanup('error', error);
+      this.cleanup('error', error, 'connection_lost');
       return;
     }
 
-    this.cleanup('closed');
+    // Unexpected close while connected — surface as error so consumers can react
+    const error = new ConnectionError('WebSocket closed unexpectedly', event);
+    this.emitter.emit('error', error);
+    this.cleanup('closed', error, 'connection_lost');
   }
 
   private handleError(event: Event): void {
     const error = new ConnectionError('WebSocket error', event);
     this.emitter.emit('error', error);
     this.settleFinish(error);
-    this.cleanup('error', error);
+    this.cleanup('error', error, 'error');
   }
 
   private handleAbort(): void {
     const error = new AbortError();
     this.emitter.emit('error', error);
     this.settleFinish(error);
-    this.cleanup('canceled', error);
+    this.cleanup('canceled', error, 'user_action');
   }
 
-  private setState(newState: SttSessionState): void {
+  private setState(newState: SttSessionState, reason?: StateChangeReason): void {
     if (this._state === newState) {
       return;
     }
     const oldState = this._state;
     this._state = newState;
-    this.emitter.emit('state_change', { old_state: oldState, new_state: newState });
+    const update: { old_state: SttSessionState; new_state: SttSessionState; reason?: StateChangeReason } = {
+      old_state: oldState,
+      new_state: newState,
+    };
+    if (reason !== undefined) {
+      update.reason = reason;
+    }
+    this.emitter.emit('state_change', update);
   }
 
-  private cleanup(finalState: 'closed' | 'error' | 'finished' | 'canceled', error?: Error): void {
-    this.setState(finalState);
+  private cleanup(
+    finalState: 'closed' | 'error' | 'finished' | 'canceled',
+    error?: Error,
+    reason?: StateChangeReason
+  ): void {
+    this.setState(finalState, reason);
     this.stopKeepalive();
 
     if (this.signal && this.abortHandler) {
@@ -587,7 +610,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       const error = new ConnectionError('WebSocket is not open');
       this.emitter.emit('error', error);
       this.settleFinish(error);
-      this.cleanup('error', error);
+      this.cleanup('error', error, 'error');
       if (shouldThrow) {
         throw error;
       }
@@ -600,7 +623,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       const error = new ConnectionError('WebSocket send failed', err);
       this.emitter.emit('error', error);
       this.settleFinish(error);
-      this.cleanup('error', error);
+      this.cleanup('error', error, 'error');
       if (shouldThrow) {
         throw error;
       }

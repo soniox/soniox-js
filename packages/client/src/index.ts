@@ -10,7 +10,13 @@ export type { SonioxClientOptions, SttOptions } from './client.js';
 
 // Recording
 export { Recording } from './recording.js';
-export type { RecordingState, RecordingEvents, RecordOptions } from './recording.js';
+export type {
+  RecordingState,
+  RecordingEvents,
+  RecordOptions,
+  ReconnectOptions,
+  ReconnectingEvent,
+} from './recording.js';
 
 // Auth
 export { resolveApiKey } from './auth.js';
@@ -52,6 +58,7 @@ export {
   NetworkError,
   AbortError,
   StateError,
+  isRetriableError,
 } from '@soniox/core';
 
 // Types (from @soniox/core)
@@ -71,6 +78,7 @@ export type {
   AudioFormat,
   AudioData,
   SendStreamOptions,
+  StateChangeReason,
   TranscriptionContext,
   TranslationConfig,
   SegmentGroupKey,

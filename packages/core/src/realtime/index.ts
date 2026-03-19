@@ -15,4 +15,5 @@ export {
   AbortError,
   StateError,
   mapErrorResponse,
+  isRetriableError,
 } from './errors.js';

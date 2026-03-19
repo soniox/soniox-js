@@ -13,6 +13,7 @@ export type {
   RealtimeUtteranceBufferOptions,
   SegmentGroupKey,
   SendStreamOptions,
+  StateChangeReason,
   SttSessionConfig,
   SttSessionEvents,
   SttSessionOptions,

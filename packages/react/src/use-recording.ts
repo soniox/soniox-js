@@ -13,7 +13,9 @@ import type {
   RecordingState,
   RealtimeResult,
   RealtimeToken,
+  ReconnectingEvent,
   ResolvedConnectionConfig,
+  StateChangeReason,
   SttSessionConfig,
   SttSessionOptions,
   AudioSource,
@@ -116,6 +118,33 @@ export interface UseRecordingConfig extends SttSessionConfig {
    */
   sessionConfig?: ((resolved: ResolvedConnectionConfig) => SttSessionConfig) | undefined;
 
+  // -- Reconnection -----------------------------------------------------------
+
+  /**
+   * Enable automatic reconnection on retriable errors.
+   * @default false
+   */
+  auto_reconnect?: boolean | undefined;
+
+  /**
+   * Maximum consecutive reconnection attempts before giving up.
+   * @default 3
+   */
+  max_reconnect_attempts?: number | undefined;
+
+  /**
+   * Base delay in milliseconds for exponential backoff.
+   * @default 1000
+   */
+  reconnect_base_delay_ms?: number | undefined;
+
+  /**
+   * Clear accumulated transcript state on reconnect.
+   * Window-tracking state is always reset regardless.
+   * @default false
+   */
+  reset_transcript_on_reconnect?: boolean | undefined;
+
   // -- Event callbacks (dispatched via refs, never stale) ---------------------
 
   /** Called on each result from the server. */
@@ -128,7 +157,9 @@ export interface UseRecordingConfig extends SttSessionConfig {
   onError?: ((error: Error) => void) | undefined;
 
   /** Called on each state transition. */
-  onStateChange?: ((update: { old_state: RecordingState; new_state: RecordingState }) => void) | undefined;
+  onStateChange?:
+    | ((update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason }) => void)
+    | undefined;
 
   /** Called when the recording session finishes. */
   onFinished?: (() => void) | undefined;
@@ -141,6 +172,12 @@ export interface UseRecordingConfig extends SttSessionConfig {
 
   /** Called when the audio source is unmuted after an external mute. */
   onSourceUnmuted?: (() => void) | undefined;
+
+  /** Called before a reconnection attempt. Call `preventDefault()` to cancel. */
+  onReconnecting?: ((event: ReconnectingEvent) => void) | undefined;
+
+  /** Called after a successful reconnection. */
+  onReconnected?: ((event: { attempt: number }) => void) | undefined;
 }
 
 export interface UseRecordingReturn extends RecordingSnapshot {
@@ -158,6 +195,8 @@ export interface UseRecordingReturn extends RecordingSnapshot {
   finalize: (options?: { trailing_silence_ms?: number }) => void;
   /** Clear transcript state (finalText, partialText, utterances, segments). */
   clearTranscript: () => void;
+  /** @internal Debug-only: force-close the WebSocket to simulate a disconnect. */
+  __debugForceDisconnect: () => void;
   /**
    * Whether the built-in browser `MicrophoneSource` is available.
    * Custom `AudioSource` implementations work regardless of this value.
@@ -168,6 +207,10 @@ export interface UseRecordingReturn extends RecordingSnapshot {
    * Custom `AudioSource` implementations bypass this check entirely.
    */
   unsupportedReason: UnsupportedReason | undefined;
+  /** `true` when the WebSocket is reconnecting after a drop. */
+  isReconnecting: boolean;
+  /** Current reconnection attempt number (0 when not reconnecting). */
+  reconnectAttempt: number;
 }
 
 export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
@@ -252,6 +295,8 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
   store.onConnected = config.onConnected ?? null;
   store.onSourceMuted = config.onSourceMuted ?? null;
   store.onSourceUnmuted = config.onSourceUnmuted ?? null;
+  store.onReconnecting = config.onReconnecting ?? null;
+  store.onReconnected = config.onReconnected ?? null;
 
   // Platform support (computed once).
   const supportRef = useRef<{ isSupported: boolean; reason: UnsupportedReason | undefined }>(undefined);
@@ -294,6 +339,10 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       resetOnStart: _resetOnStart,
       groupBy: _groupBy,
       sessionConfig,
+      auto_reconnect,
+      max_reconnect_attempts,
+      reconnect_base_delay_ms,
+      reset_transcript_on_reconnect,
       onResult: _onResult,
       onEndpoint: _onEndpoint,
       onError: _onError,
@@ -302,6 +351,8 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       onConnected: _onConnected,
       onSourceMuted: _onSourceMuted,
       onSourceUnmuted: _onSourceUnmuted,
+      onReconnecting: _onReconnecting,
+      onReconnected: _onReconnected,
       ...sttConfig
     } = cfg;
 
@@ -314,6 +365,10 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       ...(session_options !== undefined ? { session_options } : {}),
       ...(buffer_queue_size !== undefined ? { buffer_queue_size } : {}),
       ...(sessionConfig !== undefined ? { session_config: sessionConfig } : {}),
+      ...(auto_reconnect !== undefined ? { auto_reconnect } : {}),
+      ...(max_reconnect_attempts !== undefined ? { max_reconnect_attempts } : {}),
+      ...(reconnect_base_delay_ms !== undefined ? { reconnect_base_delay_ms } : {}),
+      ...(reset_transcript_on_reconnect !== undefined ? { reset_transcript_on_reconnect } : {}),
       signal: controller.signal,
     });
 
@@ -353,6 +408,10 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     store.clearTranscript();
   }, [store]);
 
+  const __debugForceDisconnect = useCallback((): void => {
+    recordingRef.current?.__debugForceDisconnect();
+  }, []);
+
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
@@ -383,6 +442,8 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     error: snapshot.error,
     isPaused: snapshot.isPaused,
     isSourceMuted: snapshot.isSourceMuted,
+    isReconnecting: snapshot.isReconnecting,
+    reconnectAttempt: snapshot.reconnectAttempt,
 
     // Actions
     start,
@@ -392,6 +453,9 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     resume,
     finalize,
     clearTranscript,
+
+    // Debug
+    __debugForceDisconnect,
 
     // Platform support
     isSupported: supportRef.current.isSupported,
