@@ -1,4 +1,4 @@
-import { SonioxConnectionConfig } from '@soniox/client';
+import type { SonioxConnectionConfig } from '@soniox/client';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
