@@ -17,14 +17,13 @@ const STATE_COLORS: Record<string, string> = {
 };
 
 export default function Transcribe() {
-  const { isActive, state, finalText, partialText, isPaused, isSourceMuted, start, stop, pause, resume } = useRecording(
-    {
+  const { isActive, state, finalText, partialText, isPaused, isSourceMuted, start, stop, pause, resume, error } =
+    useRecording({
       model: 'stt-rt-v4',
       enable_language_identification: true,
       enable_speaker_diarization: true,
       enable_endpoint_detection: true,
-    }
-  );
+    });
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -44,7 +43,7 @@ export default function Transcribe() {
         )}
       </div>
 
-      {state === 'error' && <div className="text-red-500 text-sm">Error occurred</div>}
+      {state === 'error' && <div className="text-red-500 text-sm">Error occurred: {error?.toString()}</div>}
 
       <div className="flex gap-2">
         {isActive ? (

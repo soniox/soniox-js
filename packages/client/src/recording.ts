@@ -6,11 +6,15 @@
  */
 
 import { TypedEmitter, RealtimeSttSession } from '@soniox/core';
-import type { RealtimeResult, RealtimeToken, SttSessionConfig, SttSessionOptions } from '@soniox/core';
+import type {
+  RealtimeResult,
+  RealtimeToken,
+  ResolvedConnectionConfig,
+  SttSessionConfig,
+  SttSessionOptions,
+} from '@soniox/core';
 
 import type { AudioSource } from './audio/types.js';
-import type { ApiKeyConfig } from './auth.js';
-import { resolveApiKey } from './auth.js';
 
 const TERMINAL_STATES: readonly RecordingState[] = ['stopped', 'canceled', 'error'];
 
@@ -87,6 +91,25 @@ export type RecordOptions = SttSessionConfig & {
    * SDK-level session options (signal, etc.)
    */
   session_options?: SttSessionOptions | undefined;
+
+  /**
+   * Function that receives the resolved connection config (including
+   * `session_defaults` from the server) and returns the final session config.
+   *
+   * When provided, its return value is used as the session config,
+   * and any flat session config fields on this object are ignored.
+   *
+   * @example
+   * ```typescript
+   * client.realtime.record({
+   *   session_config: (resolved) => ({
+   *     ...resolved.session_defaults,
+   *     enable_endpoint_detection: true,
+   *   }),
+   * });
+   * ```
+   */
+  session_config?: ((resolved: ResolvedConnectionConfig) => SttSessionConfig) | undefined;
 };
 
 const DEFAULT_BUFFER_QUEUE_SIZE = 1000;
@@ -96,7 +119,7 @@ const DEFAULT_BUFFER_QUEUE_SIZE = 1000;
  *
  * Manages the lifecycle of audio capture and real-time transcription:
  * 1. Starts audio source immediately (buffers chunks)
- * 2. Resolves the API key (from string or async function)
+ * 2. Resolves connection config (API key + URLs, sync or async)
  * 3. Connects to the Soniox WebSocket API
  * 4. Drains buffered audio, then pipes live audio to the session
  *
@@ -110,11 +133,13 @@ const DEFAULT_BUFFER_QUEUE_SIZE = 1000;
  * await recording.stop();
  * ```
  */
+/** @internal */
+export type SttConfigInput = SttSessionConfig | ((resolved: ResolvedConnectionConfig) => SttSessionConfig);
+
 export class Recording {
   private readonly emitter = new TypedEmitter<RecordingEvents>();
-  private readonly apiKeyConfig: ApiKeyConfig;
-  private readonly wsBaseUrl: string;
-  private readonly sttConfig: SttSessionConfig;
+  private readonly configResolver: () => Promise<ResolvedConnectionConfig>;
+  private readonly sttConfigInput: SttConfigInput;
   private readonly sessionOptions: SttSessionOptions | undefined;
   private readonly source: AudioSource;
   private readonly maxBufferSize: number;
@@ -132,9 +157,8 @@ export class Recording {
 
   /** @internal */
   constructor(
-    apiKeyConfig: ApiKeyConfig,
-    wsBaseUrl: string,
-    sttConfig: SttSessionConfig,
+    configResolver: () => Promise<ResolvedConnectionConfig>,
+    sttConfigInput: SttConfigInput,
     source: AudioSource,
     options?: {
       buffer_queue_size?: number;
@@ -142,9 +166,8 @@ export class Recording {
       signal?: AbortSignal;
     }
   ) {
-    this.apiKeyConfig = apiKeyConfig;
-    this.wsBaseUrl = wsBaseUrl;
-    this.sttConfig = sttConfig;
+    this.configResolver = configResolver;
+    this.sttConfigInput = sttConfigInput;
     this.source = source;
     this.maxBufferSize = options?.buffer_queue_size ?? DEFAULT_BUFFER_QUEUE_SIZE;
     this.sessionOptions = options?.session_options;
@@ -318,10 +341,10 @@ export class Recording {
       return;
     }
 
-    // Resolve API key
-    let apiKey: string;
+    // Resolve connection config (API key + URLs)
+    let resolvedConfig: ResolvedConnectionConfig;
     try {
-      apiKey = await resolveApiKey(this.apiKeyConfig);
+      resolvedConfig = await this.configResolver();
     } catch (error) {
       this.signal?.removeEventListener('abort', onAbort);
       this.source.stop();
@@ -332,11 +355,15 @@ export class Recording {
     // Remove startup abort listener
     this.signal?.removeEventListener('abort', onAbort);
 
-    // Check if cancelled/stopped during key fetch
+    // Check if cancelled/stopped during config resolution
     if (this.isTerminalState()) {
       this.source.stop();
       return;
     }
+
+    // Resolve session config (may depend on server-provided session_defaults)
+    const sttConfig =
+      typeof this.sttConfigInput === 'function' ? this.sttConfigInput(resolvedConfig) : this.sttConfigInput;
 
     // Create session and connect
     this.setState('connecting');
@@ -348,7 +375,12 @@ export class Recording {
       sessionOptions.signal = this.signal;
     }
 
-    const session = new RealtimeSttSession(apiKey, this.wsBaseUrl, this.sttConfig, sessionOptions);
+    const session = new RealtimeSttSession(
+      resolvedConfig.api_key,
+      resolvedConfig.stt_ws_url,
+      sttConfig,
+      sessionOptions
+    );
     this.session = session;
 
     // Wire up session events

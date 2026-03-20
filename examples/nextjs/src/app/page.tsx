@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useState } from 'react';
 
-import getAPIKey, { cn } from '@/lib/utils';
+import getConfig, { cn } from '@/lib/utils';
 
 const Transcribe = dynamic(() => import('./transcribe'), { ssr: false });
 const TranslateTo = dynamic(() => import('./translate-to'), { ssr: false });
@@ -15,7 +15,7 @@ export default function Home() {
   const [mode, setMode] = useState<'transcribe' | 'translate-one-way' | 'translate-two-way'>('transcribe');
 
   return (
-    <SonioxProvider apiKey={getAPIKey}>
+    <SonioxProvider config={getConfig}>
       <main className="flex flex-row items-center justify-center min-h-screen gap-4 p-8 pb-24">
         <div className="flex flex-col gap-4 w-full max-w-xl">
           <Image src="/soniox_logo.svg" alt="Soniox Logo" width={180} height={38} priority />

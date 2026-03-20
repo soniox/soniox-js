@@ -5,13 +5,19 @@
  * and low-level `stt()` for direct WebSocket session access
  */
 
-import { RealtimeSttSession } from '@soniox/core';
-import type { SttSessionConfig, SttSessionOptions } from '@soniox/core';
+import { RealtimeSttSession, resolveConnectionConfig } from '@soniox/core';
+import type {
+  SonioxConnectionConfig,
+  ResolvedConnectionConfig,
+  SttSessionConfig,
+  SttSessionOptions,
+} from '@soniox/core';
 
 import { MicrophoneSource } from './audio/microphone.js';
 import type { ApiKeyConfig } from './auth.js';
+import { resolveApiKey } from './auth.js';
 import type { PermissionResolver } from './permissions/types.js';
-import type { RecordOptions } from './recording.js';
+import type { RecordOptions, SttConfigInput } from './recording.js';
 import { Recording } from './recording.js';
 
 const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
@@ -21,16 +27,44 @@ const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
  */
 export type SonioxClientOptions = {
   /**
+   * Connection configuration — sync object or async function.
+   *
+   * When provided as a function, it is called once per recording session,
+   * allowing you to fetch a fresh temporary API key and connection settings
+   * from your backend at runtime.
+   *
+   * @example
+   * ```typescript
+   * // Sync config with region
+   * const client = new SonioxClient({
+   *   config: { api_key: tempKey, region: 'eu' },
+   * });
+   *
+   * // Async config (recommended for production)
+   * const client = new SonioxClient({
+   *   config: async () => {
+   *     const res = await fetch('/api/soniox-config', { method: 'POST' });
+   *     return await res.json(); // { api_key, region, ... }
+   *   },
+   * });
+   * ```
+   */
+  config?: SonioxConnectionConfig | (() => Promise<SonioxConnectionConfig>) | undefined;
+
+  /**
    * API key configuration.
    *
    * - `string` - A pre-fetched temporary API key (e.g., injected from SSR)
    * - `() => Promise<string>` - Async function that fetches a fresh key from your backend
+   *
+   * @deprecated Use `config` instead.
    */
-  api_key: ApiKeyConfig;
+  api_key?: ApiKeyConfig | undefined;
 
   /**
    * WebSocket URL for real-time connections.
    * @default 'wss://stt-rt.soniox.com/transcribe-websocket'
+   * @deprecated Use `config.stt_ws_url` or `config.region` instead.
    */
   ws_base_url?: string | undefined;
 
@@ -42,7 +76,7 @@ export type SonioxClientOptions = {
    * ```typescript
    * import { BrowserPermissionResolver } from '@soniox/client';
    * const client = new SonioxClient({
-   *   api_key: fetchKey,
+   *   config: { api_key: tempKey },
    *   permissions: new BrowserPermissionResolver(),
    * });
    * ```
@@ -83,10 +117,11 @@ export type SttOptions = {
  *
  * @example
  * ```typescript
+ * // Recommended: async config with region
  * const client = new SonioxClient({
- *   api_key: async () => {
- *     const res = await fetch('/api/get-temporary-key', { method: 'POST' });
- *     return (await res.json()).api_key;
+ *   config: async () => {
+ *     const res = await fetch('/api/soniox-config', { method: 'POST' });
+ *     return await res.json(); // { api_key, region }
  *   },
  * });
  *
@@ -101,11 +136,12 @@ export type SttOptions = {
  * ```
  */
 export class SonioxClient {
-  private readonly apiKeyConfig: ApiKeyConfig;
-  private readonly wsBaseUrl: string;
+  /** @internal */
+  readonly _configResolver: () => Promise<ResolvedConnectionConfig>;
   private readonly permissionResolver: PermissionResolver | undefined;
   private readonly defaultBufferQueueSize: number;
   private readonly defaultSessionOptions: SttSessionOptions | undefined;
+  private readonly wsBaseUrl: string | undefined;
 
   /**
    * Real-time API namespace
@@ -133,8 +169,15 @@ export class SonioxClient {
   };
 
   constructor(options: SonioxClientOptions) {
-    this.apiKeyConfig = options.api_key;
-    this.wsBaseUrl = options.ws_base_url ?? SONIOX_WS_URL;
+    if (options.config !== undefined && options.api_key !== undefined) {
+      throw new Error('Cannot specify both `config` and `api_key`. Use `config` for new code.');
+    }
+    if (options.config === undefined && options.api_key === undefined) {
+      throw new Error('Either `config` or `api_key` must be provided.');
+    }
+
+    this._configResolver = buildConfigResolver(options);
+    this.wsBaseUrl = options.ws_base_url;
     this.permissionResolver = options.permissions;
     this.defaultBufferQueueSize = options.buffer_queue_size ?? 1000;
     this.defaultSessionOptions = options.default_session_options;
@@ -164,11 +207,14 @@ export class SonioxClient {
 
   private createRecording(options: RecordOptions): Recording {
     // Extract recording-specific options from the combined config
-    const { source, signal, buffer_queue_size, session_options, ...sttConfig } = options;
+    const { source, signal, buffer_queue_size, session_options, session_config, ...sttConfig } = options;
 
     const audioSource = source ?? new MicrophoneSource();
 
-    return new Recording(this.apiKeyConfig, this.wsBaseUrl, sttConfig, audioSource, {
+    // When session_config function is provided, use it; otherwise use flat fields
+    const sttConfigInput: SttConfigInput = session_config ?? sttConfig;
+
+    return new Recording(this._configResolver, sttConfigInput, audioSource, {
       buffer_queue_size: buffer_queue_size ?? this.defaultBufferQueueSize,
       session_options: {
         ...this.defaultSessionOptions,
@@ -185,6 +231,30 @@ export class SonioxClient {
       ...options.session_options,
     };
 
-    return new RealtimeSttSession(options.api_key, this.wsBaseUrl, config, mergedSessionOptions);
+    const wsUrl = this.wsBaseUrl ?? resolveConnectionConfig({ api_key: options.api_key }).stt_ws_url;
+    return new RealtimeSttSession(options.api_key, wsUrl, config, mergedSessionOptions);
   }
+}
+
+function buildConfigResolver(options: SonioxClientOptions): () => Promise<ResolvedConnectionConfig> {
+  if (options.config !== undefined) {
+    const configInput = options.config;
+    return async () => {
+      const raw = typeof configInput === 'function' ? await configInput() : configInput;
+      return resolveConnectionConfig(raw);
+    };
+  }
+
+  // Legacy path: api_key (+ optional ws_base_url)
+  const apiKeyConfig = options.api_key!;
+  const wsBaseUrl = options.ws_base_url ?? SONIOX_WS_URL;
+  return async () => {
+    const apiKey = await resolveApiKey(apiKeyConfig);
+    return {
+      api_key: apiKey,
+      api_domain: 'https://api.soniox.com',
+      stt_ws_url: wsBaseUrl,
+      session_defaults: {},
+    };
+  };
 }

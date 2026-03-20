@@ -28,6 +28,10 @@ export { AudioPermissionError, AudioDeviceError, AudioUnavailableError } from '.
 export type { PermissionResolver, PermissionResult, PermissionStatus, PermissionType } from './permissions/types.js';
 export { BrowserPermissionResolver } from './permissions/browser.js';
 
+// Connection config + region resolution (from @soniox/core)
+export { resolveConnectionConfig } from '@soniox/core';
+export type { SonioxRegion, SonioxConnectionConfig, ResolvedConnectionConfig } from '@soniox/core';
+
 // Realtime session (from @soniox/core)
 export { RealtimeSttSession } from '@soniox/core';
 export { segmentRealtimeTokens } from '@soniox/core';

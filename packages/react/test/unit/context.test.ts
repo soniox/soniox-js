@@ -68,6 +68,39 @@ describe('SonioxProvider', () => {
   });
 });
 
+describe('SonioxProvider with config prop', () => {
+  it('creates a client from config object and makes it available via useSoniox', () => {
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(SonioxProvider, { config: { api_key: 'temp:test-key', region: 'eu' } }, children);
+
+    const { result } = renderHook(() => useSoniox(), { wrapper });
+
+    expect(result.current).toBeInstanceOf(SonioxClient);
+  });
+
+  it('creates a client from async config function', () => {
+    const configFn = async () => ({ api_key: 'temp:async-key', region: 'jp' as const });
+
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(SonioxProvider, { config: configFn }, children);
+
+    const { result } = renderHook(() => useSoniox(), { wrapper });
+
+    expect(result.current).toBeInstanceOf(SonioxClient);
+  });
+
+  it('provides the same client across re-renders with config prop', () => {
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(SonioxProvider, { config: { api_key: 'temp:test-key' } }, children);
+
+    const { result, rerender } = renderHook(() => useSoniox(), { wrapper });
+
+    const first = result.current;
+    rerender();
+    expect(result.current).toBe(first);
+  });
+});
+
 describe('useSoniox', () => {
   it('throws when used outside a provider', () => {
     // Suppress console.error from React's error boundary

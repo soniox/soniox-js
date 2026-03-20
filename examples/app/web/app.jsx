@@ -126,11 +126,11 @@ function App() {
 
       <SonioxProvider
         key={tokenVersion}
-        apiKey={async () => {
+        config={async () => {
           const res = await fetch('/tmp-key');
           if (!res.ok) throw new Error('Failed to fetch temporary API key');
           const data = await res.json();
-          return data.api_key;
+          return { api_key: data.api_key };
         }}
       >
         <div className="flex mt-2 border-b-2 border-gray-300">

@@ -1,3 +1,4 @@
+import type { SonioxConnectionConfig } from '@soniox/client';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -18,12 +19,12 @@ export const LANGUAGES = [
   { code: 'ar', label: 'Arabic' },
 ] as const;
 
-// Fetch temporary API key from the server, so we can establish websocket connection.
+// Fetch temporary API key and connection config from the server.
 // Read more on: https://soniox.com/docs/speech-to-text/guides/direct-stream#temporary-api-keys
-export default async function getAPIKey() {
+export default async function getConfig(): Promise<SonioxConnectionConfig> {
   const response = await fetch('/api/get-temporary-api-key', {
     method: 'POST',
   });
   const { apiKey } = await response.json();
-  return apiKey;
+  return { api_key: apiKey };
 }
