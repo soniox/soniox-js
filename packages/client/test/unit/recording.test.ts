@@ -900,7 +900,7 @@ describe('Recording', () => {
       expect(recording.state).toBe('error');
     });
 
-    it('stop() resolves immediately when session closed during reconnect exhaustion', async () => {
+    it('stop() resolves when session dies after reconnect exhaustion', async () => {
       jest.useFakeTimers();
       try {
         const recording = new Recording(staticResolver(), { model: 'test' }, source, {
@@ -908,6 +908,7 @@ describe('Recording', () => {
           auto_reconnect: true,
           max_reconnect_attempts: 1,
           reconnect_base_delay_ms: 50,
+          session_options: { connect_timeout_ms: 100 },
         });
 
         await jest.advanceTimersByTimeAsync(0);
@@ -915,23 +916,25 @@ describe('Recording', () => {
         await jest.advanceTimersByTimeAsync(0);
         expect(recording.state).toBe('recording');
 
-        // First close → reconnect attempt 1
+        // Close triggers reconnect attempt 1 of 1.
         MockWebSocket.instances[0]!.simulateClose();
         expect(recording.state).toBe('reconnecting');
 
-        // Flush the reconnect
-        await jest.advanceTimersByTimeAsync(50);
-        for (let i = 0; i < 20; i++) await jest.advanceTimersByTimeAsync(1);
-        expect(recording.state).toBe('recording');
+        // Make the reconnect's WS connection hang so it times out.
+        MockWebSocket.hangOnConnect = true;
 
-        // Second close → exhausts max_reconnect_attempts → error
-        MockWebSocket.instances[1]!.simulateClose();
+        // Advance past backoff (50ms) + connect timeout (100ms).
+        await jest.advanceTimersByTimeAsync(200);
+        for (let i = 0; i < 20; i++) await jest.advanceTimersByTimeAsync(1);
+
+        // Reconnect failed and attempts exhausted → error.
         expect(recording.state).toBe('error');
 
         // stop() on an already-errored recording returns immediately.
         await recording.stop();
         expect(recording.state).toBe('error');
       } finally {
+        MockWebSocket.hangOnConnect = false;
         jest.useRealTimers();
       }
     });
