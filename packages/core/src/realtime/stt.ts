@@ -21,6 +21,9 @@ const DEFAULT_KEEPALIVE_INTERVAL_MS = 5000;
 // Minimum allowed keepalive interval to prevent network flooding
 const MIN_KEEPALIVE_INTERVAL_MS = 1000;
 
+// Default timeout for WebSocket connection establishment
+const DEFAULT_CONNECT_TIMEOUT_MS = 20000;
+
 /**
  * Convert audio data to Uint8Array
  * Handles Uint8Array and ArrayBuffer
@@ -135,6 +138,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   private readonly wsBaseUrl: string;
   private readonly config: SttSessionConfig;
   private readonly keepaliveIntervalMs: number;
+  private readonly connectTimeoutMs: number;
   private readonly signal: AbortSignal | undefined;
 
   private ws: WebSocket | null = null;
@@ -159,6 +163,8 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       Number.isFinite(keepaliveMs) && keepaliveMs > 0
         ? Math.max(keepaliveMs, MIN_KEEPALIVE_INTERVAL_MS)
         : DEFAULT_KEEPALIVE_INTERVAL_MS;
+    const connectMs = options?.connect_timeout_ms ?? DEFAULT_CONNECT_TIMEOUT_MS;
+    this.connectTimeoutMs = Number.isFinite(connectMs) && connectMs > 0 ? connectMs : DEFAULT_CONNECT_TIMEOUT_MS;
     this.signal = options?.signal;
 
     // Set up abort signal handler (store reference for cleanup)
@@ -197,12 +203,27 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
     this.checkAborted();
     this.setState('connecting', 'user_action');
 
+    let connectTimer: ReturnType<typeof setTimeout> | undefined;
     try {
-      await this.createWebSocket();
+      await Promise.race([
+        this.createWebSocket().then((v) => {
+          clearTimeout(connectTimer);
+          return v;
+        }),
+        new Promise<never>((_resolve, reject) => {
+          connectTimer = setTimeout(() => {
+            if (this.ws) {
+              this.ws.close();
+            }
+            reject(new ConnectionError('Connection timed out'));
+          }, this.connectTimeoutMs);
+        }),
+      ]);
       this.setState('connected', 'connected');
       this.emitter.emit('connected');
       this.updateKeepalive();
     } catch (error) {
+      clearTimeout(connectTimer);
       if (!this.isTerminalState(this._state)) {
         const err = error instanceof Error ? error : new ConnectionError('Connection failed', error);
         this.cleanup('error', err, 'error');

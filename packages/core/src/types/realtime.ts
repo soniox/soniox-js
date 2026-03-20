@@ -142,6 +142,14 @@ export type SttSessionOptions = {
    * @default 5000
    */
   keepalive_interval_ms?: number | undefined;
+
+  /**
+   * Maximum time to wait for the WebSocket connection to open (milliseconds).
+   * If the connection is not established within this time, a
+   * {@link ConnectionError} with message "Connection timed out" is thrown.
+   * @default 20000
+   */
+  connect_timeout_ms?: number | undefined;
 };
 
 // =============================================================================

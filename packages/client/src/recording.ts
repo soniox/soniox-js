@@ -331,10 +331,21 @@ export class Recording {
       return finishPromise;
     }
 
-    return new Promise<void>((resolve, reject) => {
-      this.stopResolver = resolve;
-      this.stopRejecter = reject;
-    });
+    // Session not yet created or still mid-connect — run() or
+    // shouldAbortReconnect() will detect 'stopping' and settle.
+    const sessionPending = !this.session || this.session.state === 'idle' || this.session.state === 'connecting';
+    if (sessionPending) {
+      return new Promise<void>((resolve, reject) => {
+        this.stopResolver = resolve;
+        this.stopRejecter = reject;
+      });
+    }
+
+    // Session is in a terminal state (closed/error/finished/canceled) —
+    // nothing will settle a deferred promise, so resolve immediately.
+    this.session?.close();
+    this.settleStop();
+    this.cleanup('stopped', 'user_action');
   }
 
   /**

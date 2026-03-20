@@ -58,6 +58,8 @@ class MockWebSocket {
   static OPEN = 1;
   static CLOSED = 3;
   static instances: MockWebSocket[] = [];
+  /** When true, new instances will NOT auto-fire the `open` event. */
+  static hangOnConnect = false;
 
   url: string;
   readyState = MockWebSocket.OPEN;
@@ -68,10 +70,12 @@ class MockWebSocket {
   constructor(url: string) {
     this.url = url;
     MockWebSocket.instances.push(this);
-    // Simulate async open
-    setTimeout(() => {
-      this.fire('open', new Event('open'));
-    }, 0);
+    if (!MockWebSocket.hangOnConnect) {
+      // Simulate async open
+      setTimeout(() => {
+        this.fire('open', new Event('open'));
+      }, 0);
+    }
   }
 
   addEventListener(event: string, handler: AnyFn) {
@@ -166,6 +170,7 @@ describe('Recording', () => {
   beforeEach(() => {
     source = new MockAudioSource();
     MockWebSocket.instances = [];
+    MockWebSocket.hangOnConnect = false;
   });
 
   it('transitions through starting -> connecting -> recording states', async () => {
@@ -868,6 +873,169 @@ describe('Recording', () => {
 
       source.emitUnmuted();
       expect(muteEvents).toContain('unmuted');
+    });
+  });
+
+  describe('stop() on dead sessions', () => {
+    it('stop() resolves immediately when session died (autoReconnect off)', async () => {
+      const recording = new Recording(staticResolver(), { model: 'test' }, source, {
+        buffer_queue_size: 100,
+        auto_reconnect: false,
+      });
+
+      await new Promise<void>((resolve) => {
+        recording.on('state_change', ({ new_state }) => {
+          if (new_state === 'recording') resolve();
+        });
+      });
+
+      expect(recording.state).toBe('recording');
+
+      // Kill the session — without auto_reconnect, Recording goes to error.
+      MockWebSocket.instances[0]!.simulateClose();
+      expect(recording.state).toBe('error');
+
+      // stop() should return immediately (state is already terminal).
+      await recording.stop();
+      expect(recording.state).toBe('error');
+    });
+
+    it('stop() resolves immediately when session closed during reconnect exhaustion', async () => {
+      jest.useFakeTimers();
+      try {
+        const recording = new Recording(staticResolver(), { model: 'test' }, source, {
+          buffer_queue_size: 100,
+          auto_reconnect: true,
+          max_reconnect_attempts: 1,
+          reconnect_base_delay_ms: 50,
+        });
+
+        await jest.advanceTimersByTimeAsync(0);
+        await jest.advanceTimersByTimeAsync(0);
+        await jest.advanceTimersByTimeAsync(0);
+        expect(recording.state).toBe('recording');
+
+        // First close → reconnect attempt 1
+        MockWebSocket.instances[0]!.simulateClose();
+        expect(recording.state).toBe('reconnecting');
+
+        // Flush the reconnect
+        await jest.advanceTimersByTimeAsync(50);
+        for (let i = 0; i < 20; i++) await jest.advanceTimersByTimeAsync(1);
+        expect(recording.state).toBe('recording');
+
+        // Second close → exhausts max_reconnect_attempts → error
+        MockWebSocket.instances[1]!.simulateClose();
+        expect(recording.state).toBe('error');
+
+        // stop() on an already-errored recording returns immediately.
+        await recording.stop();
+        expect(recording.state).toBe('error');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+  });
+
+  describe('connect timeout', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      MockWebSocket.hangOnConnect = false;
+      jest.useRealTimers();
+    });
+
+    it('transitions to error when connect() times out on initial connection', async () => {
+      MockWebSocket.hangOnConnect = true;
+
+      const errors: Error[] = [];
+      const recording = new Recording(staticResolver(), { model: 'test' }, source, {
+        buffer_queue_size: 100,
+        session_options: { connect_timeout_ms: 500 },
+      });
+
+      recording.on('error', (err) => errors.push(err));
+
+      // Flush microtask (constructor queueMicrotask)
+      await jest.advanceTimersByTimeAsync(0);
+      // source.start resolves
+      await jest.advanceTimersByTimeAsync(0);
+      // config resolver resolves, session created, connect() called
+      await jest.advanceTimersByTimeAsync(0);
+
+      expect(recording.state).toBe('connecting');
+
+      // Advance past the connect timeout
+      await jest.advanceTimersByTimeAsync(500);
+      // Flush remaining microtasks
+      for (let i = 0; i < 10; i++) await jest.advanceTimersByTimeAsync(1);
+
+      expect(recording.state).toBe('error');
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+      expect(errors.some((e) => e.message === 'Connection timed out')).toBe(true);
+    });
+
+    it('transitions to error when connect() times out during reconnect', async () => {
+      const recording = new Recording(staticResolver(), { model: 'test' }, source, {
+        buffer_queue_size: 100,
+        auto_reconnect: true,
+        max_reconnect_attempts: 3,
+        reconnect_base_delay_ms: 50,
+        session_options: { connect_timeout_ms: 200 },
+      });
+
+      // Let initial connect succeed normally.
+      await jest.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
+      expect(recording.state).toBe('recording');
+
+      // Trigger a disconnect to start reconnection.
+      MockWebSocket.instances[0]!.simulateClose();
+      expect(recording.state).toBe('reconnecting');
+
+      // Now make subsequent WebSocket connections hang.
+      MockWebSocket.hangOnConnect = true;
+
+      // Advance past backoff delay (50ms) so reconnect attempts to connect.
+      await jest.advanceTimersByTimeAsync(50);
+      for (let i = 0; i < 5; i++) await jest.advanceTimersByTimeAsync(1);
+
+      // Should be in connecting state, waiting for WebSocket open.
+      expect(recording.state).toBe('connecting');
+
+      // Advance past the connect timeout (200ms).
+      await jest.advanceTimersByTimeAsync(200);
+      for (let i = 0; i < 10; i++) await jest.advanceTimersByTimeAsync(1);
+
+      // The timeout error is retriable, so it may trigger another reconnect
+      // attempt or give up. Either way, it should NOT be stuck in connecting.
+      expect(recording.state).not.toBe('connecting');
+    });
+
+    it('does not time out when connection succeeds quickly', async () => {
+      const errors: Error[] = [];
+      const recording = new Recording(staticResolver(), { model: 'test' }, source, {
+        buffer_queue_size: 100,
+        session_options: { connect_timeout_ms: 500 },
+      });
+
+      recording.on('error', (err) => errors.push(err));
+
+      // Let the normal connection flow complete.
+      await jest.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
+
+      expect(recording.state).toBe('recording');
+
+      // Advance well past the timeout — should NOT fire.
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(recording.state).toBe('recording');
+      expect(errors).toHaveLength(0);
     });
   });
 });
