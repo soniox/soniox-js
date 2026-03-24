@@ -195,6 +195,15 @@ export interface UseRecordingReturn extends RecordingSnapshot {
   finalize: (options?: { trailing_silence_ms?: number }) => void;
   /** Clear transcript state (finalText, partialText, utterances, segments). */
   clearTranscript: () => void;
+  /**
+   * Force a reconnection — tears down the current session and audio
+   * encoder, then establishes a new session. Requires `auto_reconnect`.
+   *
+   * Call this from platform lifecycle handlers (e.g. web
+   * `visibilitychange`, React Native `AppState`) to recover from
+   * stale connections after sleep/wake or backgrounding.
+   */
+  reconnect: () => void;
   /** @internal Debug-only: force-close the WebSocket to simulate a disconnect. */
   __debugForceDisconnect: () => void;
   /**
@@ -408,6 +417,10 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     store.clearTranscript();
   }, [store]);
 
+  const reconnect = useCallback((): void => {
+    recordingRef.current?.reconnect();
+  }, []);
+
   const __debugForceDisconnect = useCallback((): void => {
     recordingRef.current?.__debugForceDisconnect();
   }, []);
@@ -453,6 +466,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     resume,
     finalize,
     clearTranscript,
+    reconnect,
 
     // Debug
     __debugForceDisconnect,

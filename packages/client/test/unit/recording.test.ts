@@ -660,11 +660,13 @@ describe('Recording', () => {
       expect(events).toContain('reconnected');
     });
 
-    it('discards buffered audio on reconnect and restarts source encoder', async () => {
+    it('drains buffered audio to new session after reconnect', async () => {
       const recording = await createConnectedRecording({ reconnect_base_delay_ms: 50 });
 
       MockWebSocket.instances[0]!.simulateClose();
       expect(recording.state).toBe('reconnecting');
+      // Encoder is restarted early — audio emitted now carries fresh headers.
+      expect(source.restartCount).toBe(1);
 
       source.emitData(new ArrayBuffer(10));
       source.emitData(new ArrayBuffer(20));
@@ -672,13 +674,12 @@ describe('Recording', () => {
       await flushReconnect(50);
 
       expect(recording.state).toBe('recording');
-      // Stale buffer audio must NOT be sent to the new session —
-      // it lacks the container header the server needs.
+      // Buffered audio should be drained to the new session.
       const ws2 = MockWebSocket.instances[1]!;
       const audioSent = ws2.sent.filter((d) => d instanceof Uint8Array);
-      expect(audioSent.length).toBe(0);
-      // Source encoder should have been restarted.
-      expect(source.restartCount).toBe(1);
+      expect(audioSent.length).toBe(2);
+      expect(audioSent[0]!.byteLength).toBe(10);
+      expect(audioSent[1]!.byteLength).toBe(20);
     });
 
     it('preserves paused state across reconnect', async () => {
@@ -690,11 +691,13 @@ describe('Recording', () => {
       MockWebSocket.instances[0]!.simulateClose();
       expect(recording.state).toBe('reconnecting');
 
-      source.emitData(new ArrayBuffer(10));
+      // Source was paused, so restart is deferred until after connect.
+      expect(source.restartCount).toBe(0);
 
       await flushReconnect(50);
 
       expect(recording.state).toBe('paused');
+      // Encoder restarted after connect and immediately re-paused.
       expect(source.restartCount).toBe(1);
       expect(source.paused).toBe(true);
 
@@ -704,8 +707,7 @@ describe('Recording', () => {
 
       recording.resume();
       expect(recording.state).toBe('recording');
-      // Old buffer was discarded (stale encoder data); no audio
-      // should have been sent to the new session yet.
+      // No audio was buffered (source was paused the entire time).
       const audioAfterResume = ws2.sent.filter((d) => d instanceof Uint8Array);
       expect(audioAfterResume.length).toBe(0);
     });
@@ -1039,6 +1041,110 @@ describe('Recording', () => {
 
       expect(recording.state).toBe('recording');
       expect(errors).toHaveLength(0);
+    });
+  });
+
+  describe('reconnect()', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    async function createConnectedRecording(
+      opts: {
+        auto_reconnect?: boolean;
+        max_reconnect_attempts?: number;
+        reconnect_base_delay_ms?: number;
+      } = {}
+    ) {
+      const recording = new Recording(staticResolver(), { model: 'test' }, source, {
+        buffer_queue_size: 1000,
+        auto_reconnect: opts.auto_reconnect ?? true,
+        max_reconnect_attempts: opts.max_reconnect_attempts ?? 3,
+        reconnect_base_delay_ms: opts.reconnect_base_delay_ms ?? 100,
+      });
+
+      await jest.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
+
+      return recording;
+    }
+
+    async function flushReconnect(delayMs: number) {
+      await jest.advanceTimersByTimeAsync(delayMs);
+      for (let i = 0; i < 20; i++) {
+        await jest.advanceTimersByTimeAsync(1);
+      }
+    }
+
+    it('triggers reconnect when in recording state with auto_reconnect', async () => {
+      const states: RecordingState[] = [];
+      const recording = await createConnectedRecording();
+
+      expect(recording.state).toBe('recording');
+      recording.on('state_change', ({ new_state }) => states.push(new_state));
+
+      recording.reconnect();
+
+      expect(states).toContain('reconnecting');
+
+      await flushReconnect(100);
+      expect(recording.state).toBe('recording');
+      expect(MockWebSocket.instances.length).toBe(2);
+    });
+
+    it('triggers reconnect when in paused state', async () => {
+      const states: RecordingState[] = [];
+      const recording = await createConnectedRecording();
+
+      recording.pause();
+      expect(recording.state).toBe('paused');
+
+      recording.on('state_change', ({ new_state }) => states.push(new_state));
+      recording.reconnect();
+
+      expect(states).toContain('reconnecting');
+
+      await flushReconnect(100);
+      expect(recording.state).toBe('paused');
+    });
+
+    it('is a no-op when auto_reconnect is false', async () => {
+      const states: RecordingState[] = [];
+      const recording = await createConnectedRecording({ auto_reconnect: false });
+
+      expect(recording.state).toBe('recording');
+      recording.on('state_change', ({ new_state }) => states.push(new_state));
+
+      recording.reconnect();
+
+      expect(states).toHaveLength(0);
+      expect(recording.state).toBe('recording');
+      expect(MockWebSocket.instances.length).toBe(1);
+    });
+
+    it('is a no-op in terminal states', async () => {
+      const recording = await createConnectedRecording();
+
+      recording.cancel();
+      expect(recording.state).toBe('canceled');
+
+      recording.reconnect();
+      expect(recording.state).toBe('canceled');
+    });
+
+    it('is a no-op when already reconnecting', async () => {
+      const recording = await createConnectedRecording({ reconnect_base_delay_ms: 500 });
+
+      recording.reconnect();
+      expect(recording.state).toBe('reconnecting');
+
+      const wsCountBefore = MockWebSocket.instances.length;
+      recording.reconnect();
+      expect(MockWebSocket.instances.length).toBe(wsCountBefore);
     });
   });
 });

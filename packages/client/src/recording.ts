@@ -420,6 +420,26 @@ export class Recording {
     this.handleError(new ConnectionError('Debug: simulated disconnect'));
   }
 
+  /**
+   * Force a reconnection — tears down the current session and audio
+   * encoder, then establishes a new session via the standard reconnect
+   * flow (backoff, config re-resolution, buffer drain).
+   *
+   * Use this to recover from stale connections after platform lifecycle
+   * events such as laptop sleep/wake (web `visibilitychange`) or app
+   * backgrounding (React Native `AppState`).
+   *
+   * Requires `auto_reconnect` to be enabled. No-op when the recording
+   * is not in `recording` or `paused` state.
+   */
+  reconnect(): void {
+    if (this._state !== 'recording' && this._state !== 'paused') return;
+    if (!this.autoReconnect) return;
+    this.session?.close();
+    this.session = null;
+    this.handleError(new ConnectionError('Reconnect requested'));
+  }
+
   private async run(): Promise<void> {
     // Check abort before starting
     if (this.signal?.aborted) {
@@ -657,6 +677,14 @@ export class Recording {
     this.isBuffering = true;
     this.audioBuffer = [];
 
+    // Reinitialize the audio encoder immediately so audio captured
+    // during the reconnect window carries fresh container headers and
+    // can be drained to the new session. Skip when paused — the
+    // source isn't producing data, and we'll restart after connect.
+    if (!wasPaused) {
+      this.source.restart?.();
+    }
+
     this._reconnectAttempt++;
     this.setState('reconnecting', 'connection_lost');
 
@@ -730,16 +758,6 @@ export class Recording {
     // Signal store to reset window-tracking state before new results arrive.
     this.emitter.emit('session_restart', { reset_transcript: this.resetTranscriptOnReconnect });
 
-    // Discard buffered audio — it contains continuation chunks from
-    // the old encoder stream and lacks the container header the new
-    // server session needs to initialize its decoder.
-    this.audioBuffer = [];
-
-    // Reinitialize the audio encoder so subsequent chunks carry a fresh
-    // container header. Sources that produce a header-less format (raw PCM)
-    // can omit restart().
-    this.source.restart?.();
-
     // Read mute state at restoration time so hardware changes during
     // backoff / connect are not lost.
     const currentlyMuted = this._isSourceMuted;
@@ -750,12 +768,20 @@ export class Recording {
     }
 
     if (wasPaused) {
-      // Restore paused state — do NOT drain buffer yet.
+      // Restart encoder now (was skipped above since source was paused)
+      // and immediately re-pause so resume() can drain later.
+      this.source.restart?.();
       this.source.pause?.();
       this.setState('paused', 'reconnected');
     } else {
       this.setState('recording', 'reconnected');
+      // Drain audio buffered during the reconnect window. The encoder
+      // was restarted early so these chunks carry fresh container headers.
       this.isBuffering = false;
+      for (const chunk of this.audioBuffer) {
+        if (this.isTerminalState()) break;
+        session.sendAudio(chunk);
+      }
       this.audioBuffer = [];
     }
 
