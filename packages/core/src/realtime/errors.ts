@@ -128,6 +128,17 @@ export class StateError extends RealtimeError {
 }
 
 /**
+ * Whether an error is safe to retry via automatic reconnection.
+ *
+ * Retriable: {@link ConnectionError}, {@link NetworkError} (transient transport/server issues).
+ * Non-retriable: {@link AuthError}, {@link BadRequestError}, {@link QuotaError},
+ * {@link AbortError}, {@link StateError} (permanent or user-initiated).
+ */
+export function isRetriableError(error: unknown): boolean {
+  return error instanceof ConnectionError || error instanceof NetworkError;
+}
+
+/**
  * Map a Soniox error response to a typed error class.
  *
  * @param response - Error response from the WebSocket

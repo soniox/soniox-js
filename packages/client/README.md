@@ -25,4 +25,25 @@ const client = new SonioxClient({
 });
 ```
 
+## Error handling
+
+REST TTS and other HTTP-backed calls throw `SonioxHttpError` on non-2xx
+responses, network failures, and aborted requests.
+
+```typescript
+import { SonioxClient, SonioxHttpError } from '@soniox/client';
+
+try {
+  const audio = await client.tts.generate({
+    text: 'Hello',
+    voice: 'Adrian',
+    language: 'en',
+  });
+} catch (err) {
+  if (err instanceof SonioxHttpError) {
+    console.error(err.code, err.statusCode, err.bodyText);
+  }
+}
+```
+
 For the full documentation please go to our docs: [Full Web SDK Documentation](https://soniox.com/docs/stt/SDKs/web-sdk)

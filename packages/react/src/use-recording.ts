@@ -13,11 +13,16 @@ import type {
   RecordingState,
   RealtimeResult,
   RealtimeToken,
+  ReconnectingEvent,
+  ResolvedConnectionConfig,
+  ConfigContext,
+  StateChangeReason,
   SttSessionConfig,
   SttSessionOptions,
   AudioSource,
   ApiKeyConfig,
   SonioxClientOptions,
+  SonioxConnectionConfig,
   PermissionResolver,
   TranslationConfig,
 } from '@soniox/client';
@@ -36,21 +41,31 @@ import type { UnsupportedReason } from './support.js';
  * recording-specific and React-specific options.
  *
  * Can be used **with or without** a `<SonioxProvider>`:
- * - **With Provider:** omit `apiKey` — the client is read from context.
- * - **Without Provider:** pass `apiKey` directly — a client is created internally.
+ * - **With Provider:** omit `config`/`apiKey` — the client is read from context.
+ * - **Without Provider:** pass `config` (or legacy `apiKey`) — a client is created internally.
  */
 export interface UseRecordingConfig extends SttSessionConfig {
   /**
+   * Connection configuration — sync object or async function.
+   * Required when not using `<SonioxProvider>`.
+   */
+  config?: SonioxConnectionConfig | ((context?: ConfigContext) => Promise<SonioxConnectionConfig>) | undefined;
+
+  /**
    * API key — string or async function that fetches a temporary key.
    * Required when not using `<SonioxProvider>`.
+   * @deprecated Use `config` instead.
    */
   apiKey?: ApiKeyConfig | undefined;
 
-  /** WebSocket URL override (only used when `apiKey` is provided). */
+  /**
+   * WebSocket URL override (only used when `apiKey` is provided).
+   * @deprecated Use `config.stt_ws_url` or `config.region` instead.
+   */
   wsBaseUrl?: string | undefined;
 
   /**
-   * Permission resolver override (only used when `apiKey` is provided).
+   * Permission resolver override (only used when creating an inline client).
    * Pass `null` to explicitly disable.
    */
   permissions?: PermissionResolver | null | undefined;
@@ -84,6 +99,53 @@ export interface UseRecordingConfig extends SttSessionConfig {
    */
   groupBy?: 'translation' | 'language' | 'speaker' | ((token: RealtimeToken) => string) | undefined;
 
+  /**
+   * Function that receives the resolved connection config (including
+   * `stt_defaults` from the server) and returns session config overrides.
+   *
+   * When provided, its return value is used as the session config for the
+   * recording, and any flat session config fields on this object are ignored.
+   *
+   * @example
+   * ```tsx
+   * const { start } = useRecording({
+   *   config: asyncConfigFn,
+   *   sessionConfig: (resolved) => ({
+   *     ...resolved.stt_defaults,
+   *     enable_endpoint_detection: true,
+   *   }),
+   * });
+   * ```
+   */
+  sessionConfig?: ((resolved: ResolvedConnectionConfig) => SttSessionConfig) | undefined;
+
+  // -- Reconnection -----------------------------------------------------------
+
+  /**
+   * Enable automatic reconnection on retriable errors.
+   * @default false
+   */
+  auto_reconnect?: boolean | undefined;
+
+  /**
+   * Maximum consecutive reconnection attempts before giving up.
+   * @default 3
+   */
+  max_reconnect_attempts?: number | undefined;
+
+  /**
+   * Base delay in milliseconds for exponential backoff.
+   * @default 1000
+   */
+  reconnect_base_delay_ms?: number | undefined;
+
+  /**
+   * Clear accumulated transcript state on reconnect.
+   * Window-tracking state is always reset regardless.
+   * @default false
+   */
+  reset_transcript_on_reconnect?: boolean | undefined;
+
   // -- Event callbacks (dispatched via refs, never stale) ---------------------
 
   /** Called on each result from the server. */
@@ -92,11 +154,22 @@ export interface UseRecordingConfig extends SttSessionConfig {
   /** Called when an endpoint is detected. */
   onEndpoint?: (() => void) | undefined;
 
+  /** Called for each token received from the server (both final and non-final). */
+  onToken?: ((token: RealtimeToken) => void) | undefined;
+
+  /**
+   * Called when the server acknowledges a finalize request
+   * (see {@link UseRecordingReturn.finalize}).
+   */
+  onFinalized?: (() => void) | undefined;
+
   /** Called when an error occurs. */
   onError?: ((error: Error) => void) | undefined;
 
   /** Called on each state transition. */
-  onStateChange?: ((update: { old_state: RecordingState; new_state: RecordingState }) => void) | undefined;
+  onStateChange?:
+    | ((update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason }) => void)
+    | undefined;
 
   /** Called when the recording session finishes. */
   onFinished?: (() => void) | undefined;
@@ -109,6 +182,12 @@ export interface UseRecordingConfig extends SttSessionConfig {
 
   /** Called when the audio source is unmuted after an external mute. */
   onSourceUnmuted?: (() => void) | undefined;
+
+  /** Called before a reconnection attempt. Call `preventDefault()` to cancel. */
+  onReconnecting?: ((event: ReconnectingEvent) => void) | undefined;
+
+  /** Called after a successful reconnection. */
+  onReconnected?: ((event: { attempt: number }) => void) | undefined;
 }
 
 export interface UseRecordingReturn extends RecordingSnapshot {
@@ -127,6 +206,17 @@ export interface UseRecordingReturn extends RecordingSnapshot {
   /** Clear transcript state (finalText, partialText, utterances, segments). */
   clearTranscript: () => void;
   /**
+   * Force a reconnection — tears down the current session and audio
+   * encoder, then establishes a new session. Requires `auto_reconnect`.
+   *
+   * Call this from platform lifecycle handlers (e.g. web
+   * `visibilitychange`, React Native `AppState`) to recover from
+   * stale connections after sleep/wake or backgrounding.
+   */
+  reconnect: () => void;
+  /** @internal Debug-only: force-close the WebSocket to simulate a disconnect. */
+  __debugForceDisconnect: () => void;
+  /**
    * Whether the built-in browser `MicrophoneSource` is available.
    * Custom `AudioSource` implementations work regardless of this value.
    */
@@ -136,18 +226,33 @@ export interface UseRecordingReturn extends RecordingSnapshot {
    * Custom `AudioSource` implementations bypass this check entirely.
    */
   unsupportedReason: UnsupportedReason | undefined;
+  /** `true` when the WebSocket is reconnecting after a drop. */
+  isReconnecting: boolean;
+  /** Current reconnection attempt number (0 when not reconnecting). */
+  reconnectAttempt: number;
 }
 
 export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
-  // Resolve client: prefer context (Provider), fall back to inline config.
+  // Resolve client: inline config takes priority over context (Provider).
+  // This allows callers to use a different config (e.g., different credentials
+  // or endpoints) even when a SonioxProvider is present.
   const contextClient = useContext(SonioxContext);
   const inlineClientRef = useRef<SonioxClient | undefined>(undefined);
-  const initialInlineConfigRef = useRef<{ apiKey: unknown; wsBaseUrl: unknown } | undefined>(undefined);
+  const initialInlineConfigRef = useRef<{ config: unknown; apiKey: unknown; wsBaseUrl: unknown } | undefined>(
+    undefined
+  );
 
-  if (contextClient === null && config.apiKey !== undefined && inlineClientRef.current === undefined) {
-    const opts: SonioxClientOptions = { api_key: config.apiKey };
-    if (config.wsBaseUrl !== undefined) {
-      opts.ws_base_url = config.wsBaseUrl;
+  const hasInlineConfig = config.config !== undefined || config.apiKey !== undefined;
+
+  if (hasInlineConfig && inlineClientRef.current === undefined) {
+    const opts: SonioxClientOptions = {};
+    if (config.config !== undefined) {
+      opts.config = config.config;
+    } else if (config.apiKey !== undefined) {
+      opts.api_key = config.apiKey;
+      if (config.wsBaseUrl !== undefined) {
+        opts.ws_base_url = config.wsBaseUrl;
+      }
     }
     if (config.permissions === null) {
       // Explicitly disabled — leave undefined.
@@ -157,7 +262,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       opts.permissions = new BrowserPermissionResolver();
     }
     inlineClientRef.current = new SonioxClient(opts);
-    initialInlineConfigRef.current = { apiKey: config.apiKey, wsBaseUrl: config.wsBaseUrl };
+    initialInlineConfigRef.current = { config: config.config, apiKey: config.apiKey, wsBaseUrl: config.wsBaseUrl };
   }
 
   // Dev-mode: warn if inline connection config changes after the client was created.
@@ -167,21 +272,21 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     initialInlineConfigRef.current !== undefined
   ) {
     const init = initialInlineConfigRef.current;
-    if (init.apiKey !== config.apiKey || init.wsBaseUrl !== config.wsBaseUrl) {
+    if (init.config !== config.config || init.apiKey !== config.apiKey || init.wsBaseUrl !== config.wsBaseUrl) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[@soniox/react] useRecording connection config (apiKey, wsBaseUrl) changed after mount. ' +
+        '[@soniox/react] useRecording connection config (config, apiKey, wsBaseUrl) changed after mount. ' +
           'The client is created once and will not be recreated. ' +
-          'Use an async apiKey function for dynamic credentials, or remount the component with a React key.'
+          'Use an async config function for dynamic credentials, or remount the component with a React key.'
       );
     }
   }
 
-  const client = contextClient ?? inlineClientRef.current;
-  if (client === undefined) {
+  const client = hasInlineConfig ? inlineClientRef.current : contextClient;
+  if (client === undefined || client === null) {
     throw new Error(
-      'useRecording requires either a <SonioxProvider> ancestor or an `apiKey` prop. ' +
-        'Pass apiKey directly: useRecording({ apiKey, model }) or wrap your tree in <SonioxProvider>.'
+      'useRecording requires either a <SonioxProvider> ancestor or a `config` prop. ' +
+        'Pass config directly: useRecording({ config, model }) or wrap your tree in <SonioxProvider>.'
     );
   }
 
@@ -205,12 +310,16 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
   // Sync callback refs into store every render.
   store.onResult = config.onResult ?? null;
   store.onEndpoint = config.onEndpoint ?? null;
+  store.onToken = config.onToken ?? null;
+  store.onFinalized = config.onFinalized ?? null;
   store.onError = config.onError ?? null;
   store.onStateChange = config.onStateChange ?? null;
   store.onFinished = config.onFinished ?? null;
   store.onConnected = config.onConnected ?? null;
   store.onSourceMuted = config.onSourceMuted ?? null;
   store.onSourceUnmuted = config.onSourceUnmuted ?? null;
+  store.onReconnecting = config.onReconnecting ?? null;
+  store.onReconnected = config.onReconnected ?? null;
 
   // Platform support (computed once).
   const supportRef = useRef<{ isSupported: boolean; reason: UnsupportedReason | undefined }>(undefined);
@@ -243,6 +352,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
 
     // Extract hook-only props from config; pass the rest as SttSessionConfig.
     const {
+      config: _config,
       apiKey: _apiKey,
       wsBaseUrl: _wsBaseUrl,
       permissions: _permissions,
@@ -251,14 +361,23 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       buffer_queue_size,
       resetOnStart: _resetOnStart,
       groupBy: _groupBy,
+      sessionConfig,
+      auto_reconnect,
+      max_reconnect_attempts,
+      reconnect_base_delay_ms,
+      reset_transcript_on_reconnect,
       onResult: _onResult,
       onEndpoint: _onEndpoint,
+      onToken: _onToken,
+      onFinalized: _onFinalized,
       onError: _onError,
       onStateChange: _onStateChange,
       onFinished: _onFinished,
       onConnected: _onConnected,
       onSourceMuted: _onSourceMuted,
       onSourceUnmuted: _onSourceUnmuted,
+      onReconnecting: _onReconnecting,
+      onReconnected: _onReconnected,
       ...sttConfig
     } = cfg;
 
@@ -270,6 +389,11 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
       ...(source !== undefined ? { source } : {}),
       ...(session_options !== undefined ? { session_options } : {}),
       ...(buffer_queue_size !== undefined ? { buffer_queue_size } : {}),
+      ...(sessionConfig !== undefined ? { session_config: sessionConfig } : {}),
+      ...(auto_reconnect !== undefined ? { auto_reconnect } : {}),
+      ...(max_reconnect_attempts !== undefined ? { max_reconnect_attempts } : {}),
+      ...(reconnect_base_delay_ms !== undefined ? { reconnect_base_delay_ms } : {}),
+      ...(reset_transcript_on_reconnect !== undefined ? { reset_transcript_on_reconnect } : {}),
       signal: controller.signal,
     });
 
@@ -309,6 +433,14 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     store.clearTranscript();
   }, [store]);
 
+  const reconnect = useCallback((): void => {
+    recordingRef.current?.reconnect();
+  }, []);
+
+  const __debugForceDisconnect = useCallback((): void => {
+    recordingRef.current?.__debugForceDisconnect();
+  }, []);
+
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
@@ -339,6 +471,8 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     error: snapshot.error,
     isPaused: snapshot.isPaused,
     isSourceMuted: snapshot.isSourceMuted,
+    isReconnecting: snapshot.isReconnecting,
+    reconnectAttempt: snapshot.reconnectAttempt,
 
     // Actions
     start,
@@ -348,6 +482,10 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     resume,
     finalize,
     clearTranscript,
+    reconnect,
+
+    // Debug
+    __debugForceDisconnect,
 
     // Platform support
     isSupported: supportRef.current.isSupported,

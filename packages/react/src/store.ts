@@ -13,6 +13,8 @@ import type {
   RealtimeSegment,
   RealtimeToken,
   RealtimeUtterance,
+  ReconnectingEvent,
+  StateChangeReason,
 } from '@soniox/client';
 
 /**
@@ -89,6 +91,10 @@ export interface RecordingSnapshot {
   readonly isPaused: boolean;
   /** `true` when the audio source is muted externally (e.g. OS-level or hardware mute). */
   readonly isSourceMuted: boolean;
+  /** `true` when `state === 'reconnecting'`. */
+  readonly isReconnecting: boolean;
+  /** Current reconnection attempt number (0 when not reconnecting). */
+  readonly reconnectAttempt: number;
 }
 
 interface MutableGroupState {
@@ -118,6 +124,8 @@ const IDLE_SNAPSHOT: RecordingSnapshot = Object.freeze({
   error: null,
   isPaused: false,
   isSourceMuted: false,
+  isReconnecting: false,
+  reconnectAttempt: 0,
 });
 
 type Listener = () => void;
@@ -138,6 +146,7 @@ export class RecordingStore {
   private _result: RealtimeResult | null = null;
   private _error: Error | null = null;
   private _isSourceMuted = false;
+  private _reconnectAttempt = 0;
 
   // Partial token tracking (always small — replaced each result).
   private _partialTokens: RealtimeToken[] = [];
@@ -165,12 +174,18 @@ export class RecordingStore {
   // Callback dispatch — set externally by the hook to avoid stale closures.
   onResult: ((result: RealtimeResult) => void) | null = null;
   onEndpoint: (() => void) | null = null;
+  onToken: ((token: RealtimeToken) => void) | null = null;
+  onFinalized: (() => void) | null = null;
   onError: ((error: Error) => void) | null = null;
-  onStateChange: ((update: { old_state: RecordingState; new_state: RecordingState }) => void) | null = null;
+  onStateChange:
+    | ((update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason }) => void)
+    | null = null;
   onFinished: (() => void) | null = null;
   onConnected: (() => void) | null = null;
   onSourceMuted: (() => void) | null = null;
   onSourceUnmuted: (() => void) | null = null;
+  onReconnecting: ((event: ReconnectingEvent) => void) | null = null;
+  onReconnected: ((event: { attempt: number }) => void) | null = null;
 
   // ---------------------------------------------------------------------------
   // useSyncExternalStore contract
@@ -350,7 +365,7 @@ export class RecordingStore {
         this.onError?.(error);
       },
 
-      state_change: (update: { old_state: RecordingState; new_state: RecordingState }) => {
+      state_change: (update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason }) => {
         this._state = update.new_state;
         this.notify();
         this.onStateChange?.(update);
@@ -358,6 +373,47 @@ export class RecordingStore {
 
       connected: () => {
         this.onConnected?.();
+      },
+
+      reconnecting: (event: ReconnectingEvent) => {
+        this._reconnectAttempt = event.attempt;
+        this.notify();
+        this.onReconnecting?.(event);
+      },
+
+      reconnected: (event: { attempt: number }) => {
+        this._reconnectAttempt = 0;
+        this.notify();
+        this.onReconnected?.(event);
+      },
+
+      session_restart: (event: { reset_transcript: boolean }) => {
+        // Always reset session-local window tracking and partial state so
+        // the snapshot never exposes stale data from the dead session.
+        this._prevResultTokens = [];
+        this._flushedText = '';
+        this._windowFinalText = '';
+        this._partialText = '';
+        this._partialTokens = [];
+        this._result = null;
+        this._currentUtteranceSegmentCount = 0;
+        this.utteranceBuffer = new RealtimeUtteranceBuffer();
+
+        // Clear partial tokens inside every group.
+        for (const group of this._groupsByKey.values()) {
+          group.partial = [];
+        }
+
+        if (event.reset_transcript) {
+          this._finalText = '';
+          this._segments = [];
+          this._utterances = [];
+          this._tokens = [];
+          this._finalTokens = [];
+          this._groupsByKey.clear();
+        }
+
+        this.notify();
       },
 
       source_muted: () => {
@@ -371,6 +427,14 @@ export class RecordingStore {
         this.notify();
         this.onSourceUnmuted?.();
       },
+
+      token: (token: RealtimeToken) => {
+        this.onToken?.(token);
+      },
+
+      finalized: () => {
+        this.onFinalized?.();
+      },
     };
 
     recording.on('result', handlers.result);
@@ -379,8 +443,13 @@ export class RecordingStore {
     recording.on('error', handlers.error);
     recording.on('state_change', handlers.state_change);
     recording.on('connected', handlers.connected);
+    recording.on('reconnecting', handlers.reconnecting);
+    recording.on('reconnected', handlers.reconnected);
+    recording.on('session_restart', handlers.session_restart);
     recording.on('source_muted', handlers.source_muted);
     recording.on('source_unmuted', handlers.source_unmuted);
+    recording.on('token', handlers.token);
+    recording.on('finalized', handlers.finalized);
 
     this.boundHandlers = handlers;
   }
@@ -396,8 +465,13 @@ export class RecordingStore {
       r.off('error', h.error);
       r.off('state_change', h.state_change);
       r.off('connected', h.connected);
+      r.off('reconnecting', h.reconnecting);
+      r.off('reconnected', h.reconnected);
+      r.off('session_restart', h.session_restart);
       r.off('source_muted', h.source_muted);
       r.off('source_unmuted', h.source_unmuted);
+      r.off('token', h.token);
+      r.off('finalized', h.finalized);
     }
     this.recording = null;
     this.boundHandlers = null;
@@ -437,6 +511,7 @@ export class RecordingStore {
     this._result = null;
     this._error = null;
     this._isSourceMuted = false;
+    this._reconnectAttempt = 0;
     this._currentUtteranceSegmentCount = 0;
     this.utteranceBuffer = new RealtimeUtteranceBuffer();
     this.notify();
@@ -503,6 +578,8 @@ export class RecordingStore {
       error: this._error,
       isPaused: this._state === 'paused',
       isSourceMuted: this._isSourceMuted,
+      isReconnecting: this._state === 'reconnecting',
+      reconnectAttempt: this._reconnectAttempt,
     });
 
     this.snapshot = next;
@@ -518,8 +595,13 @@ interface BoundHandlers {
   endpoint: () => void;
   finished: () => void;
   error: (error: Error) => void;
-  state_change: (update: { old_state: RecordingState; new_state: RecordingState }) => void;
+  state_change: (update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason }) => void;
   connected: () => void;
+  reconnecting: (event: ReconnectingEvent) => void;
+  reconnected: (event: { attempt: number }) => void;
+  session_restart: (event: { reset_transcript: boolean }) => void;
   source_muted: () => void;
   source_unmuted: () => void;
+  token: (token: RealtimeToken) => void;
+  finalized: () => void;
 }

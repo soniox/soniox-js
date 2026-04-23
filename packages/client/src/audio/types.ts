@@ -79,4 +79,14 @@ export interface AudioSource {
    * Resume audio capture after pause (optional).
    */
   resume?(): void;
+
+  /**
+   * Reinitialize the audio encoder without releasing the underlying
+   * capture device (optional).
+   *
+   * Called during reconnection so the new server session receives a
+   * fresh audio stream with proper container headers. Implementations
+   * that produce a header-less format (e.g. raw PCM) can omit this.
+   */
+  restart?(): void;
 }

@@ -142,6 +142,14 @@ export type SttSessionOptions = {
    * @default 5000
    */
   keepalive_interval_ms?: number | undefined;
+
+  /**
+   * Maximum time to wait for the WebSocket connection to open (milliseconds).
+   * If the connection is not established within this time, a
+   * {@link ConnectionError} with message "Connection timed out" is thrown.
+   * @default 20000
+   */
+  connect_timeout_ms?: number | undefined;
 };
 
 // =============================================================================
@@ -411,6 +419,22 @@ export type SttSessionState =
   | 'closed'
   | 'error';
 
+/**
+ * Reason for a state transition.
+ *
+ * Provided as an optional field on `state_change` events so consumers
+ * can distinguish user-initiated actions from automatic reconnections,
+ * connection failures, etc.
+ */
+export type StateChangeReason =
+  | 'user_action'
+  | 'connected'
+  | 'connection_lost'
+  | 'reconnecting'
+  | 'reconnected'
+  | 'error'
+  | 'finished';
+
 // =============================================================================
 // Session Events
 // =============================================================================
@@ -462,7 +486,11 @@ export type SttSessionEvents = {
   /**
    * Session state transition.
    */
-  state_change: (update: { old_state: SttSessionState; new_state: SttSessionState }) => void;
+  state_change: (update: {
+    old_state: SttSessionState;
+    new_state: SttSessionState;
+    reason?: StateChangeReason;
+  }) => void;
 };
 
 // =============================================================================

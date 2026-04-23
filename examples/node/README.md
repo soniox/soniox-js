@@ -36,3 +36,26 @@ node soniox_async.js --delete_all_files
 # Delete all transcriptions from your account
 node soniox_async.js --delete_all_transcriptions
 ```
+
+## Real-time TTS examples
+
+```sh
+# Generate speech and write to a file via the WebSocket TTS API
+node soniox_tts_realtime.js --text "Hello from Soniox."
+
+# Simulate LLM-style token streaming by sending text chunks over time
+node soniox_tts_realtime.js --text "Hello from Soniox." --chunked
+```
+
+## REST TTS examples
+
+```sh
+# Generate speech and write directly to a file
+node soniox_tts_rest.js --text "Hello from Soniox."
+
+# Generate speech via the streaming REST API
+node soniox_tts_rest.js --text "Hello from Soniox." --stream
+
+# List available TTS models and their voices
+node soniox_tts_rest.js --list_models
+```

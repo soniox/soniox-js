@@ -22,8 +22,14 @@ export { AudioPermissionError, AudioDeviceError, AudioUnavailableError } from '.
 // Permissions
 export { BrowserPermissionResolver } from './permissions/browser.js';
 
+// TTS classes (from @soniox/core)
+export { RealtimeTtsConnection, RealtimeTtsStream, TtsRestClient } from '@soniox/core';
+
+// Errors (from @soniox/core)
+export { SonioxError, SonioxHttpError } from '@soniox/core';
+
 // Public types — Client
-export type { SonioxClientOptions, SttOptions } from './client.js';
+export type { SonioxClientOptions, SttOptions, ClientTtsFactory } from './client.js';
 
 // Public types — Recording
 export type { RecordingState, RecordingEvents, RecordOptions } from './recording.js';
@@ -40,3 +46,18 @@ export type { AudioErrorCode } from './audio/errors.js';
 
 // Public types — Permissions
 export type { PermissionResolver, PermissionResult, PermissionStatus, PermissionType } from './permissions/types.js';
+
+// Public types — TTS
+export type {
+  GenerateSpeechOptions,
+  TtsAudioFormat,
+  TtsConnectionEvents,
+  TtsConnectionOptions,
+  TtsStreamConfig,
+  TtsStreamEvents,
+  TtsStreamInput,
+  TtsStreamState,
+} from '@soniox/core';
+
+// Public types — HTTP errors
+export type { HttpErrorCode, HttpErrorDetails, HttpMethod } from '@soniox/core';

@@ -19,10 +19,15 @@ export { FileListResult, SonioxFile } from './async/files.js';
 // STT API
 export { segmentTranscript, SonioxTranscript, SonioxTranscription, TranscriptionListResult } from './async/stt.js';
 
+// TTS API
+export { SonioxTtsApi } from './async/tts.js';
+
 // Real-time API
 export {
   SonioxRealtimeApi,
   RealtimeSttSession,
+  RealtimeTtsConnection,
+  RealtimeTtsStream,
   segmentRealtimeTokens,
   RealtimeSegmentBuffer,
   RealtimeUtteranceBuffer,

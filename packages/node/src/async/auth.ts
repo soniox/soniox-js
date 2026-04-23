@@ -10,9 +10,21 @@ export class SonioxAuthAPI {
    * @param request - Request parameters for the temporary key
    * @param signal - Optional AbortSignal for cancellation
    * @returns The temporary API key response
+   *
+   * @example
+   * ```typescript
+   * const sttKey = await client.auth.createTemporaryKey({
+   *   usage_type: 'transcribe_websocket',
+   *   expires_in_seconds: 300,
+   * });
+   *
+   * const ttsKey = await client.auth.createTemporaryKey({
+   *   usage_type: 'tts_rt',
+   *   expires_in_seconds: 300,
+   * });
+   * ```
    */
   async createTemporaryKey(request: TemporaryApiKeyRequest, signal?: AbortSignal): Promise<TemporaryApiKeyResponse> {
-    // Validate expires_in_seconds range
     if (
       !Number.isFinite(request.expires_in_seconds) ||
       request.expires_in_seconds < 1 ||

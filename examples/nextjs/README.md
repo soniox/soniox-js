@@ -33,14 +33,47 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Setup
 
-Wrap your app with the `SonioxProvider` and pass your API key (or a function that returns a temporary key).
+Wrap your app with the `SonioxProvider` and pass a `config` callback that
+fetches a temporary API key from your backend. The SDK invokes the callback
+with a `ConfigContext` whose `usage` field is either `'transcribe_websocket'`
+(for STT) or `'tts_rt'` (for TTS), so your server can mint a correctly scoped
+temporary key.
 
 ```tsx
 import { SonioxProvider } from '@soniox/react';
 
-function App() {
-  return <SonioxProvider apiKey={getAPIKey}>{/* your app */}</SonioxProvider>;
+async function getSonioxConfig(context) {
+  const res = await fetch('/api/get-temporary-api-key', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usage_type: context?.usage ?? 'transcribe_websocket' }),
+  });
+  // Forward region / base_domain from the server so the browser connects to
+  // the same regional endpoints the temporary key is scoped to (EU / JP / US).
+  const { apiKey, region, baseDomain } = await res.json();
+  return {
+    api_key: apiKey,
+    ...(region ? { region } : {}),
+    ...(baseDomain ? { base_domain: baseDomain } : {}),
+  };
 }
+
+function App() {
+  return <SonioxProvider config={getSonioxConfig}>{/* your app */}</SonioxProvider>;
+}
+```
+
+### Running in a non-US region
+
+If you deploy against EU or JP, set `SONIOX_REGION` (or `SONIOX_BASE_DOMAIN`)
+on the server. The `/api/get-temporary-api-key` route echoes those values back
+to the browser so `getSonioxConfig` can forward them to the SDK — otherwise
+the browser falls back to US endpoints and the regional key fails to auth.
+
+```bash
+# .env
+SONIOX_API_KEY=<SONIOX_API_KEY>
+SONIOX_REGION=eu     # or 'jp'; leave unset for US
 ```
 
 ## Transcribing microphone stream
@@ -108,6 +141,51 @@ groups.de?.finalText;
 Full example can be found in `src/app/translate-between.tsx`.
 
 You can learn more about translation concepts [here](https://soniox.com/docs/stt/rt/real-time-translation).
+
+## Text-to-speech
+
+Use the `useTts` hook to generate speech from text. By default it uses the
+realtime WebSocket TTS API and streams audio chunks as they are generated.
+Collect them via the `onAudio` callback and play the result back through an
+`<audio>` element.
+
+```tsx
+import { useTts } from '@soniox/react';
+
+function TextToSpeech() {
+  const chunks = useRef<Uint8Array[]>([]);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  const { speak, isSpeaking } = useTts({
+    voice: 'Adrian',
+    model: 'tts-rt-v1-preview',
+    language: 'en',
+    audio_format: 'wav',
+    onAudio: (chunk) => {
+      chunks.current.push(chunk);
+    },
+    onTerminated: () => {
+      const blob = new Blob(chunks.current, { type: 'audio/wav' });
+      setAudioUrl(URL.createObjectURL(blob));
+    },
+  });
+
+  return (
+    <>
+      <button onClick={() => speak('Hello world.')} disabled={isSpeaking}>
+        Speak
+      </button>
+      {audioUrl && <audio src={audioUrl} controls autoPlay />}
+    </>
+  );
+}
+```
+
+Full example can be found in `src/app/text-to-speech.tsx`.
+
+When using `useTts` from within a `<SonioxProvider>`, it automatically picks
+up the provider's `config` callback — the SDK invokes it with
+`ConfigContext.usage === 'tts_rt'`, so the backend can mint a scoped TTS key.
 
 ## Why Next.js and not pure React?
 

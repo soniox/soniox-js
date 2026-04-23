@@ -20,6 +20,7 @@ export default [
       'scripts/**',
       'examples/**/*.jsx',
       'examples/**/*.js',
+      'generated/**',
     ],
   },
   ...tseslint.configs.recommendedTypeChecked,

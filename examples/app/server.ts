@@ -11,6 +11,7 @@ import { register as registerModels } from './routes/models';
 import { register as registerPushToTalk } from './routes/push-to-talk';
 import { register as registerRealtime } from './routes/realtime';
 import { register as registerTranscriptions } from './routes/transcriptions';
+import { register as registerTts } from './routes/tts';
 import { register as registerWebhooks } from './routes/webhooks';
 import { sessionMiddleware, setSessionApiKey, clearSessionApiKey, getSessionStatus } from './session';
 
@@ -81,6 +82,7 @@ registerAuth(app);
 registerModels(app);
 registerFiles(app);
 registerTranscriptions(app);
+registerTts(app);
 registerWebhooks(app);
 
 // --- Register WebSocket routes ---

@@ -12,6 +12,31 @@ export type RealtimeErrorCode =
   | 'realtime_error';
 
 /**
- * All possible SDK error codes
+ * Error codes for HTTP client errors
  */
-export type SonioxErrorCode = RealtimeErrorCode | 'soniox_error';
+export type HttpErrorCode = 'network_error' | 'timeout' | 'aborted' | 'http_error' | 'parse_error';
+
+/**
+ * HTTP methods supported by the client
+ */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
+
+/**
+ * Error details for SonioxHttpError
+ */
+export interface HttpErrorDetails {
+  code: HttpErrorCode;
+  message: string;
+  url: string;
+  method: HttpMethod;
+  statusCode?: number | undefined;
+  headers?: Record<string, string> | undefined;
+  /** Response body text (capped at 4KB) */
+  bodyText?: string | undefined;
+  cause?: unknown;
+}
+
+/**
+ * All possible SDK error codes (real-time + HTTP-specific codes)
+ */
+export type SonioxErrorCode = RealtimeErrorCode | 'soniox_error' | HttpErrorCode;

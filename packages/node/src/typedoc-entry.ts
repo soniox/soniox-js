@@ -10,6 +10,7 @@ export { SonioxNodeClient } from './client.js';
 // Async API classes (accessed via client properties)
 export { SonioxFilesAPI, FileListResult, SonioxFile } from './async/files.js';
 export { SonioxSttApi, SonioxTranscript, SonioxTranscription, TranscriptionListResult } from './async/stt.js';
+export { SonioxTtsApi } from './async/tts.js';
 export { SonioxModelsAPI } from './async/models.js';
 export { SonioxWebhooksAPI } from './async/webhooks.js';
 export { SonioxAuthAPI } from './async/auth.js';
@@ -18,6 +19,8 @@ export { SonioxAuthAPI } from './async/auth.js';
 export {
   SonioxRealtimeApi,
   RealtimeSttSession,
+  RealtimeTtsConnection,
+  RealtimeTtsStream,
   RealtimeSegmentBuffer,
   RealtimeUtteranceBuffer,
 } from './realtime/index.js';
@@ -151,4 +154,19 @@ export type {
   RealtimeSegmentBufferOptions,
   RealtimeUtteranceBufferOptions,
   RealtimeClientOptions,
+} from './types/public/index.js';
+
+// Public types — TTS
+export type {
+  GenerateSpeechOptions,
+  TtsAudioFormat,
+  TtsConnectionEvents,
+  TtsConnectionOptions,
+  TtsEvent,
+  TtsModel,
+  TtsStreamConfig,
+  TtsStreamEvents,
+  TtsStreamInput,
+  TtsStreamState,
+  TtsVoice,
 } from './types/public/index.js';

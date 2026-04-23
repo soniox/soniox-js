@@ -5,7 +5,9 @@ import { ClientTab } from './client-tab';
 import { TranscriptionTab } from './realtime-tab';
 import { AgentTab } from './agent-tab';
 import { AsyncTab } from './async-tab';
+import { TtsTab } from './tts-tab';
 import { Button } from './components';
+import { getSonioxConfig } from './soniox-config';
 
 function ApiTokenBar({ onTokenChange }) {
   const [source, setSource] = useState(null); // 'custom' | 'env' | 'none' | null (loading)
@@ -112,6 +114,7 @@ function App() {
     { id: 'client', label: 'Client SDK' },
     { id: 'realtime', label: 'Realtime' },
     { id: 'async', label: 'Async' },
+    { id: 'tts', label: 'Text-to-Speech' },
     { id: 'agent', label: 'Voice Agent' },
   ];
 
@@ -124,15 +127,7 @@ function App() {
         <ApiTokenBar onTokenChange={handleTokenChange} />
       </div>
 
-      <SonioxProvider
-        key={tokenVersion}
-        apiKey={async () => {
-          const res = await fetch('/tmp-key');
-          if (!res.ok) throw new Error('Failed to fetch temporary API key');
-          const data = await res.json();
-          return data.api_key;
-        }}
-      >
+      <SonioxProvider key={tokenVersion} config={getSonioxConfig}>
         <div className="flex mt-2 border-b-2 border-gray-300">
           {tabs.map((tab) => (
             <button
@@ -148,6 +143,7 @@ function App() {
         {activeTab === 'client' && <ClientTab />}
         {activeTab === 'realtime' && <TranscriptionTab key={tokenVersion} />}
         {activeTab === 'async' && <AsyncTab key={tokenVersion} />}
+        {activeTab === 'tts' && <TtsTab key={tokenVersion} />}
         {activeTab === 'agent' && <AgentTab key={tokenVersion} />}
       </SonioxProvider>
     </div>

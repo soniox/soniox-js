@@ -1,4 +1,4 @@
-export type { RealtimeErrorCode, SonioxErrorCode } from './errors.js';
+export type { RealtimeErrorCode, SonioxErrorCode, HttpErrorCode, HttpErrorDetails, HttpMethod } from './errors.js';
 
 export type {
   AudioData,
@@ -13,6 +13,7 @@ export type {
   RealtimeUtteranceBufferOptions,
   SegmentGroupKey,
   SendStreamOptions,
+  StateChangeReason,
   SttSessionConfig,
   SttSessionEvents,
   SttSessionOptions,
@@ -27,3 +28,17 @@ export type {
   OneWayTranslationConfig,
   TwoWayTranslationConfig,
 } from './transcriptions.js';
+
+export type {
+  GenerateSpeechOptions,
+  TtsAudioFormat,
+  TtsConnectionEvents,
+  TtsConnectionOptions,
+  TtsEvent,
+  TtsModel,
+  TtsStreamConfig,
+  TtsStreamEvents,
+  TtsStreamInput,
+  TtsStreamState,
+  TtsVoice,
+} from './tts.js';

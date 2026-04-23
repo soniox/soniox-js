@@ -5,14 +5,23 @@
  * and a RealtimeSttSession, including audio buffering during key fetch/connection.
  */
 
-import { TypedEmitter, RealtimeSttSession } from '@soniox/core';
-import type { RealtimeResult, RealtimeToken, SttSessionConfig, SttSessionOptions } from '@soniox/core';
+import { TypedEmitter, RealtimeSttSession, isRetriableError, ConnectionError } from '@soniox/core';
+import type {
+  ConfigContext,
+  RealtimeResult,
+  RealtimeToken,
+  ResolvedConnectionConfig,
+  StateChangeReason,
+  SttSessionConfig,
+  SttSessionOptions,
+} from '@soniox/core';
 
 import type { AudioSource } from './audio/types.js';
-import type { ApiKeyConfig } from './auth.js';
-import { resolveApiKey } from './auth.js';
 
 const TERMINAL_STATES: readonly RecordingState[] = ['stopped', 'canceled', 'error'];
+
+const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
+const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 
 /**
  * Unified recording lifecycle states.
@@ -23,10 +32,55 @@ export type RecordingState =
   | 'connecting'
   | 'recording'
   | 'paused'
+  | 'reconnecting'
   | 'stopping'
   | 'stopped'
   | 'error'
   | 'canceled';
+
+/**
+ * Reconnection configuration for automatic WebSocket recovery.
+ */
+export type ReconnectOptions = {
+  /**
+   * Enable automatic reconnection on retriable errors.
+   * @default false
+   */
+  auto_reconnect?: boolean | undefined;
+
+  /**
+   * Maximum number of consecutive reconnection attempts before giving up.
+   * @default 3
+   */
+  max_reconnect_attempts?: number | undefined;
+
+  /**
+   * Base delay in milliseconds for exponential backoff (1x, 2x, 4x, ...).
+   * @default 1000
+   */
+  reconnect_base_delay_ms?: number | undefined;
+
+  /**
+   * When true, clear accumulated transcript state (finalText, segments,
+   * utterances) on reconnect. Window-tracking state is always reset.
+   * @default false
+   */
+  reset_transcript_on_reconnect?: boolean | undefined;
+};
+
+/**
+ * Payload for the `reconnecting` event.
+ */
+export type ReconnectingEvent = {
+  /** Current attempt number (1-based). */
+  attempt: number;
+  /** Maximum attempts configured. */
+  max_attempts: number;
+  /** Backoff delay before reconnect (ms). */
+  delay_ms: number;
+  /** Call to cancel this reconnection attempt. */
+  preventDefault: () => void;
+};
 
 /**
  * Events emitted by a Recording instance
@@ -54,7 +108,21 @@ export type RecordingEvents = {
   connected: () => void;
 
   /** Recording state transition. */
-  state_change: (update: { old_state: RecordingState; new_state: RecordingState }) => void;
+  state_change: (update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason }) => void;
+
+  /** About to attempt a reconnection. Call `preventDefault()` to cancel. */
+  reconnecting: (event: ReconnectingEvent) => void;
+
+  /** Successfully reconnected after a drop. */
+  reconnected: (event: { attempt: number }) => void;
+
+  /**
+   * New STT session started (initial or after reconnect).
+   * Consumers should reset any session-local tracking state (e.g. token
+   * window comparisons). The `reset_transcript` flag indicates whether
+   * accumulated transcript state should also be cleared.
+   */
+  session_restart: (event: { reset_transcript: boolean }) => void;
 
   /** Audio source was muted externally (e.g. OS-level or hardware mute). */
   source_muted: () => void;
@@ -66,28 +134,48 @@ export type RecordingEvents = {
 /**
  * Options for creating a recording
  */
-export type RecordOptions = SttSessionConfig & {
-  /**
-   * Audio source to use. Defaults to MicrophoneSource if not provided.
-   */
-  source?: AudioSource | undefined;
+export type RecordOptions = SttSessionConfig &
+  ReconnectOptions & {
+    /**
+     * Audio source to use. Defaults to MicrophoneSource if not provided.
+     */
+    source?: AudioSource | undefined;
 
-  /**
-   * AbortSignal for cancellation
-   */
-  signal?: AbortSignal | undefined;
+    /**
+     * AbortSignal for cancellation
+     */
+    signal?: AbortSignal | undefined;
 
-  /**
-   * Maximum number of audio chunks to buffer while waiting for key/connection
-   * @default 1000
-   */
-  buffer_queue_size?: number | undefined;
+    /**
+     * Maximum number of audio chunks to buffer while waiting for key/connection
+     * @default 1000
+     */
+    buffer_queue_size?: number | undefined;
 
-  /**
-   * SDK-level session options (signal, etc.)
-   */
-  session_options?: SttSessionOptions | undefined;
-};
+    /**
+     * SDK-level session options (signal, etc.)
+     */
+    session_options?: SttSessionOptions | undefined;
+
+    /**
+     * Function that receives the resolved connection config (including
+     * `stt_defaults` from the server) and returns the final session config.
+     *
+     * When provided, its return value is used as the session config,
+     * and any flat session config fields on this object are ignored.
+     *
+     * @example
+     * ```typescript
+     * client.realtime.record({
+     *   session_config: (resolved) => ({
+     *     ...resolved.stt_defaults,
+     *     enable_endpoint_detection: true,
+     *   }),
+     * });
+     * ```
+     */
+    session_config?: ((resolved: ResolvedConnectionConfig) => SttSessionConfig) | undefined;
+  };
 
 const DEFAULT_BUFFER_QUEUE_SIZE = 1000;
 
@@ -96,7 +184,7 @@ const DEFAULT_BUFFER_QUEUE_SIZE = 1000;
  *
  * Manages the lifecycle of audio capture and real-time transcription:
  * 1. Starts audio source immediately (buffers chunks)
- * 2. Resolves the API key (from string or async function)
+ * 2. Resolves connection config (API key + URLs, sync or async)
  * 3. Connects to the Soniox WebSocket API
  * 4. Drains buffered audio, then pipes live audio to the session
  *
@@ -110,21 +198,30 @@ const DEFAULT_BUFFER_QUEUE_SIZE = 1000;
  * await recording.stop();
  * ```
  */
+/** @internal */
+export type SttConfigInput = SttSessionConfig | ((resolved: ResolvedConnectionConfig) => SttSessionConfig);
+
 export class Recording {
   private readonly emitter = new TypedEmitter<RecordingEvents>();
-  private readonly apiKeyConfig: ApiKeyConfig;
-  private readonly wsBaseUrl: string;
-  private readonly sttConfig: SttSessionConfig;
+  private readonly configResolver: (context?: ConfigContext) => Promise<ResolvedConnectionConfig>;
+  private readonly sttConfigInput: SttConfigInput;
   private readonly sessionOptions: SttSessionOptions | undefined;
   private readonly source: AudioSource;
   private readonly maxBufferSize: number;
   private readonly signal: AbortSignal | undefined;
+
+  // Reconnect config
+  private readonly autoReconnect: boolean;
+  private readonly maxReconnectAttempts: number;
+  private readonly reconnectBaseDelay: number;
+  private readonly resetTranscriptOnReconnect: boolean;
 
   private session: RealtimeSttSession | null = null;
   private audioBuffer: ArrayBuffer[] = [];
   private _state: RecordingState = 'idle';
   private isBuffering = true;
   private _isSourceMuted = false;
+  private _reconnectAttempt = 0;
 
   // Stop promise handling
   private stopResolver: (() => void) | null = null;
@@ -132,23 +229,29 @@ export class Recording {
 
   /** @internal */
   constructor(
-    apiKeyConfig: ApiKeyConfig,
-    wsBaseUrl: string,
-    sttConfig: SttSessionConfig,
+    configResolver: (context?: ConfigContext) => Promise<ResolvedConnectionConfig>,
+    sttConfigInput: SttConfigInput,
     source: AudioSource,
     options?: {
       buffer_queue_size?: number;
       session_options?: SttSessionOptions;
       signal?: AbortSignal;
+      auto_reconnect?: boolean;
+      max_reconnect_attempts?: number;
+      reconnect_base_delay_ms?: number;
+      reset_transcript_on_reconnect?: boolean;
     }
   ) {
-    this.apiKeyConfig = apiKeyConfig;
-    this.wsBaseUrl = wsBaseUrl;
-    this.sttConfig = sttConfig;
+    this.configResolver = configResolver;
+    this.sttConfigInput = sttConfigInput;
     this.source = source;
     this.maxBufferSize = options?.buffer_queue_size ?? DEFAULT_BUFFER_QUEUE_SIZE;
     this.sessionOptions = options?.session_options;
     this.signal = options?.signal;
+    this.autoReconnect = options?.auto_reconnect ?? false;
+    this.maxReconnectAttempts = options?.max_reconnect_attempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
+    this.reconnectBaseDelay = options?.reconnect_base_delay_ms ?? DEFAULT_RECONNECT_BASE_DELAY_MS;
+    this.resetTranscriptOnReconnect = options?.reset_transcript_on_reconnect ?? false;
 
     // Start the async lifecycle on the next microtask so callers can attach listeners first
     queueMicrotask(() => {
@@ -208,7 +311,7 @@ export class Recording {
       });
     }
 
-    this.setState('stopping');
+    this.setState('stopping', 'user_action');
     this.source.stop();
 
     if (this.session && this.session.state === 'connected') {
@@ -222,17 +325,28 @@ export class Recording {
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         this.settleStop(error);
-        this.cleanup('error');
+        this.cleanup('error', 'error');
         return;
       }
 
       return finishPromise;
     }
 
-    return new Promise<void>((resolve, reject) => {
-      this.stopResolver = resolve;
-      this.stopRejecter = reject;
-    });
+    // Session not yet created or still mid-connect — run() or
+    // shouldAbortReconnect() will detect 'stopping' and settle.
+    const sessionPending = !this.session || this.session.state === 'idle' || this.session.state === 'connecting';
+    if (sessionPending) {
+      return new Promise<void>((resolve, reject) => {
+        this.stopResolver = resolve;
+        this.stopRejecter = reject;
+      });
+    }
+
+    // Session is in a terminal state (closed/error/finished/canceled) —
+    // nothing will settle a deferred promise, so resolve immediately.
+    this.session?.close();
+    this.settleStop();
+    this.cleanup('stopped', 'user_action');
   }
 
   /**
@@ -245,7 +359,7 @@ export class Recording {
 
     this.source.stop();
     this.session?.close();
-    this.cleanup('canceled');
+    this.cleanup('canceled', 'user_action');
   }
 
   /**
@@ -265,25 +379,66 @@ export class Recording {
     if (this._state !== 'recording') return;
     this.source.pause?.();
     this.session?.pause();
-    this.setState('paused');
+    this.setState('paused', 'user_action');
   }
 
   /**
    * Resume recording after pause.
    *
    * Resumes the audio source and session. Audio capture and transmission
-   * continue from where they left off.
+   * continue from where they left off. If audio was buffered during a
+   * reconnect while paused, the buffer is drained now.
    */
   resume(): void {
     if (this._state !== 'paused') return;
     this.source.resume?.();
-    // Keep session paused (keepalive active) if the source is still muted
-    // externally — no audio will flow anyway.  handleSourceUnmuted() will
-    // resume the session when the mic comes back.
     if (!this._isSourceMuted) {
       this.session?.resume();
     }
-    this.setState('recording');
+    this.setState('recording', 'user_action');
+
+    // Drain any audio buffered during a reconnect that completed while paused.
+    if (this.isBuffering && this.session) {
+      this.isBuffering = false;
+      for (const chunk of this.audioBuffer) {
+        if (this.isTerminalState()) break;
+        this.session.sendAudio(chunk);
+      }
+      this.audioBuffer = [];
+    }
+  }
+
+  /**
+   * @internal Debug-only: simulate an unexpected network disconnection.
+   * Tears down the current session and feeds a retriable error into the
+   * error handler so the reconnection logic kicks in exactly as it would
+   * during a real connection drop.
+   */
+  __debugForceDisconnect(): void {
+    if (this._state !== 'recording' && this._state !== 'paused') return;
+    this.session?.close();
+    this.session = null;
+    this.handleError(new ConnectionError('Debug: simulated disconnect'));
+  }
+
+  /**
+   * Force a reconnection — tears down the current session and audio
+   * encoder, then establishes a new session via the standard reconnect
+   * flow (backoff, config re-resolution, buffer drain).
+   *
+   * Use this to recover from stale connections after platform lifecycle
+   * events such as laptop sleep/wake (web `visibilitychange`) or app
+   * backgrounding (React Native `AppState`).
+   *
+   * Requires `auto_reconnect` to be enabled. No-op when the recording
+   * is not in `recording` or `paused` state.
+   */
+  reconnect(): void {
+    if (this._state !== 'recording' && this._state !== 'paused') return;
+    if (!this.autoReconnect) return;
+    this.session?.close();
+    this.session = null;
+    this.handleError(new ConnectionError('Reconnect requested'));
   }
 
   private async run(): Promise<void> {
@@ -296,7 +451,7 @@ export class Recording {
     const onAbort = () => this.handleAbort();
     this.signal?.addEventListener('abort', onAbort, { once: true });
 
-    this.setState('starting');
+    this.setState('starting', 'user_action');
 
     try {
       // Start audio source (begins buffering)
@@ -318,10 +473,10 @@ export class Recording {
       return;
     }
 
-    // Resolve API key
-    let apiKey: string;
+    // Resolve connection config (API key + URLs)
+    let resolvedConfig: ResolvedConnectionConfig;
     try {
-      apiKey = await resolveApiKey(this.apiKeyConfig);
+      resolvedConfig = await this.configResolver();
     } catch (error) {
       this.signal?.removeEventListener('abort', onAbort);
       this.source.stop();
@@ -332,14 +487,18 @@ export class Recording {
     // Remove startup abort listener
     this.signal?.removeEventListener('abort', onAbort);
 
-    // Check if cancelled/stopped during key fetch
+    // Check if cancelled/stopped during config resolution
     if (this.isTerminalState()) {
       this.source.stop();
       return;
     }
 
+    // Resolve session config (may depend on server-provided stt_defaults)
+    const sttConfig =
+      typeof this.sttConfigInput === 'function' ? this.sttConfigInput(resolvedConfig) : this.sttConfigInput;
+
     // Create session and connect
-    this.setState('connecting');
+    this.setState('connecting', 'user_action');
 
     const sessionOptions: SttSessionOptions = {
       ...this.sessionOptions,
@@ -348,7 +507,12 @@ export class Recording {
       sessionOptions.signal = this.signal;
     }
 
-    const session = new RealtimeSttSession(apiKey, this.wsBaseUrl, this.sttConfig, sessionOptions);
+    const session = new RealtimeSttSession(
+      resolvedConfig.api_key,
+      resolvedConfig.stt_ws_url,
+      sttConfig,
+      sessionOptions
+    );
     this.session = session;
 
     // Wire up session events
@@ -372,7 +536,7 @@ export class Recording {
 
     // Drain buffered audio and switch to live mode
     if (!stoppingEarly) {
-      this.setState('recording');
+      this.setState('recording', 'connected');
       this.emitter.emit('connected');
     }
 
@@ -393,7 +557,7 @@ export class Recording {
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         this.settleStop(error);
-        this.cleanup('error');
+        this.cleanup('error', 'error');
       }
       // The 'finished' event handler will settle the stop promise and clean up.
     }
@@ -402,8 +566,7 @@ export class Recording {
   private handleAudioData(chunk: ArrayBuffer): void {
     if (this.isBuffering) {
       if (this.audioBuffer.length >= this.maxBufferSize) {
-        this.handleError(new Error('Audio buffer queue size exceeded before connection was established'));
-        return;
+        this.audioBuffer.shift();
       }
       this.audioBuffer.push(chunk);
       return;
@@ -419,10 +582,10 @@ export class Recording {
   }
 
   private handleSourceMuted(): void {
-    if (this._state !== 'recording' && this._state !== 'paused') return;
+    if (!this.isMuteTrackingState()) return;
     this._isSourceMuted = true;
     // Only toggle session keepalive when in recording state.
-    // When paused, session is already paused (keepalive already active).
+    // When paused/reconnecting/connecting, session is already paused or absent.
     if (this._state === 'recording') {
       this.session?.pause();
     }
@@ -430,7 +593,7 @@ export class Recording {
   }
 
   private handleSourceUnmuted(): void {
-    if (this._state !== 'recording' && this._state !== 'paused') return;
+    if (!this.isMuteTrackingState()) return;
     this._isSourceMuted = false;
     // Only resume session when in recording state.
     // When paused, user pause takes precedence — don't resume.
@@ -438,6 +601,11 @@ export class Recording {
       this.session?.resume();
     }
     this.emitter.emit('source_unmuted');
+  }
+
+  private isMuteTrackingState(): boolean {
+    const s = this._state;
+    return s === 'recording' || s === 'paused' || s === 'reconnecting' || s === 'connecting';
   }
 
   private wireSessionEvents(session: RealtimeSttSession): void {
@@ -450,7 +618,7 @@ export class Recording {
       this.source.stop();
       this.emitter.emit('finished');
       this.settleStop();
-      this.cleanup('stopped');
+      this.cleanup('stopped', 'finished');
     });
 
     session.on('error', (error) => {
@@ -468,7 +636,7 @@ export class Recording {
     const error = new Error('Recording aborted');
     this.emitter.emit('error', error);
     this.settleStop(error);
-    this.cleanup('canceled');
+    this.cleanup('canceled', 'user_action');
   }
 
   private handleError(error: Error): void {
@@ -476,28 +644,189 @@ export class Recording {
       return;
     }
 
+    if (this.shouldReconnect(error)) {
+      void this.attemptReconnect(error);
+      return;
+    }
+
     this.source.stop();
-    // Close the session if it exists
     this.session?.close();
     this.emitter.emit('error', error);
     this.settleStop(error);
-    this.cleanup('error');
+    this.cleanup('error', 'error');
   }
 
-  private cleanup(finalState: RecordingState): void {
-    this.setState(finalState);
+  private shouldReconnect(error: Error): boolean {
+    if (!this.autoReconnect) return false;
+    if (this._state === 'stopping') return false;
+    if (this._state === 'reconnecting') return false;
+    if (this._reconnectAttempt >= this.maxReconnectAttempts) return false;
+    return isRetriableError(error);
+  }
+
+  private async attemptReconnect(triggerError: Error): Promise<void> {
+    // Capture pause state before we change recording state.
+    // Mute state is read later (at restoration time) so hardware
+    // mute/unmute that occurs during backoff is not lost.
+    const wasPaused = this._state === 'paused';
+
+    // Tear down old session (but NOT the audio source).
+    this.session?.close();
+    this.session = null;
+
+    // Switch to buffering mode — audio source keeps running.
+    this.isBuffering = true;
+    this.audioBuffer = [];
+
+    // Reinitialize the audio encoder immediately so audio captured
+    // during the reconnect window carries fresh container headers and
+    // can be drained to the new session. Skip when paused — the
+    // source isn't producing data, and we'll restart after connect.
+    if (!wasPaused) {
+      this.source.restart?.();
+    }
+
+    this._reconnectAttempt++;
+    this.setState('reconnecting', 'connection_lost');
+
+    const delay = this.reconnectBaseDelay * Math.pow(2, this._reconnectAttempt - 1);
+
+    // Emit reconnecting event with preventDefault support.
+    let prevented = false;
+    this.emitter.emit('reconnecting', {
+      attempt: this._reconnectAttempt,
+      max_attempts: this.maxReconnectAttempts,
+      delay_ms: delay,
+      preventDefault: () => {
+        prevented = true;
+      },
+    });
+
+    if (prevented) {
+      this.source.stop();
+      this.emitter.emit('error', triggerError);
+      this.settleStop(triggerError);
+      this.cleanup('error', 'error');
+      return;
+    }
+
+    // Wait backoff delay.
+    await new Promise((r) => setTimeout(r, delay));
+
+    if (this.shouldAbortReconnect()) return;
+
+    // Re-resolve config (fresh API key).
+    let resolvedConfig: ResolvedConnectionConfig;
+    try {
+      resolvedConfig = await this.configResolver();
+    } catch (err) {
+      this.handleError(err instanceof Error ? err : new Error(String(err)));
+      return;
+    }
+
+    if (this.shouldAbortReconnect()) return;
+
+    const sttConfig =
+      typeof this.sttConfigInput === 'function' ? this.sttConfigInput(resolvedConfig) : this.sttConfigInput;
+
+    this.setState('connecting', 'reconnecting');
+
+    const sessionOptions: SttSessionOptions = {
+      ...this.sessionOptions,
+    };
+    if (this.signal !== undefined) {
+      sessionOptions.signal = this.signal;
+    }
+
+    const session = new RealtimeSttSession(
+      resolvedConfig.api_key,
+      resolvedConfig.stt_ws_url,
+      sttConfig,
+      sessionOptions
+    );
+    this.session = session;
+    this.wireSessionEvents(session);
+
+    try {
+      await session.connect();
+    } catch (err) {
+      this.handleError(err instanceof Error ? err : new Error(String(err)));
+      return;
+    }
+
+    if (this.shouldAbortReconnect()) return;
+
+    // Signal store to reset window-tracking state before new results arrive.
+    this.emitter.emit('session_restart', { reset_transcript: this.resetTranscriptOnReconnect });
+
+    // Read mute state at restoration time so hardware changes during
+    // backoff / connect are not lost.
+    const currentlyMuted = this._isSourceMuted;
+
+    // Restore pause/mute state on the new session.
+    if (wasPaused || currentlyMuted) {
+      session.pause();
+    }
+
+    if (wasPaused) {
+      // Restart encoder now (was skipped above since source was paused)
+      // and immediately re-pause so resume() can drain later.
+      this.source.restart?.();
+      this.source.pause?.();
+      this.setState('paused', 'reconnected');
+    } else {
+      this.setState('recording', 'reconnected');
+      // Drain audio buffered during the reconnect window. The encoder
+      // was restarted early so these chunks carry fresh container headers.
+      this.isBuffering = false;
+      for (const chunk of this.audioBuffer) {
+        if (this.isTerminalState()) break;
+        session.sendAudio(chunk);
+      }
+      this.audioBuffer = [];
+    }
+
+    this.emitter.emit('connected');
+    this.emitter.emit('reconnected', { attempt: this._reconnectAttempt });
+    this._reconnectAttempt = 0;
+  }
+
+  /**
+   * Check whether an in-flight reconnect should be aborted.
+   * Handles both terminal states and a pending stop() request.
+   */
+  private shouldAbortReconnect(): boolean {
+    if (this.isTerminalState()) return true;
+    if (this._state === 'stopping') {
+      this.settleStop();
+      this.cleanup('stopped', 'user_action');
+      return true;
+    }
+    return false;
+  }
+
+  private cleanup(finalState: RecordingState, reason?: StateChangeReason): void {
+    this.setState(finalState, reason);
     this.audioBuffer = [];
     this.isBuffering = false;
     this._isSourceMuted = false;
+    this._reconnectAttempt = 0;
   }
 
-  private setState(newState: RecordingState): void {
+  private setState(newState: RecordingState, reason?: StateChangeReason): void {
     if (this._state === newState) {
       return;
     }
     const oldState = this._state;
     this._state = newState;
-    this.emitter.emit('state_change', { old_state: oldState, new_state: newState });
+    const update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason } = {
+      old_state: oldState,
+      new_state: newState,
+    };
+    if (reason !== undefined) {
+      update.reason = reason;
+    }
+    this.emitter.emit('state_change', update);
   }
 
   private isTerminalState(): boolean {
