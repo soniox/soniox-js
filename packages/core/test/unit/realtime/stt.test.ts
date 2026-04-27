@@ -524,4 +524,63 @@ describe('RealtimeSttSession', () => {
       expect(session.state).toBe('finished');
     });
   });
+
+  describe('eventQueue iterator-attach gate', () => {
+    beforeEach(() => {
+      installMockWebSocket();
+    });
+
+    afterEach(() => {
+      restoreMockWebSocket();
+    });
+
+    async function connectSession() {
+      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig);
+      const connectPromise = session.connect();
+      const ws = MockWebSocket.instances[MockWebSocket.instances.length - 1]!;
+      ws.open();
+      await connectPromise;
+      return { session, ws };
+    }
+
+    function buildResultMessage() {
+      return JSON.stringify({
+        tokens: [{ text: 'hello', start_ms: 0, end_ms: 100, confidence: 1, is_final: false }],
+        final_audio_proc_ms: 0,
+        total_audio_proc_ms: 100,
+        finished: false,
+      });
+    }
+
+    it('should not buffer events in eventQueue when only .on() is used', async () => {
+      const { session, ws } = await connectSession();
+      session.on('result', () => {
+        // listener-only consumer; intentionally does nothing
+      });
+
+      for (let i = 0; i < 100; i++) {
+        ws.message(buildResultMessage());
+      }
+
+      // Cast to any to inspect the private queue.
+      const internalQueue = (session as unknown as { eventQueue: { queue: unknown[] } }).eventQueue;
+      expect(internalQueue.queue.length).toBe(0);
+    });
+
+    it('should buffer events when [Symbol.asyncIterator]() has been called', async () => {
+      const { session, ws } = await connectSession();
+      // Attach the async iterator (don't await — we just want the getter call).
+      const iterator = session[Symbol.asyncIterator]();
+
+      for (let i = 0; i < 5; i++) {
+        ws.message(buildResultMessage());
+      }
+
+      const internalQueue = (session as unknown as { eventQueue: { queue: unknown[] } }).eventQueue;
+      expect(internalQueue.queue.length).toBe(5);
+
+      // Drain so the iterator can finish cleanly.
+      void iterator;
+    });
+  });
 });

@@ -133,6 +133,7 @@ function filterSpecialTokens(tokens: RealtimeToken[]): RealtimeToken[] {
 export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   private readonly emitter = new TypedEmitter<SttSessionEvents>();
   private readonly eventQueue = new AsyncEventQueue<RealtimeEvent>();
+  private iteratorAttached = false;
 
   private readonly apiKey: string;
   private readonly wsBaseUrl: string;
@@ -400,6 +401,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
    * Async iterator for consuming events.
    */
   [Symbol.asyncIterator](): AsyncIterator<RealtimeEvent> {
+    this.iteratorAttached = true;
     return this.eventQueue[Symbol.asyncIterator]();
   }
 
@@ -493,22 +495,34 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
         tokens: userTokens,
       };
       this.emitter.emit('result', filteredResult);
-      this.eventQueue.push({ kind: 'result', data: filteredResult });
+      // Only push to the eventQueue when an async-iterator consumer has
+      // attached. .on()-only consumers (the documented usage) would
+      // otherwise leak: the queue grows unboundedly because nothing
+      // drains it. See https://github.com/soniox/soniox-js/pull/<TBD>.
+      if (this.iteratorAttached) {
+        this.eventQueue.push({ kind: 'result', data: filteredResult });
+      }
 
       if (hasEndpoint) {
         this.emitter.emit('endpoint');
-        this.eventQueue.push({ kind: 'endpoint' });
+        if (this.iteratorAttached) {
+          this.eventQueue.push({ kind: 'endpoint' });
+        }
       }
 
       if (hasFinalized) {
         this.emitter.emit('finalized');
-        this.eventQueue.push({ kind: 'finalized' });
+        if (this.iteratorAttached) {
+          this.eventQueue.push({ kind: 'finalized' });
+        }
       }
 
       // Check for finished
       if (result.finished) {
         this.emitter.emit('finished');
-        this.eventQueue.push({ kind: 'finished' });
+        if (this.iteratorAttached) {
+          this.eventQueue.push({ kind: 'finished' });
+        }
         this.settleFinish();
         this.cleanup('finished', undefined, 'finished');
       }
