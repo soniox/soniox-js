@@ -96,6 +96,7 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
 
   private _state: TtsStreamState = 'active';
   private readonly audioQueue = new AsyncEventQueue<Uint8Array>();
+  private iteratorAttached = false;
   private readonly connection: RealtimeTtsConnection;
   private readonly ownsConnection: boolean;
 
@@ -196,6 +197,7 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
 
   /** Async iterator that yields decoded audio chunks. */
   [Symbol.asyncIterator](): AsyncIterator<Uint8Array> {
+    this.iteratorAttached = true;
     return this.audioQueue[Symbol.asyncIterator]();
   }
 
@@ -219,7 +221,11 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
     if (event.audio !== undefined) {
       const chunk = decodeBase64ToUint8Array(event.audio);
       this.emit('audio', chunk);
-      this.audioQueue.push(chunk);
+      // Only push to the audioQueue when an async-iterator consumer has
+      // attached. Listener-only consumers would otherwise leak.
+      if (this.iteratorAttached) {
+        this.audioQueue.push(chunk);
+      }
     }
 
     if (event.audio_end) {
