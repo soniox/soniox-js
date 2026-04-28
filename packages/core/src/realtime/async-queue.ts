@@ -64,11 +64,31 @@ export class AsyncEventQueue<T> implements AsyncIterable<T> {
   }
 
   /**
+   * Drop buffered events without ending the queue.
+   *
+   * Intended for owners that know their consumer has gone away (e.g. an
+   * async-iterator consumer broke out of its `for await` loop). The queue
+   * remains active and accepts future pushes. Callers must ensure no other
+   * iterator is concurrently consuming this queue, since this also drops
+   * events those consumers would have observed.
+   */
+  clear(): void {
+    this.queue = [];
+  }
+
+  /**
    * Async iterator implementation.
+   *
+   * The returned iterator implements `return()` so consumers that exit
+   * `for await` early (via `break`, `throw`, or an outer `return`) cleanly
+   * release the iteration without further work. The queue itself is left
+   * in place — call {@link clear} or {@link end}/{@link abort} if buffered
+   * events should also be dropped.
    */
   [Symbol.asyncIterator](): AsyncIterator<T> {
     return {
       next: () => this.next(),
+      return: (value?: T) => Promise.resolve({ value: value as T, done: true }),
     };
   }
 

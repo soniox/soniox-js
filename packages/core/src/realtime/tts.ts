@@ -96,6 +96,7 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
 
   private _state: TtsStreamState = 'active';
   private readonly audioQueue = new AsyncEventQueue<Uint8Array>();
+  private iteratorAttached = false;
   private readonly connection: RealtimeTtsConnection;
   private readonly ownsConnection: boolean;
 
@@ -194,9 +195,37 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
     }
   }
 
-  /** Async iterator that yields decoded audio chunks. */
+  /**
+   * Async iterator that yields decoded audio chunks.
+   *
+   * The returned iterator's `return()` resets the internal iterator-attach
+   * flag and drops any buffered audio, so consumers that exit `for await`
+   * early (via `break` etc.) stop accruing memory while the stream keeps
+   * receiving server audio.
+   */
   [Symbol.asyncIterator](): AsyncIterator<Uint8Array> {
-    return this.audioQueue[Symbol.asyncIterator]();
+    this.iteratorAttached = true;
+    const inner = this.audioQueue[Symbol.asyncIterator]();
+    return {
+      next: () => inner.next(),
+      return: (value?: Uint8Array) => {
+        this.iteratorAttached = false;
+        this.audioQueue.clear();
+        return inner.return?.(value) ?? Promise.resolve({ value: value as Uint8Array, done: true });
+      },
+    };
+  }
+
+  /**
+   * Push an audio chunk to the async iterator queue only when a consumer
+   * has attached via `[Symbol.asyncIterator]()`. Listener-only consumers
+   * (the documented `.on('audio', ...)` pattern) never drain the queue,
+   * so pushing unconditionally would leak buffered chunks.
+   */
+  private enqueueIfIterating(chunk: Uint8Array): void {
+    if (this.iteratorAttached) {
+      this.audioQueue.push(chunk);
+    }
   }
 
   /** @internal Dispatch a server event to this stream. */
@@ -219,7 +248,7 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
     if (event.audio !== undefined) {
       const chunk = decodeBase64ToUint8Array(event.audio);
       this.emit('audio', chunk);
-      this.audioQueue.push(chunk);
+      this.enqueueIfIterating(chunk);
     }
 
     if (event.audio_end) {

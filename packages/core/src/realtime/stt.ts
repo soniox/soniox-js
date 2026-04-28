@@ -133,6 +133,7 @@ function filterSpecialTokens(tokens: RealtimeToken[]): RealtimeToken[] {
 export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   private readonly emitter = new TypedEmitter<SttSessionEvents>();
   private readonly eventQueue = new AsyncEventQueue<RealtimeEvent>();
+  private iteratorAttached = false;
 
   private readonly apiKey: string;
   private readonly wsBaseUrl: string;
@@ -398,9 +399,23 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
 
   /**
    * Async iterator for consuming events.
+   *
+   * The returned iterator's `return()` resets the internal iterator-attach
+   * flag and drops any buffered events, so consumers that exit `for await`
+   * early (via `break` etc.) stop accruing memory while the session keeps
+   * running.
    */
   [Symbol.asyncIterator](): AsyncIterator<RealtimeEvent> {
-    return this.eventQueue[Symbol.asyncIterator]();
+    this.iteratorAttached = true;
+    const inner = this.eventQueue[Symbol.asyncIterator]();
+    return {
+      next: () => inner.next(),
+      return: (value?: RealtimeEvent) => {
+        this.iteratorAttached = false;
+        this.eventQueue.clear();
+        return inner.return?.(value) ?? Promise.resolve({ value: value as RealtimeEvent, done: true });
+      },
+    };
   }
 
   /**
@@ -409,6 +424,18 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
    */
   __debugForceDisconnect(): void {
     this.ws?.close(4999, 'debug: simulated disconnect');
+  }
+
+  /**
+   * Push an event to the async iterator queue only when a consumer has
+   * attached via `[Symbol.asyncIterator]()`. Listener-only consumers
+   * (the documented `.on()` pattern) never drain the queue, so pushing
+   * unconditionally would leak buffered events on long-running sessions.
+   */
+  private enqueueIfIterating(event: RealtimeEvent): void {
+    if (this.iteratorAttached) {
+      this.eventQueue.push(event);
+    }
   }
 
   private async createWebSocket(): Promise<void> {
@@ -493,22 +520,22 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
         tokens: userTokens,
       };
       this.emitter.emit('result', filteredResult);
-      this.eventQueue.push({ kind: 'result', data: filteredResult });
+      this.enqueueIfIterating({ kind: 'result', data: filteredResult });
 
       if (hasEndpoint) {
         this.emitter.emit('endpoint');
-        this.eventQueue.push({ kind: 'endpoint' });
+        this.enqueueIfIterating({ kind: 'endpoint' });
       }
 
       if (hasFinalized) {
         this.emitter.emit('finalized');
-        this.eventQueue.push({ kind: 'finalized' });
+        this.enqueueIfIterating({ kind: 'finalized' });
       }
 
       // Check for finished
       if (result.finished) {
         this.emitter.emit('finished');
-        this.eventQueue.push({ kind: 'finished' });
+        this.enqueueIfIterating({ kind: 'finished' });
         this.settleFinish();
         this.cleanup('finished', undefined, 'finished');
       }

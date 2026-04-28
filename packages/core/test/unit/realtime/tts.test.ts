@@ -359,6 +359,71 @@ describe('RealtimeTtsStream', () => {
     });
   });
 
+  describe('audioQueue iterator-attach gate', () => {
+    function buildAudioMessage(streamId: string): string {
+      return JSON.stringify({
+        stream_id: streamId,
+        audio: btoa('chunk'),
+        audio_end: false,
+      });
+    }
+
+    it('should not buffer audio in audioQueue when only .on() is used', async () => {
+      const { stream, ws } = await createStream();
+      stream.on('audio', () => {
+        // listener-only consumer; intentionally does nothing
+      });
+
+      for (let i = 0; i < 100; i++) {
+        ws.message(buildAudioMessage('test-stream'));
+      }
+
+      const internalQueue = (stream as unknown as { audioQueue: { queue: unknown[] } }).audioQueue;
+      expect(internalQueue.queue.length).toBe(0);
+    });
+
+    it('should buffer audio when [Symbol.asyncIterator]() has been called', async () => {
+      const { stream, ws } = await createStream();
+      const iterator = stream[Symbol.asyncIterator]();
+
+      for (let i = 0; i < 5; i++) {
+        ws.message(buildAudioMessage('test-stream'));
+      }
+
+      const internalQueue = (stream as unknown as { audioQueue: { queue: unknown[] } }).audioQueue;
+      expect(internalQueue.queue.length).toBe(5);
+
+      void iterator;
+    });
+
+    it('should detach when consumer breaks out of for await', async () => {
+      const { stream, ws } = await createStream();
+
+      const consumed: Uint8Array[] = [];
+      const iterPromise = (async () => {
+        for await (const chunk of stream) {
+          consumed.push(chunk);
+          break;
+        }
+      })();
+
+      ws.message(buildAudioMessage('test-stream'));
+      await iterPromise;
+
+      for (let i = 0; i < 100; i++) {
+        ws.message(buildAudioMessage('test-stream'));
+      }
+
+      const internals = stream as unknown as {
+        audioQueue: { queue: unknown[] };
+        iteratorAttached: boolean;
+      };
+      expect(consumed.length).toBe(1);
+      expect(internals.iteratorAttached).toBe(false);
+      expect(internals.audioQueue.queue.length).toBe(0);
+    });
+  });
+
   describe('async iteration', () => {
     it('should yield audio chunks and complete on terminated', async () => {
       const { stream, ws } = await createStream();
