@@ -201,6 +201,18 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
     return this.audioQueue[Symbol.asyncIterator]();
   }
 
+  /**
+   * Push an audio chunk to the async iterator queue only when a consumer
+   * has attached via `[Symbol.asyncIterator]()`. Listener-only consumers
+   * (the documented `.on('audio', ...)` pattern) never drain the queue,
+   * so pushing unconditionally would leak buffered chunks.
+   */
+  private enqueueIfIterating(chunk: Uint8Array): void {
+    if (this.iteratorAttached) {
+      this.audioQueue.push(chunk);
+    }
+  }
+
   /** @internal Dispatch a server event to this stream. */
   _handleEvent(event: TtsEvent): void {
     if (event.error_code !== undefined) {
@@ -221,11 +233,7 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
     if (event.audio !== undefined) {
       const chunk = decodeBase64ToUint8Array(event.audio);
       this.emit('audio', chunk);
-      // Only push to the audioQueue when an async-iterator consumer has
-      // attached. Listener-only consumers would otherwise leak.
-      if (this.iteratorAttached) {
-        this.audioQueue.push(chunk);
-      }
+      this.enqueueIfIterating(chunk);
     }
 
     if (event.audio_end) {

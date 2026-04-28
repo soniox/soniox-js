@@ -413,6 +413,18 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
     this.ws?.close(4999, 'debug: simulated disconnect');
   }
 
+  /**
+   * Push an event to the async iterator queue only when a consumer has
+   * attached via `[Symbol.asyncIterator]()`. Listener-only consumers
+   * (the documented `.on()` pattern) never drain the queue, so pushing
+   * unconditionally would leak buffered events on long-running sessions.
+   */
+  private enqueueIfIterating(event: RealtimeEvent): void {
+    if (this.iteratorAttached) {
+      this.eventQueue.push(event);
+    }
+  }
+
   private async createWebSocket(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       try {
@@ -495,34 +507,22 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
         tokens: userTokens,
       };
       this.emitter.emit('result', filteredResult);
-      // Only push to the eventQueue when an async-iterator consumer has
-      // attached. .on()-only consumers (the documented usage) would
-      // otherwise leak: the queue grows unboundedly because nothing
-      // drains it. See https://github.com/soniox/soniox-js/pull/<TBD>.
-      if (this.iteratorAttached) {
-        this.eventQueue.push({ kind: 'result', data: filteredResult });
-      }
+      this.enqueueIfIterating({ kind: 'result', data: filteredResult });
 
       if (hasEndpoint) {
         this.emitter.emit('endpoint');
-        if (this.iteratorAttached) {
-          this.eventQueue.push({ kind: 'endpoint' });
-        }
+        this.enqueueIfIterating({ kind: 'endpoint' });
       }
 
       if (hasFinalized) {
         this.emitter.emit('finalized');
-        if (this.iteratorAttached) {
-          this.eventQueue.push({ kind: 'finalized' });
-        }
+        this.enqueueIfIterating({ kind: 'finalized' });
       }
 
       // Check for finished
       if (result.finished) {
         this.emitter.emit('finished');
-        if (this.iteratorAttached) {
-          this.eventQueue.push({ kind: 'finished' });
-        }
+        this.enqueueIfIterating({ kind: 'finished' });
         this.settleFinish();
         this.cleanup('finished', undefined, 'finished');
       }

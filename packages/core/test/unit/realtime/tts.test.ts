@@ -359,6 +359,44 @@ describe('RealtimeTtsStream', () => {
     });
   });
 
+  describe('audioQueue iterator-attach gate', () => {
+    function buildAudioMessage(streamId: string): string {
+      return JSON.stringify({
+        stream_id: streamId,
+        audio: btoa('chunk'),
+        audio_end: false,
+      });
+    }
+
+    it('should not buffer audio in audioQueue when only .on() is used', async () => {
+      const { stream, ws } = await createStream();
+      stream.on('audio', () => {
+        // listener-only consumer; intentionally does nothing
+      });
+
+      for (let i = 0; i < 100; i++) {
+        ws.message(buildAudioMessage('test-stream'));
+      }
+
+      const internalQueue = (stream as unknown as { audioQueue: { queue: unknown[] } }).audioQueue;
+      expect(internalQueue.queue.length).toBe(0);
+    });
+
+    it('should buffer audio when [Symbol.asyncIterator]() has been called', async () => {
+      const { stream, ws } = await createStream();
+      const iterator = stream[Symbol.asyncIterator]();
+
+      for (let i = 0; i < 5; i++) {
+        ws.message(buildAudioMessage('test-stream'));
+      }
+
+      const internalQueue = (stream as unknown as { audioQueue: { queue: unknown[] } }).audioQueue;
+      expect(internalQueue.queue.length).toBe(5);
+
+      void iterator;
+    });
+  });
+
   describe('async iteration', () => {
     it('should yield audio chunks and complete on terminated', async () => {
       const { stream, ws } = await createStream();
