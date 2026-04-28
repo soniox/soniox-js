@@ -582,5 +582,32 @@ describe('RealtimeSttSession', () => {
       // Drain so the iterator can finish cleanly.
       void iterator;
     });
+
+    it('should detach when consumer breaks out of for await', async () => {
+      const { session, ws } = await connectSession();
+
+      const consumed: unknown[] = [];
+      const iterPromise = (async () => {
+        for await (const event of session) {
+          consumed.push(event);
+          break;
+        }
+      })();
+
+      ws.message(buildResultMessage());
+      await iterPromise;
+
+      for (let i = 0; i < 100; i++) {
+        ws.message(buildResultMessage());
+      }
+
+      const internals = session as unknown as {
+        eventQueue: { queue: unknown[] };
+        iteratorAttached: boolean;
+      };
+      expect(consumed.length).toBe(1);
+      expect(internals.iteratorAttached).toBe(false);
+      expect(internals.eventQueue.queue.length).toBe(0);
+    });
   });
 });

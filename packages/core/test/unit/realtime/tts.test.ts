@@ -395,6 +395,33 @@ describe('RealtimeTtsStream', () => {
 
       void iterator;
     });
+
+    it('should detach when consumer breaks out of for await', async () => {
+      const { stream, ws } = await createStream();
+
+      const consumed: Uint8Array[] = [];
+      const iterPromise = (async () => {
+        for await (const chunk of stream) {
+          consumed.push(chunk);
+          break;
+        }
+      })();
+
+      ws.message(buildAudioMessage('test-stream'));
+      await iterPromise;
+
+      for (let i = 0; i < 100; i++) {
+        ws.message(buildAudioMessage('test-stream'));
+      }
+
+      const internals = stream as unknown as {
+        audioQueue: { queue: unknown[] };
+        iteratorAttached: boolean;
+      };
+      expect(consumed.length).toBe(1);
+      expect(internals.iteratorAttached).toBe(false);
+      expect(internals.audioQueue.queue.length).toBe(0);
+    });
   });
 
   describe('async iteration', () => {

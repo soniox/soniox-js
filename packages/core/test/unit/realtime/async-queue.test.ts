@@ -169,6 +169,66 @@ describe('AsyncEventQueue', () => {
     });
   });
 
+  describe('clear', () => {
+    it('should drop buffered events without ending the queue', async () => {
+      const queue = new AsyncEventQueue<number>();
+
+      queue.push(1);
+      queue.push(2);
+      queue.push(3);
+      queue.clear();
+
+      expect(queue.isDone).toBe(false);
+
+      queue.push(4);
+      queue.end();
+
+      const results: number[] = [];
+      for await (const n of queue) {
+        results.push(n);
+      }
+
+      expect(results).toEqual([4]);
+    });
+  });
+
+  describe('iterator return', () => {
+    it('should resolve with done:true on break', async () => {
+      const queue = new AsyncEventQueue<number>();
+
+      queue.push(1);
+      queue.push(2);
+      queue.push(3);
+
+      const seen: number[] = [];
+      for await (const n of queue) {
+        seen.push(n);
+        break;
+      }
+
+      expect(seen).toEqual([1]);
+      expect(queue.isDone).toBe(false);
+    });
+
+    it('should not affect a sibling iterator', async () => {
+      const queue = new AsyncEventQueue<string>();
+
+      queue.push('a');
+      queue.push('b');
+
+      const it1 = queue[Symbol.asyncIterator]();
+      const it2 = queue[Symbol.asyncIterator]();
+
+      await it1.return?.();
+
+      const r1 = await it2.next();
+      expect(r1).toEqual({ value: 'a', done: false });
+
+      const r2 = await it2.next();
+      expect(r2).toEqual({ value: 'b', done: false });
+    });
+  });
+
   describe('async iteration', () => {
     it('should work with for-await-of', async () => {
       const queue = new AsyncEventQueue<number>();

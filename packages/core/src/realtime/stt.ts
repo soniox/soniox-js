@@ -399,10 +399,23 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
 
   /**
    * Async iterator for consuming events.
+   *
+   * The returned iterator's `return()` resets the internal iterator-attach
+   * flag and drops any buffered events, so consumers that exit `for await`
+   * early (via `break` etc.) stop accruing memory while the session keeps
+   * running.
    */
   [Symbol.asyncIterator](): AsyncIterator<RealtimeEvent> {
     this.iteratorAttached = true;
-    return this.eventQueue[Symbol.asyncIterator]();
+    const inner = this.eventQueue[Symbol.asyncIterator]();
+    return {
+      next: () => inner.next(),
+      return: (value?: RealtimeEvent) => {
+        this.iteratorAttached = false;
+        this.eventQueue.clear();
+        return inner.return?.(value) ?? Promise.resolve({ value: value as RealtimeEvent, done: true });
+      },
+    };
   }
 
   /**

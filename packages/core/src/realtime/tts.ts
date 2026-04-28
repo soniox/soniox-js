@@ -195,10 +195,25 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
     }
   }
 
-  /** Async iterator that yields decoded audio chunks. */
+  /**
+   * Async iterator that yields decoded audio chunks.
+   *
+   * The returned iterator's `return()` resets the internal iterator-attach
+   * flag and drops any buffered audio, so consumers that exit `for await`
+   * early (via `break` etc.) stop accruing memory while the stream keeps
+   * receiving server audio.
+   */
   [Symbol.asyncIterator](): AsyncIterator<Uint8Array> {
     this.iteratorAttached = true;
-    return this.audioQueue[Symbol.asyncIterator]();
+    const inner = this.audioQueue[Symbol.asyncIterator]();
+    return {
+      next: () => inner.next(),
+      return: (value?: Uint8Array) => {
+        this.iteratorAttached = false;
+        this.audioQueue.clear();
+        return inner.return?.(value) ?? Promise.resolve({ value: value as Uint8Array, done: true });
+      },
+    };
   }
 
   /**
