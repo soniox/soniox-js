@@ -203,7 +203,7 @@ export class SonioxClient {
      * @example Single stream
      * ```typescript
      * const stream = await client.realtime.tts({
-     *   model: 'tts-rt-v1-preview',
+     *   model: 'tts-rt-v1',
      *   voice: 'Adrian',
      *   language: 'en',
      *   audio_format: 'wav',
@@ -217,7 +217,7 @@ export class SonioxClient {
      * ```typescript
      * const conn = await client.realtime.tts.multiStream();
      * const s1 = await conn.stream({
-     *   model: 'tts-rt-v1-preview',
+     *   model: 'tts-rt-v1',
      *   voice: 'Adrian',
      *   language: 'en',
      *   audio_format: 'wav',

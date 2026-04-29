@@ -253,7 +253,7 @@ describe('resolveConnectionConfig', () => {
     });
 
     it('should pass through tts_defaults when provided', () => {
-      const defaults = { model: 'tts-rt-v1-preview', voice: 'Adrian' };
+      const defaults = { model: 'tts-rt-v1', voice: 'Adrian' };
       const result = resolveConnectionConfig({ api_key: apiKey, tts_defaults: defaults });
       expect(result.tts_defaults).toEqual(defaults);
     });

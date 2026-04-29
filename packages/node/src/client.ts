@@ -32,7 +32,7 @@ import type { SonioxNodeClientOptions } from './types/public/index.js';
  *
  * // WebSocket TTS
  * const stream = await client.realtime.tts({
- *   model: 'tts-rt-v1-preview',
+ *   model: 'tts-rt-v1',
  *   voice: 'Adrian',
  *   language: 'en',
  *   audio_format: 'wav',

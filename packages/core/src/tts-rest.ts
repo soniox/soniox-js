@@ -8,7 +8,7 @@
 import { createAbortError, createHttpError, createNetworkError } from './http-errors.js';
 import type { GenerateSpeechOptions } from './types/tts.js';
 
-const DEFAULT_MODEL = 'tts-rt-v1-preview';
+const DEFAULT_MODEL = 'tts-rt-v1';
 const DEFAULT_LANGUAGE = 'en';
 const DEFAULT_AUDIO_FORMAT = 'wav';
 

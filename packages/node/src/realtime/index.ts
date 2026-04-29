@@ -15,7 +15,7 @@ export interface TtsFactory {
    * @example
    * ```typescript
    * const stream = await client.realtime.tts({
-   *   model: 'tts-rt-v1-preview',
+   *   model: 'tts-rt-v1',
    *   voice: 'Adrian',
    *   language: 'en',
    *   audio_format: 'wav',
@@ -35,14 +35,14 @@ export interface TtsFactory {
    * ```typescript
    * const conn = await client.realtime.tts.multiStream();
    * const s1 = await conn.stream({
-   *   model: 'tts-rt-v1-preview',
+   *   model: 'tts-rt-v1',
    *   voice: 'Adrian',
    *   language: 'en',
    *   audio_format: 'wav',
    * });
    * // Use any voice returned by client.tts.listModels()
    * const s2 = await conn.stream({
-   *   model: 'tts-rt-v1-preview',
+   *   model: 'tts-rt-v1',
    *   voice: someOtherVoice,
    *   language: 'en',
    *   audio_format: 'wav',
@@ -64,7 +64,7 @@ export interface TtsFactory {
  * @example TTS (single stream)
  * ```typescript
  * const stream = await client.realtime.tts({
- *   model: 'tts-rt-v1-preview',
+ *   model: 'tts-rt-v1',
  *   voice: 'Adrian',
  *   language: 'en',
  *   audio_format: 'wav',
@@ -78,7 +78,7 @@ export interface TtsFactory {
  * ```typescript
  * const conn = await client.realtime.tts.multiStream();
  * const stream = await conn.stream({
- *   model: 'tts-rt-v1-preview',
+ *   model: 'tts-rt-v1',
  *   voice: 'Adrian',
  *   language: 'en',
  *   audio_format: 'wav',

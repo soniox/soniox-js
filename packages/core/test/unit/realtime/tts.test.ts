@@ -10,7 +10,7 @@ describe('RealtimeTtsConnection', () => {
   const apiKey = 'test-api-key';
   const wsUrl = 'wss://tts-rt.soniox.com/tts-websocket';
   const ttsDefaults = {
-    model: 'tts-rt-v1-preview',
+    model: 'tts-rt-v1',
     language: 'en',
     voice: 'Adrian',
     audio_format: 'mp3',
@@ -91,7 +91,7 @@ describe('RealtimeTtsConnection', () => {
 
       const sent = JSON.parse(ws.sent[0] as string);
       expect(sent.api_key).toBe(apiKey);
-      expect(sent.model).toBe('tts-rt-v1-preview');
+      expect(sent.model).toBe('tts-rt-v1');
       expect(sent.voice).toBe('Adrian');
       expect(sent.language).toBe('en');
       expect(sent.audio_format).toBe('mp3');
@@ -106,7 +106,7 @@ describe('RealtimeTtsConnection', () => {
 
       const ws = getLastMockWebSocket()!;
       const sent = JSON.parse(ws.sent[0] as string);
-      expect(sent.model).toBe('tts-rt-v1-preview');
+      expect(sent.model).toBe('tts-rt-v1');
       expect(sent.voice).toBe('Adrian');
     });
 
@@ -199,7 +199,7 @@ describe('RealtimeTtsStream', () => {
   const apiKey = 'test-api-key';
   const wsUrl = 'wss://tts-rt.soniox.com/tts-websocket';
   const ttsDefaults = {
-    model: 'tts-rt-v1-preview',
+    model: 'tts-rt-v1',
     language: 'en',
     voice: 'Adrian',
     audio_format: 'mp3',

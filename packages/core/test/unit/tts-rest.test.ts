@@ -113,7 +113,7 @@ describe('TtsRestClient', () => {
       expect(payload).toMatchObject({
         text: 'Hello',
         voice: 'Adrian',
-        model: 'tts-rt-v1-preview',
+        model: 'tts-rt-v1',
         language: 'en',
         audio_format: 'wav',
       });

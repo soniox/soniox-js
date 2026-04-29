@@ -254,7 +254,7 @@ ttsRestBtn.onclick = async () => {
     const audio = await client.tts.generate({
       text,
       voice,
-      model: 'tts-rt-v1-preview',
+      model: 'tts-rt-v1',
       language,
       audio_format: 'wav',
     });
@@ -284,7 +284,7 @@ ttsRealtimeBtn.onclick = async () => {
   try {
     const stream = await client.realtime.tts({
       voice,
-      model: 'tts-rt-v1-preview',
+      model: 'tts-rt-v1',
       language,
       audio_format: 'wav',
     });

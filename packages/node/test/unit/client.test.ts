@@ -105,7 +105,7 @@ describe('SonioxNodeClient', () => {
     });
 
     it('forwards tts_defaults into the TTS multi-stream connection', async () => {
-      const ttsDefaults = { model: 'tts-rt-v1-preview', voice: 'Adrian', language: 'en', audio_format: 'mp3' };
+      const ttsDefaults = { model: 'tts-rt-v1', voice: 'Adrian', language: 'en', audio_format: 'mp3' };
       const client = new SonioxNodeClient({
         api_key: API_KEY,
         tts_defaults: ttsDefaults,

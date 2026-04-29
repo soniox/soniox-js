@@ -113,7 +113,7 @@ async function main() {
         default: 'Hello from the Soniox Node SDK text-to-speech example.',
       },
       voice: { type: 'string', default: 'Adrian' },
-      model: { type: 'string', default: 'tts-rt-v1-preview' },
+      model: { type: 'string', default: 'tts-rt-v1' },
       language: { type: 'string', default: 'en' },
       // Default to raw 16-bit PCM at 24 kHz. We wrap the bytes in a WAV
       // container below so the output file plays everywhere, including

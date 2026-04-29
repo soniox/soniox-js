@@ -31,7 +31,7 @@ export type TtsAudioFormat =
 export type TtsStreamInput = {
   /**
    * Text-to-Speech model to use.
-   * @example 'tts-rt-v1-preview'
+   * @example 'tts-rt-v1'
    */
   model?: string | undefined;
 
@@ -172,7 +172,7 @@ export type TtsEvent = {
 export type GenerateSpeechOptions = {
   /** Input text to generate as speech. */
   text: string;
-  /** Text-to-Speech model to use. @default 'tts-rt-v1-preview' */
+  /** Text-to-Speech model to use. @default 'tts-rt-v1' */
   model?: string | undefined;
   /** Language code. @default 'en' */
   language?: string | undefined;

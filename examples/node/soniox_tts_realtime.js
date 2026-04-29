@@ -118,7 +118,7 @@ async function main() {
           'Hello from the Soniox Node SDK real-time text-to-speech example. This demonstrates the WebSocket TTS API with streaming audio output.',
       },
       voice: { type: 'string', default: 'Adrian' },
-      model: { type: 'string', default: 'tts-rt-v1-preview' },
+      model: { type: 'string', default: 'tts-rt-v1' },
       language: { type: 'string', default: 'en' },
       // Default to raw 16-bit PCM at 24 kHz. We wrap the bytes in a WAV
       // container before writing so the output file plays everywhere,
