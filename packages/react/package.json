@@ -1,6 +1,6 @@
 {
   "name": "@soniox/react",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "homepage": "https://soniox.com/docs/stt/SDKs/web-sdk",
   "bugs": {
     "url": "https://github.com/soniox/soniox-js/issues"
@@ -52,7 +52,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@soniox/client": "^2.0.1"
+    "@soniox/client": "^2.0.2"
   },
   "peerDependencies": {
     "react": ">=18.0.0"
