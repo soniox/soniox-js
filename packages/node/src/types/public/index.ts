@@ -142,6 +142,19 @@ export type TemporaryApiKeyRequest = {
    * @maxLength 256
    */
   client_reference_id?: string;
+
+  /**
+   * When true, restricts the temporary API key to a single use.
+   */
+  single_use?: boolean;
+
+  /**
+   * Maximum connection duration in seconds for WebSocket and TTS HTTP
+   * streaming endpoints.
+   * @minimum 1
+   * @maximum 18000
+   */
+  max_session_duration_seconds?: number;
 };
 
 export type TemporaryApiKeyResponse = {
