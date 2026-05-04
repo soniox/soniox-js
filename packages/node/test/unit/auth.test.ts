@@ -127,5 +127,127 @@ describe('SonioxAuthAPI', () => {
         expect(requestMock).toHaveBeenCalled();
       });
     });
+
+    describe('single_use and max_session_duration_seconds', () => {
+      it('should forward single_use and max_session_duration_seconds to the request body', async () => {
+        const requestMock = jest.fn().mockResolvedValue({
+          status: 201,
+          headers: {},
+          data: createMockTemporaryKeyResponse(),
+        });
+        const mockHttp = createMockHttpClient(requestMock);
+        const api = new SonioxAuthAPI(mockHttp);
+
+        await api.createTemporaryKey({
+          expires_in_seconds: 300,
+          usage_type: 'tts_rt',
+          single_use: true,
+          max_session_duration_seconds: 600,
+        });
+
+        expect(requestMock).toHaveBeenCalledWith({
+          method: 'POST',
+          path: '/v1/auth/temporary-api-key',
+          body: {
+            expires_in_seconds: 300,
+            usage_type: 'tts_rt',
+            single_use: true,
+            max_session_duration_seconds: 600,
+          },
+        });
+      });
+
+      it('should accept max_session_duration_seconds at minimum (1)', async () => {
+        const requestMock = jest.fn().mockResolvedValue({
+          status: 201,
+          headers: {},
+          data: createMockTemporaryKeyResponse(),
+        });
+        const mockHttp = createMockHttpClient(requestMock);
+        const api = new SonioxAuthAPI(mockHttp);
+
+        await api.createTemporaryKey({
+          expires_in_seconds: 300,
+          usage_type: 'transcribe_websocket',
+          max_session_duration_seconds: 1,
+        });
+
+        expect(requestMock).toHaveBeenCalled();
+      });
+
+      it('should accept max_session_duration_seconds at maximum (18000)', async () => {
+        const requestMock = jest.fn().mockResolvedValue({
+          status: 201,
+          headers: {},
+          data: createMockTemporaryKeyResponse(),
+        });
+        const mockHttp = createMockHttpClient(requestMock);
+        const api = new SonioxAuthAPI(mockHttp);
+
+        await api.createTemporaryKey({
+          expires_in_seconds: 300,
+          usage_type: 'transcribe_websocket',
+          max_session_duration_seconds: 18000,
+        });
+
+        expect(requestMock).toHaveBeenCalled();
+      });
+
+      it('should reject max_session_duration_seconds less than 1', async () => {
+        const mockHttp = createMockHttpClient();
+        const api = new SonioxAuthAPI(mockHttp);
+
+        await expect(
+          api.createTemporaryKey({
+            expires_in_seconds: 300,
+            usage_type: 'transcribe_websocket',
+            max_session_duration_seconds: 0,
+          })
+        ).rejects.toThrow('max_session_duration_seconds must be a finite number between 1 and 18000');
+      });
+
+      it('should reject max_session_duration_seconds greater than 18000', async () => {
+        const mockHttp = createMockHttpClient();
+        const api = new SonioxAuthAPI(mockHttp);
+
+        await expect(
+          api.createTemporaryKey({
+            expires_in_seconds: 300,
+            usage_type: 'transcribe_websocket',
+            max_session_duration_seconds: 18001,
+          })
+        ).rejects.toThrow('max_session_duration_seconds must be a finite number between 1 and 18000');
+      });
+
+      it('should reject non-finite max_session_duration_seconds', async () => {
+        const mockHttp = createMockHttpClient();
+        const api = new SonioxAuthAPI(mockHttp);
+
+        await expect(
+          api.createTemporaryKey({
+            expires_in_seconds: 300,
+            usage_type: 'transcribe_websocket',
+            max_session_duration_seconds: Number.POSITIVE_INFINITY,
+          })
+        ).rejects.toThrow('max_session_duration_seconds must be a finite number between 1 and 18000');
+      });
+
+      it('should allow omitting max_session_duration_seconds (undefined)', async () => {
+        const requestMock = jest.fn().mockResolvedValue({
+          status: 201,
+          headers: {},
+          data: createMockTemporaryKeyResponse(),
+        });
+        const mockHttp = createMockHttpClient(requestMock);
+        const api = new SonioxAuthAPI(mockHttp);
+
+        await api.createTemporaryKey({
+          expires_in_seconds: 300,
+          usage_type: 'transcribe_websocket',
+        });
+
+        expect(requestMock).toHaveBeenCalled();
+      });
+    });
   });
 });

@@ -21,6 +21,8 @@ export class SonioxAuthAPI {
    * const ttsKey = await client.auth.createTemporaryKey({
    *   usage_type: 'tts_rt',
    *   expires_in_seconds: 300,
+   *   single_use: true,
+   *   max_session_duration_seconds: 600,
    * });
    * ```
    */
@@ -31,6 +33,15 @@ export class SonioxAuthAPI {
       request.expires_in_seconds > 3600
     ) {
       throw new Error('expires_in_seconds must be a finite number between 1 and 3600');
+    }
+
+    if (
+      request.max_session_duration_seconds !== undefined &&
+      (!Number.isFinite(request.max_session_duration_seconds) ||
+        request.max_session_duration_seconds < 1 ||
+        request.max_session_duration_seconds > 18000)
+    ) {
+      throw new Error('max_session_duration_seconds must be a finite number between 1 and 18000');
     }
 
     const response = await this.http.request<TemporaryApiKeyResponse>({
