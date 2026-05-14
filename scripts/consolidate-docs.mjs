@@ -32,6 +32,7 @@ const PACKAGE_CONFIGS = {
       'SonioxModelsAPI',
       'SonioxWebhooksAPI',
       'SonioxAuthAPI',
+      'SonioxConcurrencyLimitsAPI',
       'SonioxUsageLogsAPI',
       'SonioxRealtimeApi',
       // Error classes — users catch these but don't construct them
@@ -54,6 +55,7 @@ const PACKAGE_CONFIGS = {
       'Class.SonioxModelsAPI.md',
       'Class.SonioxWebhooksAPI.md',
       'Class.SonioxAuthAPI.md',
+      'Class.SonioxConcurrencyLimitsAPI.md',
       'Class.SonioxUsageLogsAPI.md',
       'Class.SonioxRealtimeApi.md',
       'Class.SonioxFile.md',

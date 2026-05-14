@@ -24,6 +24,14 @@ export type {
   QueryParams,
 } from './http.js';
 
+// Import and re-export Concurrency Limits API types
+export type {
+  ConcurrencyCurrentValues,
+  ConcurrencyLimitsResponse,
+  ConcurrencyLimitValues,
+  ConcurrencyScopeValues,
+} from './concurrency-limits.js';
+
 // Import and re-export Files API types
 export type {
   FileIdentifier,

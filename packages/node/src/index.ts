@@ -13,6 +13,9 @@ export { SonioxNodeClient } from './client.js';
 // HTTP module
 export * from './http/index.js';
 
+// Concurrency Limits API
+export { SonioxConcurrencyLimitsAPI } from './async/concurrency-limits.js';
+
 // Files API
 export { FileListResult, SonioxFile } from './async/files.js';
 

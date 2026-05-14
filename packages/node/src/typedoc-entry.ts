@@ -8,6 +8,7 @@
 export { SonioxNodeClient } from './client.js';
 
 // Async API classes (accessed via client properties)
+export { SonioxConcurrencyLimitsAPI } from './async/concurrency-limits.js';
 export { SonioxFilesAPI, FileListResult, SonioxFile } from './async/files.js';
 export {
   SonioxSttApi,
@@ -69,6 +70,14 @@ export type {
   HttpRequestBody,
   HttpResponseType,
   QueryParams,
+} from './types/public/index.js';
+
+// Public types — Concurrency Limits
+export type {
+  ConcurrencyCurrentValues,
+  ConcurrencyLimitsResponse,
+  ConcurrencyLimitValues,
+  ConcurrencyScopeValues,
 } from './types/public/index.js';
 
 // Public types — Files
