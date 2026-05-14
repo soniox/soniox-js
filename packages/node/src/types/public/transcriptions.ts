@@ -459,6 +459,26 @@ export type ListTranscriptionsResponse<T> = {
 };
 
 /**
+ * Total number of transcriptions, split by request scope.
+ */
+export type TranscriptionsCountResponse = {
+  /**
+   * Number of transcriptions created via the Playground.
+   */
+  playground: number;
+
+  /**
+   * Number of transcriptions created via Public API.
+   */
+  public_api: number;
+
+  /**
+   * Total number of transcriptions across all scopes.
+   */
+  total: number;
+};
+
+/**
  * Transcription identifier - either a string ID or an object with an id property.
  */
 export type TranscriptionIdentifier = string | { readonly id: string };

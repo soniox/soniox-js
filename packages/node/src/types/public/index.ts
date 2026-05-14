@@ -27,6 +27,7 @@ export type {
 // Import and re-export Files API types
 export type {
   FileIdentifier,
+  FilesCountResponse,
   ListFilesOptions,
   ListFilesResponse,
   DeleteAllFilesOptions,
@@ -64,6 +65,7 @@ export type {
   TranscriptionContext,
   TranscriptionIdentifier,
   TranscriptionStatus,
+  TranscriptionsCountResponse,
   TranscriptResponse,
   TranscriptSegment,
   TranscriptToken,

@@ -7,6 +7,7 @@ import type {
   ISonioxTranslationJob,
   ListTranscriptionsOptions,
   ListTranscriptionsResponse,
+  TranscriptionsCountResponse,
   DeleteAllTranscriptionsOptions,
   SegmentTranscriptOptions,
   SonioxTranscriptionData,
@@ -905,6 +906,29 @@ export class SonioxSttApi {
     });
 
     return new TranscriptionListResult(response.data, this.http, options, signal);
+  }
+
+  /**
+   * Returns the total number of transcriptions, split by request scope.
+   *
+   * @param signal - Optional AbortSignal for request cancellation.
+   * @returns Total transcription counts for Playground, Public API, and all scopes.
+   * @throws {@link SonioxHttpError} On API errors.
+   *
+   * @example
+   * ```typescript
+   * const counts = await client.stt.count();
+   * console.log(counts.total);
+   * ```
+   */
+  async count(signal?: AbortSignal): Promise<TranscriptionsCountResponse> {
+    const response = await this.http.request<TranscriptionsCountResponse>({
+      method: 'GET',
+      path: '/v1/transcriptions/count',
+      ...(signal && { signal }),
+    });
+
+    return response.data;
   }
 
   /**

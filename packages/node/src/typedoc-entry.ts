@@ -73,6 +73,7 @@ export type {
 // Public types — Files
 export type {
   SonioxFileData,
+  FilesCountResponse,
   ListFilesOptions,
   ListFilesResponse,
   FileIdentifier,
@@ -108,6 +109,7 @@ export type {
   ListTranscriptionsOptions,
   ListTranscriptionsResponse,
   TranscriptionIdentifier,
+  TranscriptionsCountResponse,
   CleanupTarget,
   SegmentGroupKey,
   DeleteAllTranscriptionsOptions,

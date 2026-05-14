@@ -723,6 +723,49 @@ describe('SonioxTranscriptionsAPI', () => {
     });
   });
 
+  describe('count()', () => {
+    it('should make GET request to /v1/transcriptions/count', async () => {
+      const counts = { playground: 8, public_api: 42, total: 50 };
+      const requestMock = jest.fn().mockResolvedValue({
+        status: 200,
+        headers: {},
+        data: counts,
+      });
+      const mockHttp = createMockHttpClient(requestMock);
+      const mockFilesApi = createMockFilesAPI();
+      const api = new SonioxSttApi(mockHttp, mockFilesApi);
+
+      const result = await api.count();
+
+      expect(requestMock).toHaveBeenCalledWith({
+        method: 'GET',
+        path: '/v1/transcriptions/count',
+      });
+      expect(result).toEqual(counts);
+    });
+
+    it('should pass abort signal', async () => {
+      const counts = { playground: 0, public_api: 1, total: 1 };
+      const requestMock = jest.fn().mockResolvedValue({
+        status: 200,
+        headers: {},
+        data: counts,
+      });
+      const mockHttp = createMockHttpClient(requestMock);
+      const mockFilesApi = createMockFilesAPI();
+      const api = new SonioxSttApi(mockHttp, mockFilesApi);
+      const controller = new AbortController();
+
+      await api.count(controller.signal);
+
+      expect(requestMock).toHaveBeenCalledWith({
+        method: 'GET',
+        path: '/v1/transcriptions/count',
+        signal: controller.signal,
+      });
+    });
+  });
+
   describe('get()', () => {
     it('should make GET request with transcription ID string', async () => {
       const requestMock = jest.fn().mockResolvedValue({

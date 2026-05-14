@@ -70,6 +70,26 @@ export type ListFilesResponse<T> = {
 };
 
 /**
+ * Total number of files, split by source.
+ */
+export type FilesCountResponse = {
+  /**
+   * Number of files uploaded via the Playground.
+   */
+  playground: number;
+
+  /**
+   * Number of files uploaded via Public API.
+   */
+  public_api: number;
+
+  /**
+   * Total number of files across all sources.
+   */
+  total: number;
+};
+
+/**
  * File identifier - either a string ID or an object with an id property.
  */
 export type FileIdentifier = string | { readonly id: string };

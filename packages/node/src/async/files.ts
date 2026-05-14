@@ -2,6 +2,7 @@ import type { HttpClient } from '../http/client.js';
 import { isNotFoundError } from '../http/errors.js';
 import type {
   FileIdentifier,
+  FilesCountResponse,
   ListFilesOptions,
   ListFilesResponse,
   DeleteAllFilesOptions,
@@ -465,6 +466,31 @@ export class SonioxFilesAPI {
     });
 
     return new FileListResult(response.data, this.http, limit, signal);
+  }
+
+  /**
+   * Returns the total number of files, split by source.
+   *
+   * @param options - Optional cancellation parameters.
+   * @returns Total file counts for Playground, Public API, and all sources.
+   * @throws {@link SonioxHttpError} On API errors.
+   *
+   * @example
+   * ```typescript
+   * const counts = await client.files.count();
+   * console.log(counts.total);
+   * ```
+   */
+  async count(options: { signal?: AbortSignal } = {}): Promise<FilesCountResponse> {
+    const { signal } = options;
+
+    const response = await this.http.request<FilesCountResponse>({
+      method: 'GET',
+      path: '/v1/files/count',
+      ...(signal && { signal }),
+    });
+
+    return response.data;
   }
 
   /**
