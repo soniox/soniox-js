@@ -130,12 +130,14 @@ export type {
   TtsConnectionEvents,
   TtsConnectionOptions,
   TtsEvent,
+  TtsLanguage,
   TtsModel,
   TtsStreamConfig,
   TtsStreamEvents,
   TtsStreamInput,
   TtsStreamState,
   TtsVoice,
+  TtsVoiceGender,
 } from './tts.js';
 
 export type TemporaryApiKeyUsageType = 'transcribe_websocket' | 'tts_rt';

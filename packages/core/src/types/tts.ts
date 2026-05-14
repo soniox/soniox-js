@@ -196,11 +196,30 @@ export type GenerateSpeechOptions = {
 // =============================================================================
 
 /**
+ * A language supported by a Text-to-Speech model.
+ */
+export type TtsLanguage = {
+  /** ISO language code. */
+  code: string;
+  /** Human-readable language name. */
+  name: string;
+};
+
+/**
+ * Voice gender metadata returned by the TTS models API.
+ */
+export type TtsVoiceGender = 'male' | 'female' | 'neutral';
+
+/**
  * A Text-to-Speech voice.
  */
 export type TtsVoice = {
   /** Unique identifier of the voice. */
   id: string;
+  /** Human-readable voice description. */
+  description: string;
+  /** Voice gender metadata. */
+  gender: TtsVoiceGender;
 };
 
 /**
@@ -213,6 +232,8 @@ export type TtsModel = {
   aliased_model_id?: string | null;
   /** Name of the model. */
   name: string;
+  /** Languages supported by this model. */
+  languages: TtsLanguage[];
   /** Voices supported by this model. */
   voices: TtsVoice[];
 };
