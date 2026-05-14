@@ -230,6 +230,56 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
     }, 60000);
   });
 
+  describe('Translation helper', () => {
+    it('translates from file with wait=true and cached translation', async () => {
+      const buffer = readFileSync(AUDIO_FILE_SHORT);
+      const job = await client.stt.translate({
+        file: buffer,
+        filename: 'test-translate.mp3',
+        to: 'es',
+        wait: true,
+        cleanup: ['file', 'transcription'],
+      });
+
+      expect(job.id).toBeDefined();
+      expect(job.status).toBe('completed');
+      expect(job.translation).toBeDefined();
+      expect(job.translation?.mode).toBe('one_way');
+      if (job.translation?.mode !== 'one_way') throw new Error('expected one_way translation');
+      expect(job.translation.to).toBe('es');
+      expect(job.translation.segments.length).toBeGreaterThan(0);
+      expect(job.translation.translation_text.length).toBeGreaterThan(0);
+    }, 60000);
+
+    it('starts translation with wait=false, then waits and fetches translation', async () => {
+      const buffer = readFileSync(AUDIO_FILE_SHORT);
+      const job = await client.stt.translate({
+        file: buffer,
+        filename: 'test-translate-async.mp3',
+        to: 'es',
+      });
+
+      try {
+        expect(job.id).toBeDefined();
+        expect(job.status).toMatch(/queued|processing/);
+        expect(job.translation).toBeUndefined();
+
+        const completed = await job.wait();
+        expect(completed.status).toBe('completed');
+
+        const translation = await completed.fetchTranslation();
+        expect(translation).not.toBeNull();
+        expect(translation?.mode).toBe('one_way');
+        if (translation?.mode !== 'one_way') throw new Error('expected one_way translation');
+        expect(translation.to).toBe('es');
+        expect(translation.segments.length).toBeGreaterThan(0);
+        expect(translation.translation_text.length).toBeGreaterThan(0);
+      } finally {
+        await client.stt.destroy(job.id);
+      }
+    }, 60000);
+  });
+
   describe('Transcription cleanup', () => {
     it('destroy() removes both transcription and uploaded file', async () => {
       const buffer = readFileSync(AUDIO_FILE_SHORT);

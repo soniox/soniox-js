@@ -9,11 +9,20 @@ export { SonioxNodeClient } from './client.js';
 
 // Async API classes (accessed via client properties)
 export { SonioxFilesAPI, FileListResult, SonioxFile } from './async/files.js';
-export { SonioxSttApi, SonioxTranscript, SonioxTranscription, TranscriptionListResult } from './async/stt.js';
+export {
+  SonioxSttApi,
+  SonioxTranscript,
+  SonioxTranscription,
+  SonioxTranslationJob,
+  TranscriptionListResult,
+} from './async/stt.js';
 export { SonioxTtsApi } from './async/tts.js';
 export { SonioxModelsAPI } from './async/models.js';
 export { SonioxWebhooksAPI } from './async/webhooks.js';
 export { SonioxAuthAPI } from './async/auth.js';
+
+// Translation helper
+export { translateFromTranscript } from './async/translation.js';
 
 // Real-time API
 export {
@@ -104,6 +113,20 @@ export type {
   DeleteAllTranscriptionsOptions,
   ISonioxTranscript,
   ISonioxTranscription,
+} from './types/public/index.js';
+
+// Public types — Translation helper
+export type {
+  TranslateOptions,
+  TranslateMode,
+  TranslateAudioSource,
+  TranslateBaseOptions,
+  TranslateFromTranscriptMode,
+  ISonioxTranslationJob,
+  SonioxTranslation,
+  OneWayTranslation,
+  TwoWayTranslation,
+  TranslationSegment,
 } from './types/public/index.js';
 
 // Public types — Models

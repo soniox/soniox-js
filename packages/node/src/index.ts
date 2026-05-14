@@ -17,7 +17,16 @@ export * from './http/index.js';
 export { FileListResult, SonioxFile } from './async/files.js';
 
 // STT API
-export { segmentTranscript, SonioxTranscript, SonioxTranscription, TranscriptionListResult } from './async/stt.js';
+export {
+  segmentTranscript,
+  SonioxTranscript,
+  SonioxTranscription,
+  SonioxTranslationJob,
+  TranscriptionListResult,
+} from './async/stt.js';
+
+// Translation helper
+export { translateFromTranscript } from './async/translation.js';
 
 // TTS API
 export { SonioxTtsApi } from './async/tts.js';

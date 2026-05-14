@@ -72,6 +72,20 @@ export type {
   WaitOptions,
 } from './transcriptions.js';
 
+// Import and re-export Translation API types
+export type {
+  OneWayTranslation,
+  ISonioxTranslationJob,
+  SonioxTranslation,
+  TranslateAudioSource,
+  TranslateBaseOptions,
+  TranslateFromTranscriptMode,
+  TranslateMode,
+  TranslateOptions,
+  TranslationSegment,
+  TwoWayTranslation,
+} from './translation.js';
+
 // Import and re-export Webhooks types
 export type {
   ExpressLikeRequest,

@@ -2661,6 +2661,33 @@ describe('segmentTranscript', () => {
     expect(result[0]?.end_ms).toBe(600);
   });
 
+  it('should preserve timing from timestamped tokens when segment includes translation tokens', () => {
+    const tokens: TranscriptToken[] = [
+      createToken('Hello', 0, 500, { speaker: '1', language: 'en', translation_status: 'original' }),
+      { text: ' Hola', confidence: 0.95, speaker: '1', language: 'es', translation_status: 'translation' },
+    ];
+
+    const result = segmentTranscript(tokens, { group_by: ['speaker'] });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toBe('Hello Hola');
+    expect(result[0]?.start_ms).toBe(0);
+    expect(result[0]?.end_ms).toBe(500);
+  });
+
+  it('should omit timing when a segment has only translation tokens', () => {
+    const tokens: TranscriptToken[] = [
+      { text: 'Hola', confidence: 0.95, speaker: '1', language: 'es', translation_status: 'translation' },
+    ];
+
+    const result = segmentTranscript(tokens);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toBe('Hola');
+    expect(result[0]?.start_ms).toBeUndefined();
+    expect(result[0]?.end_ms).toBeUndefined();
+  });
+
   it('should include original tokens in each segment', () => {
     const tokens = [createToken('Hello', 0, 500, { speaker: '1' }), createToken('Hi', 600, 800, { speaker: '2' })];
 
