@@ -31,6 +31,9 @@ export { translateFromTranscript } from './async/translation.js';
 // TTS API
 export { SonioxTtsApi } from './async/tts.js';
 
+// Usage Logs API
+export { SonioxUsageLogsAPI, UsageLogListResult } from './async/usage-logs.js';
+
 // Real-time API
 export {
   SonioxRealtimeApi,

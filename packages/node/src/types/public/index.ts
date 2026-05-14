@@ -88,6 +88,9 @@ export type {
   TwoWayTranslation,
 } from './translation.js';
 
+// Import and re-export Usage Logs API types
+export type { ListUsageLogsOptions, ListUsageLogsResponse, SonioxUsageLog, UsageLogsSort } from './usage-logs.js';
+
 // Import and re-export Webhooks types
 export type {
   ExpressLikeRequest,

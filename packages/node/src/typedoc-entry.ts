@@ -20,6 +20,7 @@ export { SonioxTtsApi } from './async/tts.js';
 export { SonioxModelsAPI } from './async/models.js';
 export { SonioxWebhooksAPI } from './async/webhooks.js';
 export { SonioxAuthAPI } from './async/auth.js';
+export { SonioxUsageLogsAPI, UsageLogListResult } from './async/usage-logs.js';
 
 // Translation helper
 export { translateFromTranscript } from './async/translation.js';
@@ -144,6 +145,14 @@ export type {
   TemporaryApiKeyRequest,
   TemporaryApiKeyResponse,
   TemporaryApiKeyUsageType,
+} from './types/public/index.js';
+
+// Public types — Usage Logs
+export type {
+  ListUsageLogsOptions,
+  ListUsageLogsResponse,
+  SonioxUsageLog,
+  UsageLogsSort,
 } from './types/public/index.js';
 
 // Public types — Webhooks

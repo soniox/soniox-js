@@ -10,6 +10,7 @@ describe('SonioxNodeClient', () => {
       const client = new SonioxNodeClient({ api_key: API_KEY });
       expect(client).toBeInstanceOf(SonioxNodeClient);
       expect(client.realtime).toBeDefined();
+      expect(client.usageLogs).toBeDefined();
     });
 
     it('creates client with EU region', () => {

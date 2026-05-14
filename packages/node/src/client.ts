@@ -5,6 +5,7 @@ import { SonioxFilesAPI } from './async/files.js';
 import { SonioxModelsAPI } from './async/models.js';
 import { SonioxSttApi } from './async/stt.js';
 import { SonioxTtsApi } from './async/tts.js';
+import { SonioxUsageLogsAPI } from './async/usage-logs.js';
 import { SonioxWebhooksAPI } from './async/webhooks.js';
 import { FetchHttpClient } from './http/fetch-adapter.js';
 import { SonioxRealtimeApi } from './realtime/index.js';
@@ -46,6 +47,7 @@ export class SonioxNodeClient {
   readonly models: SonioxModelsAPI;
   readonly webhooks: SonioxWebhooksAPI;
   readonly auth: SonioxAuthAPI;
+  readonly usageLogs: SonioxUsageLogsAPI;
   readonly realtime: SonioxRealtimeApi;
 
   constructor(options: SonioxNodeClientOptions = {}) {
@@ -80,6 +82,7 @@ export class SonioxNodeClient {
     this.models = new SonioxModelsAPI(http);
     this.webhooks = new SonioxWebhooksAPI(this.stt);
     this.auth = new SonioxAuthAPI(http);
+    this.usageLogs = new SonioxUsageLogsAPI(http);
 
     const ttsApiUrl = options.tts_api_url ?? process.env['SONIOX_TTS_API_URL'] ?? regionDefaults.tts_api_url;
     this.tts = new SonioxTtsApi(apiKey, ttsApiUrl, http);
