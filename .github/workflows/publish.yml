@@ -48,5 +48,5 @@ jobs:
       - name: Publish
         run: npm publish --provenance --access public ${{ inputs.dry_run && '--dry-run' || '' }}
         working-directory: packages/${{ inputs.package }}
-        # env:
-        #  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
