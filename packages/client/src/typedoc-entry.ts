@@ -53,10 +53,14 @@ export type {
   TtsAudioFormat,
   TtsConnectionEvents,
   TtsConnectionOptions,
+  TtsLanguage,
+  TtsModel,
   TtsStreamConfig,
   TtsStreamEvents,
   TtsStreamInput,
   TtsStreamState,
+  TtsVoice,
+  TtsVoiceGender,
 } from '@soniox/core';
 
 // Public types — HTTP errors

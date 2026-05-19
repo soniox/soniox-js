@@ -8,12 +8,23 @@
 export { SonioxNodeClient } from './client.js';
 
 // Async API classes (accessed via client properties)
+export { SonioxConcurrencyLimitsAPI } from './async/concurrency-limits.js';
 export { SonioxFilesAPI, FileListResult, SonioxFile } from './async/files.js';
-export { SonioxSttApi, SonioxTranscript, SonioxTranscription, TranscriptionListResult } from './async/stt.js';
+export {
+  SonioxSttApi,
+  SonioxTranscript,
+  SonioxTranscription,
+  SonioxTranslationJob,
+  TranscriptionListResult,
+} from './async/stt.js';
 export { SonioxTtsApi } from './async/tts.js';
 export { SonioxModelsAPI } from './async/models.js';
 export { SonioxWebhooksAPI } from './async/webhooks.js';
 export { SonioxAuthAPI } from './async/auth.js';
+export { SonioxUsageLogsAPI, UsageLogListResult } from './async/usage-logs.js';
+
+// Translation helper
+export { translateFromTranscript } from './async/translation.js';
 
 // Real-time API
 export {
@@ -61,9 +72,18 @@ export type {
   QueryParams,
 } from './types/public/index.js';
 
+// Public types — Concurrency Limits
+export type {
+  ConcurrencyCurrentValues,
+  ConcurrencyLimitsResponse,
+  ConcurrencyLimitValues,
+  ConcurrencyScopeValues,
+} from './types/public/index.js';
+
 // Public types — Files
 export type {
   SonioxFileData,
+  FilesCountResponse,
   ListFilesOptions,
   ListFilesResponse,
   FileIdentifier,
@@ -99,11 +119,26 @@ export type {
   ListTranscriptionsOptions,
   ListTranscriptionsResponse,
   TranscriptionIdentifier,
+  TranscriptionsCountResponse,
   CleanupTarget,
   SegmentGroupKey,
   DeleteAllTranscriptionsOptions,
   ISonioxTranscript,
   ISonioxTranscription,
+} from './types/public/index.js';
+
+// Public types — Translation helper
+export type {
+  TranslateOptions,
+  TranslateMode,
+  TranslateAudioSource,
+  TranslateBaseOptions,
+  TranslateFromTranscriptMode,
+  ISonioxTranslationJob,
+  SonioxTranslation,
+  OneWayTranslation,
+  TwoWayTranslation,
+  TranslationSegment,
 } from './types/public/index.js';
 
 // Public types — Models
@@ -119,6 +154,14 @@ export type {
   TemporaryApiKeyRequest,
   TemporaryApiKeyResponse,
   TemporaryApiKeyUsageType,
+} from './types/public/index.js';
+
+// Public types — Usage Logs
+export type {
+  ListUsageLogsOptions,
+  ListUsageLogsResponse,
+  SonioxUsageLog,
+  UsageLogsSort,
 } from './types/public/index.js';
 
 // Public types — Webhooks
@@ -163,10 +206,12 @@ export type {
   TtsConnectionEvents,
   TtsConnectionOptions,
   TtsEvent,
+  TtsLanguage,
   TtsModel,
   TtsStreamConfig,
   TtsStreamEvents,
   TtsStreamInput,
   TtsStreamState,
   TtsVoice,
+  TtsVoiceGender,
 } from './types/public/index.js';

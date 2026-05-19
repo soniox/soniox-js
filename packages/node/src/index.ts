@@ -13,14 +13,29 @@ export { SonioxNodeClient } from './client.js';
 // HTTP module
 export * from './http/index.js';
 
+// Concurrency Limits API
+export { SonioxConcurrencyLimitsAPI } from './async/concurrency-limits.js';
+
 // Files API
 export { FileListResult, SonioxFile } from './async/files.js';
 
 // STT API
-export { segmentTranscript, SonioxTranscript, SonioxTranscription, TranscriptionListResult } from './async/stt.js';
+export {
+  segmentTranscript,
+  SonioxTranscript,
+  SonioxTranscription,
+  SonioxTranslationJob,
+  TranscriptionListResult,
+} from './async/stt.js';
+
+// Translation helper
+export { translateFromTranscript } from './async/translation.js';
 
 // TTS API
 export { SonioxTtsApi } from './async/tts.js';
+
+// Usage Logs API
+export { SonioxUsageLogsAPI, UsageLogListResult } from './async/usage-logs.js';
 
 // Real-time API
 export {

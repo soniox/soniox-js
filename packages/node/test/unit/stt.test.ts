@@ -723,6 +723,49 @@ describe('SonioxTranscriptionsAPI', () => {
     });
   });
 
+  describe('count()', () => {
+    it('should make GET request to /v1/transcriptions/count', async () => {
+      const counts = { playground: 8, public_api: 42, total: 50 };
+      const requestMock = jest.fn().mockResolvedValue({
+        status: 200,
+        headers: {},
+        data: counts,
+      });
+      const mockHttp = createMockHttpClient(requestMock);
+      const mockFilesApi = createMockFilesAPI();
+      const api = new SonioxSttApi(mockHttp, mockFilesApi);
+
+      const result = await api.count();
+
+      expect(requestMock).toHaveBeenCalledWith({
+        method: 'GET',
+        path: '/v1/transcriptions/count',
+      });
+      expect(result).toEqual(counts);
+    });
+
+    it('should pass abort signal', async () => {
+      const counts = { playground: 0, public_api: 1, total: 1 };
+      const requestMock = jest.fn().mockResolvedValue({
+        status: 200,
+        headers: {},
+        data: counts,
+      });
+      const mockHttp = createMockHttpClient(requestMock);
+      const mockFilesApi = createMockFilesAPI();
+      const api = new SonioxSttApi(mockHttp, mockFilesApi);
+      const controller = new AbortController();
+
+      await api.count(controller.signal);
+
+      expect(requestMock).toHaveBeenCalledWith({
+        method: 'GET',
+        path: '/v1/transcriptions/count',
+        signal: controller.signal,
+      });
+    });
+  });
+
   describe('get()', () => {
     it('should make GET request with transcription ID string', async () => {
       const requestMock = jest.fn().mockResolvedValue({
@@ -2659,6 +2702,33 @@ describe('segmentTranscript', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.start_ms).toBe(100);
     expect(result[0]?.end_ms).toBe(600);
+  });
+
+  it('should preserve timing from timestamped tokens when segment includes translation tokens', () => {
+    const tokens: TranscriptToken[] = [
+      createToken('Hello', 0, 500, { speaker: '1', language: 'en', translation_status: 'original' }),
+      { text: ' Hola', confidence: 0.95, speaker: '1', language: 'es', translation_status: 'translation' },
+    ];
+
+    const result = segmentTranscript(tokens, { group_by: ['speaker'] });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toBe('Hello Hola');
+    expect(result[0]?.start_ms).toBe(0);
+    expect(result[0]?.end_ms).toBe(500);
+  });
+
+  it('should omit timing when a segment has only translation tokens', () => {
+    const tokens: TranscriptToken[] = [
+      { text: 'Hola', confidence: 0.95, speaker: '1', language: 'es', translation_status: 'translation' },
+    ];
+
+    const result = segmentTranscript(tokens);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toBe('Hola');
+    expect(result[0]?.start_ms).toBeUndefined();
+    expect(result[0]?.end_ms).toBeUndefined();
   });
 
   it('should include original tokens in each segment', () => {

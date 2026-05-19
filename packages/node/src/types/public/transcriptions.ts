@@ -459,6 +459,26 @@ export type ListTranscriptionsResponse<T> = {
 };
 
 /**
+ * Total number of transcriptions, split by request scope.
+ */
+export type TranscriptionsCountResponse = {
+  /**
+   * Number of transcriptions created via the Playground.
+   */
+  playground: number;
+
+  /**
+   * Number of transcriptions created via Public API.
+   */
+  public_api: number;
+
+  /**
+   * Total number of transcriptions across all scopes.
+   */
+  total: number;
+};
+
+/**
  * Transcription identifier - either a string ID or an object with an id property.
  */
 export type TranscriptionIdentifier = string | { readonly id: string };
@@ -474,13 +494,21 @@ export type TranscriptToken = {
 
   /**
    * Start time of the token in milliseconds.
+   *
+   * Present on original tokens (`translation_status` of `'original'` or
+   * `'none'`) and absent on translation tokens (`translation_status: 'translation'`),
+   * which do not carry timing.
    */
-  start_ms: number;
+  start_ms?: number;
 
   /**
    * End time of the token in milliseconds.
+   *
+   * Present on original tokens (`translation_status` of `'original'` or
+   * `'none'`) and absent on translation tokens (`translation_status: 'translation'`),
+   * which do not carry timing.
    */
-  end_ms: number;
+  end_ms?: number;
 
   /**
    * Confidence score for this token (0.0 to 1.0).
@@ -493,9 +521,24 @@ export type TranscriptToken = {
   speaker?: string | null | undefined;
 
   /**
-   * Detected language code (if language identification was enabled).
+   * Language code for this token.
+   *
+   * For original tokens (`translation_status` of `'original'` or `'none'`)
+   * this is the spoken language. For translation tokens
+   * (`translation_status: 'translation'`) this is the target language.
+   *
+   * Present on every token whenever language identification or translation
+   * is configured.
    */
   language?: string | null | undefined;
+
+  /**
+   * Source language for translation tokens (`translation_status: 'translation'`).
+   *
+   * Identifies the language being translated from. Not set on original or
+   * `'none'` tokens; their language is in {@link TranscriptToken.language}.
+   */
+  source_language?: string | null | undefined;
 
   /**
    * Translation status for this token.
@@ -551,13 +594,19 @@ export type TranscriptSegment = {
 
   /**
    * Start time of the segment in milliseconds (from first token).
+   *
+   * Absent for translation-only segments where the underlying tokens carry
+   * no timestamps.
    */
-  start_ms: number;
+  start_ms?: number;
 
   /**
    * End time of the segment in milliseconds (from last token).
+   *
+   * Absent for translation-only segments where the underlying tokens carry
+   * no timestamps.
    */
-  end_ms: number;
+  end_ms?: number;
 
   /**
    * Speaker identifier (if speaker diarization was enabled).

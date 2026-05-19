@@ -4,11 +4,14 @@ import type {
   CreateTranscriptionOptions,
   ISonioxTranscript,
   ISonioxTranscription,
+  ISonioxTranslationJob,
   ListTranscriptionsOptions,
   ListTranscriptionsResponse,
+  TranscriptionsCountResponse,
   DeleteAllTranscriptionsOptions,
   SegmentTranscriptOptions,
   SonioxTranscriptionData,
+  SonioxTranslation,
   TranscribeFromFileIdOptions,
   TranscribeFromFileOptions,
   TranscribeFromUrlOptions,
@@ -19,12 +22,16 @@ import type {
   TranscriptSegment,
   TranscriptToken,
   TranscriptionContext,
+  TranslateFromTranscriptMode,
+  TranslateOptions,
+  TranslationConfig,
   UploadFileInput,
   WaitOptions,
 } from '../types/public/index.js';
 
 import type { SonioxFilesAPI } from './files.js';
 import { segmentTokens } from './segments.js';
+import { translateFromTranscript } from './translation.js';
 
 /**
  * Minimum polling interval in ms
@@ -174,26 +181,38 @@ export function segmentTranscript(
 }
 
 /**
- * Helper to build a segment from a list of tokens
+ * Helper to build a segment from a list of tokens.
+ *
+ * `start_ms` / `end_ms` are populated from the first/last tokens that carry
+ * timestamps. Translation tokens have no timing, so a translation-only
+ * segment ends up without timestamps.
  */
 function buildSegment(
   tokens: TranscriptToken[],
   speaker: string | null | undefined,
   language: string | null | undefined
 ): TranscriptSegment {
-  const firstToken = tokens[0];
-  const lastToken = tokens[tokens.length - 1];
-
-  if (!firstToken || !lastToken) {
+  if (tokens.length === 0) {
     throw new Error('Cannot build segment from an empty token array');
   }
 
   const text = tokens.map((t) => t.text).join('');
+  let start_ms: number | undefined;
+  let end_ms: number | undefined;
+
+  for (const token of tokens) {
+    if (start_ms === undefined && token.start_ms !== undefined) {
+      start_ms = token.start_ms;
+    }
+    if (token.end_ms !== undefined) {
+      end_ms = token.end_ms;
+    }
+  }
 
   return {
     text,
-    start_ms: firstToken.start_ms,
-    end_ms: lastToken.end_ms,
+    ...(start_ms !== undefined && { start_ms }),
+    ...(end_ms !== undefined && { end_ms }),
     ...(speaker != null && { speaker }),
     ...(language != null && { language }),
     tokens,
@@ -361,7 +380,7 @@ export class SonioxTranscription implements ISonioxTranscription {
 
   constructor(
     data: SonioxTranscriptionData,
-    private readonly _http: HttpClient,
+    protected readonly _http: HttpClient,
     transcript?: SonioxTranscript | null
   ) {
     this.id = data.id;
@@ -639,6 +658,87 @@ export class SonioxTranscription implements ISonioxTranscription {
 }
 
 /**
+ * A translation job.
+ *
+ * Mirrors {@link SonioxTranscription}, with an additional translation mode and
+ * helpers that reshape the completed transcript into a {@link SonioxTranslation}.
+ */
+export class SonioxTranslationJob extends SonioxTranscription implements ISonioxTranslationJob {
+  /**
+   * Pre-fetched translation result. Only available when using `translate()`
+   * with `wait: true`, `fetch_translation !== false`, and the job completed
+   * successfully.
+   */
+  readonly translation: SonioxTranslation | null | undefined;
+
+  constructor(
+    data: SonioxTranscriptionData,
+    http: HttpClient,
+    private readonly _mode: TranslateFromTranscriptMode,
+    transcript?: SonioxTranscript | null,
+    translation?: SonioxTranslation | null
+  ) {
+    super(data, http, transcript);
+    this.translation = translation;
+  }
+
+  /**
+   * Retrieves and reshapes the completed transcript into a structured
+   * translation result.
+   *
+   * Returns cached translation if available. Use `force: true` to bypass the
+   * cached translation and fetch a fresh transcript from the API.
+   */
+  async getTranslation(options?: { force?: boolean; signal?: AbortSignal }): Promise<SonioxTranslation | null> {
+    const { force, signal } = options ?? {};
+
+    if (!force && this.translation !== undefined) {
+      return this.translation;
+    }
+
+    const transcript = await this.getTranscript({
+      ...(force !== undefined && { force }),
+      ...(signal !== undefined && { signal }),
+    });
+    if (!transcript) {
+      return null;
+    }
+
+    return translateFromTranscript(transcript, this._mode);
+  }
+
+  /**
+   * Alias for {@link SonioxTranslationJob.getTranslation}.
+   */
+  async fetchTranslation(options?: { force?: boolean; signal?: AbortSignal }): Promise<SonioxTranslation | null> {
+    return this.getTranslation(options);
+  }
+
+  /**
+   * Re-fetches this translation job to get the latest status.
+   */
+  override async refresh(signal?: AbortSignal): Promise<SonioxTranslationJob> {
+    const response = await this._http.request<SonioxTranscriptionData>({
+      method: 'GET',
+      path: `/v1/transcriptions/${this.id}`,
+      ...(signal && { signal }),
+    });
+    return new SonioxTranslationJob(response.data, this._http, this._mode);
+  }
+
+  /**
+   * Waits for the translation job to complete or fail.
+   */
+  override async wait(options: WaitOptions = {}): Promise<SonioxTranslationJob> {
+    const completed = await super.wait(options);
+    if (completed instanceof SonioxTranslationJob) {
+      return completed;
+    }
+    return new SonioxTranslationJob(completed.toJSON(), this._http, this._mode);
+  }
+}
+
+/**
  * Result set for transcription listing.
  */
 export class TranscriptionListResult implements AsyncIterable<SonioxTranscription> {
@@ -806,6 +906,29 @@ export class SonioxSttApi {
     });
 
     return new TranscriptionListResult(response.data, this.http, options, signal);
+  }
+
+  /**
+   * Returns the total number of transcriptions, split by request scope.
+   *
+   * @param signal - Optional AbortSignal for request cancellation.
+   * @returns Total transcription counts for Playground, Public API, and all scopes.
+   * @throws {@link SonioxHttpError} On API errors.
+   *
+   * @example
+   * ```typescript
+   * const counts = await client.stt.count();
+   * console.log(counts.total);
+   * ```
+   */
+  async count(signal?: AbortSignal): Promise<TranscriptionsCountResponse> {
+    const response = await this.http.request<TranscriptionsCountResponse>({
+      method: 'GET',
+      path: '/v1/transcriptions/count',
+      ...(signal && { signal }),
+    });
+
+    return response.data;
   }
 
   /**
@@ -1264,6 +1387,91 @@ export class SonioxSttApi {
   }
 
   /**
+   * Starts a translation job.
+   *
+   * Sugar around {@link SonioxSttApi.transcribe}: configures translation from
+   * the supplied {@link TranslateMode} (`{ to }`, `{ to, from }`, or
+   * `{ between }`) and returns a {@link SonioxTranslationJob}. With
+   * `wait: true`, waits for completion before returning, mirroring
+   * {@link SonioxSttApi.transcribe}.
+   *
+   * Method-owned fields (cannot be set by the caller):
+   * - `translation` — derived from `to` / `between`.
+   * - `language_hints` + `language_hints_strict: true` — derived from
+   *   `from` / `between`.
+   * - `enable_language_identification: true` — always. The reshape step
+   *   relies on every token carrying a `language` field to group originals
+   *   with their translations.
+   * - `fetch_transcript` — derived from `fetch_translation` when `wait=true`.
+   *
+   * @param options - Mode, audio source, and pass-through options.
+   * @returns The translation job.
+   * @throws {@link SonioxHttpError} On API errors.
+   * @throws `Error` On validation errors or wait timeout.
+   *
+   * @example
+   * ```typescript
+   * // One-way: detect any source language, translate to Spanish.
+   * const job = await client.stt.translate({
+   *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
+   *     to: 'es',
+   * });
+   *
+   * const completed = await job.wait();
+   * const result = await completed.getTranslation();
+   * console.log(result?.translation_text);
+   *
+   * // One-way with explicit source language.
+   * const explicitJob = await client.stt.translate({
+   *     file: buffer,
+   *     filename: 'meeting.mp3',
+   *     from: 'en',
+   *     to: 'es',
+   *     wait: true,
+   * });
+   * console.log(explicitJob.translation?.translation_text);
+   *
+   * // Two-way: bidirectional translation between two languages.
+   * const twoWayJob = await client.stt.translate({
+   *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
+   *     between: ['en', 'es'],
+   *     enable_speaker_diarization: true,
+   *     wait: true,
+   * });
+   * for (const seg of twoWayJob.translation?.segments ?? []) {
+   *     console.log(`[${seg.from}] ${seg.original_text}`);
+   *     if (seg.translation_text) {
+   *         console.log(`  → [${seg.to}] ${seg.translation_text}`);
+   *     }
+   * }
+   * ```
+   */
+  async translate(options: TranslateOptions): Promise<SonioxTranslationJob> {
+    const { translation, language_hints, mode } = resolveTranslateMode(options);
+
+    const transcribeOptions = buildTranscribeOptionsFromTranslate(options, translation, language_hints);
+    const transcription = await this.transcribe(transcribeOptions);
+    const job = new SonioxTranslationJob(transcription.toJSON(), this.http, mode, transcription.transcript);
+
+    if (!options.wait) {
+      return job;
+    }
+
+    if (job.status === 'completed' && options.fetch_translation !== false) {
+      const translationResult = await job.getTranslation();
+      return new SonioxTranslationJob(job.toJSON(), this.http, mode, job.transcript, translationResult);
+    }
+
+    return new SonioxTranslationJob(
+      job.toJSON(),
+      this.http,
+      mode,
+      job.transcript,
+      job.status === 'error' ? null : undefined
+    );
+  }
+
+  /**
    * Permanently deletes all transcriptions.
    * Iterates through all pages of transcriptions and deletes each one.
    *
@@ -1322,4 +1530,106 @@ export class SonioxSttApi {
       await this.destroy(transcription);
     }
   }
+}
+
+const DEFAULT_TRANSLATE_MODEL = 'stt-async-v4';
+
+type ResolvedTranslateMode = {
+  translation: TranslationConfig;
+  language_hints: string[] | undefined;
+  mode: TranslateFromTranscriptMode;
+};
+
+/**
+ * Resolve the caller-supplied {@link TranslateMode} into the underlying
+ * `translation` config plus optional `language_hints`, and the reshape mode
+ * descriptor passed to {@link translateFromTranscript}.
+ *
+ * The discriminated input type already enforces "exactly one of `to` /
+ * `between`" at compile time. The runtime checks here are a defensive
+ * backup for callers that bypass typings.
+ */
+function resolveTranslateMode(options: TranslateOptions): ResolvedTranslateMode {
+  const between = (options as { between?: [string, string] }).between;
+  const to = (options as { to?: string }).to;
+  const from = (options as { from?: string }).from;
+
+  if (between !== undefined) {
+    if (to !== undefined) {
+      throw new Error('translate: cannot specify both "to" and "between"');
+    }
+    if (from !== undefined) {
+      throw new Error('translate: cannot specify "from" together with "between"');
+    }
+    if (!Array.isArray(between) || between.length !== 2) {
+      throw new Error('translate: "between" must be a [language_a, language_b] tuple');
+    }
+    const [language_a, language_b] = between;
+    if (!language_a || !language_b) {
+      throw new Error('translate: "between" languages must be non-empty strings');
+    }
+    return {
+      translation: { type: 'two_way', language_a, language_b },
+      language_hints: [language_a, language_b],
+      mode: { type: 'two_way', language_a, language_b },
+    };
+  }
+
+  if (to !== undefined) {
+    if (!to) {
+      throw new Error('translate: "to" must be a non-empty string');
+    }
+    if (from !== undefined && !from) {
+      throw new Error('translate: "from" must be a non-empty string when provided');
+    }
+    return {
+      translation: { type: 'one_way', target_language: to },
+      language_hints: from !== undefined ? [from] : undefined,
+      mode: from !== undefined ? { type: 'one_way', to, from } : { type: 'one_way', to },
+    };
+  }
+
+  throw new Error('translate: requires either "to" or "between"');
+}
+
+/**
+ * Build the {@link TranscribeOptions} payload for `translate()` by stripping
+ * the mode-only fields (`to` / `from` / `between`), applying the model
+ * default, and pinning method-owned fields (`translation`, `language_hints`,
+ * `language_hints_strict`, `enable_language_identification`).
+ *
+ * `enable_language_identification` is forced to `true` because the reshape
+ * step depends on language-tagged transcript tokens.
+ */
+function buildTranscribeOptionsFromTranslate(
+  options: TranslateOptions,
+  translation: TranslationConfig,
+  language_hints: string[] | undefined
+): TranscribeOptions {
+  // Drop translate-only mode fields (and `model`, which is re-applied with a
+  // default below) before forwarding the rest to `transcribe()`.
+  const rest: Record<string, unknown> = { ...(options as unknown as Record<string, unknown>) };
+  delete rest.to;
+  delete rest.from;
+  delete rest.between;
+  delete rest.model;
+  delete rest.fetch_translation;
+  delete rest.fetch_transcript;
+  delete rest.language_hints;
+  delete rest.language_hints_strict;
+
+  const base: TranscribeOptions = {
+    ...(rest as TranscribeOptions),
+    model: options.model ?? DEFAULT_TRANSLATE_MODEL,
+    translation,
+    enable_language_identification: true,
+    fetch_transcript: options.wait && options.fetch_translation !== false ? true : false,
+  };
+
+  if (language_hints !== undefined) {
+    base.language_hints = language_hints;
+    base.language_hints_strict = true;
+  }
+
+  return base;
 }

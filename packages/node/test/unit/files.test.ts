@@ -256,6 +256,47 @@ describe('SonioxFilesAPI', () => {
     });
   });
 
+  describe('count()', () => {
+    it('should make GET request to /v1/files/count', async () => {
+      const counts = { playground: 8, public_api: 42, total: 50 };
+      const requestMock = jest.fn().mockResolvedValue({
+        status: 200,
+        headers: {},
+        data: counts,
+      });
+      const mockHttp = createMockHttpClient(requestMock);
+      const api = new SonioxFilesAPI(mockHttp);
+
+      const result = await api.count();
+
+      expect(requestMock).toHaveBeenCalledWith({
+        method: 'GET',
+        path: '/v1/files/count',
+      });
+      expect(result).toEqual(counts);
+    });
+
+    it('should pass abort signal', async () => {
+      const counts = { playground: 0, public_api: 1, total: 1 };
+      const requestMock = jest.fn().mockResolvedValue({
+        status: 200,
+        headers: {},
+        data: counts,
+      });
+      const mockHttp = createMockHttpClient(requestMock);
+      const api = new SonioxFilesAPI(mockHttp);
+      const controller = new AbortController();
+
+      await api.count({ signal: controller.signal });
+
+      expect(requestMock).toHaveBeenCalledWith({
+        method: 'GET',
+        path: '/v1/files/count',
+        signal: controller.signal,
+      });
+    });
+  });
+
   describe('get()', () => {
     it('should make GET request with file ID string', async () => {
       const requestMock = jest.fn().mockResolvedValue({

@@ -37,6 +37,22 @@ node soniox_async.js --delete_all_files
 node soniox_async.js --delete_all_transcriptions
 ```
 
+## Async translate examples
+
+```sh
+# One-way translation: detect any source language, translate to Spanish
+node soniox_translate.js --audio_url "https://soniox.com/media/examples/coffee_shop.mp3" --mode to --to es
+
+# One-way translation with explicit source language: en → es
+node soniox_translate.js --audio_path ../../audio_samples/coffee_shop.mp3 --mode from-to --from en --to es
+
+# Two-way bidirectional translation between en and es
+node soniox_translate.js --audio_path ../../audio_samples/two_way_translation.mp3 --mode between --language_a en --language_b es
+
+# Start a translation job first, then wait/fetch the translation explicitly
+node soniox_translate.js --audio_url "https://soniox.com/media/examples/coffee_shop.mp3" --mode to --to es --wait false
+```
+
 ## Real-time TTS examples
 
 ```sh

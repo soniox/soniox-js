@@ -24,9 +24,18 @@ export type {
   QueryParams,
 } from './http.js';
 
+// Import and re-export Concurrency Limits API types
+export type {
+  ConcurrencyCurrentValues,
+  ConcurrencyLimitsResponse,
+  ConcurrencyLimitValues,
+  ConcurrencyScopeValues,
+} from './concurrency-limits.js';
+
 // Import and re-export Files API types
 export type {
   FileIdentifier,
+  FilesCountResponse,
   ListFilesOptions,
   ListFilesResponse,
   DeleteAllFilesOptions,
@@ -64,6 +73,7 @@ export type {
   TranscriptionContext,
   TranscriptionIdentifier,
   TranscriptionStatus,
+  TranscriptionsCountResponse,
   TranscriptResponse,
   TranscriptSegment,
   TranscriptToken,
@@ -71,6 +81,23 @@ export type {
   TwoWayTranslationConfig,
   WaitOptions,
 } from './transcriptions.js';
+
+// Import and re-export Translation API types
+export type {
+  OneWayTranslation,
+  ISonioxTranslationJob,
+  SonioxTranslation,
+  TranslateAudioSource,
+  TranslateBaseOptions,
+  TranslateFromTranscriptMode,
+  TranslateMode,
+  TranslateOptions,
+  TranslationSegment,
+  TwoWayTranslation,
+} from './translation.js';
+
+// Import and re-export Usage Logs API types
+export type { ListUsageLogsOptions, ListUsageLogsResponse, SonioxUsageLog, UsageLogsSort } from './usage-logs.js';
 
 // Import and re-export Webhooks types
 export type {
@@ -114,12 +141,14 @@ export type {
   TtsConnectionEvents,
   TtsConnectionOptions,
   TtsEvent,
+  TtsLanguage,
   TtsModel,
   TtsStreamConfig,
   TtsStreamEvents,
   TtsStreamInput,
   TtsStreamState,
   TtsVoice,
+  TtsVoiceGender,
 } from './tts.js';
 
 export type TemporaryApiKeyUsageType = 'transcribe_websocket' | 'tts_rt';
