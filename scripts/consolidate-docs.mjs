@@ -137,7 +137,8 @@ function buildLinkMap(classFiles, typeFiles) {
   }
   for (const f of typeFiles) {
     const name = extractName(f);
-    map.set(basename(f), { target: 'types', anchor: slugify(name) });
+    const slug = slugify(name);
+    map.set(basename(f), { target: 'types', anchor: slug, typeSlug: slug });
   }
   return map;
 }
@@ -145,7 +146,7 @@ function buildLinkMap(classFiles, typeFiles) {
 /** Extract the display name from the first heading of a file */
 function extractName(filePath) {
   const content = readFileSync(filePath, 'utf-8');
-  const m = content.match(/^#\s+(?:Class|Type Alias|Interface|Function):\s*(.+)$/m);
+  const m = content.match(/^#\s+(?:~~)?(?:Class|Type Alias|Interface|Function):\s*(.+?)(?:~~)?$/m);
   return m ? m[1].trim() : basename(filePath, '.md');
 }
 
@@ -185,8 +186,8 @@ function preProcess(content, filePath) {
   // Strip <a id="..."></a> HTML tags
   content = content.replace(/<a id="[^"]*"><\/a>\s*/g, '');
 
-  // Rewrite top heading: "# Class: Foo" → "## Foo"
-  content = content.replace(/^#\s+(?:Class|Type Alias|Interface|Function):\s*(.+)$/m, '## $1');
+  // Rewrite top heading: "# Class: Foo" or "# ~~Type Alias: Foo~~" → "## Foo"
+  content = content.replace(/^#\s+(?:~~)?(?:Class|Type Alias|Interface|Function):\s*(.+?)(?:~~)?$/m, '## $1');
 
   return content;
 }
@@ -198,6 +199,11 @@ function rewriteLinks(content, linkMap) {
     // For class files, prefix method-level fragments with the class slug
     if (fragment && entry.classSlug) {
       return `[${text}](${entry.target}#${entry.classSlug}-${fragment})`;
+    }
+    // Consolidated type pages also need scoped anchors for interface/type members
+    // such as Interface.Foo.md#bar, otherwise common member names collide.
+    if (fragment && entry.typeSlug) {
+      return `[${text}](${entry.target}#${entry.typeSlug}-${slugify(fragment)})`;
     }
     return `[${text}](${entry.target}#${fragment || entry.anchor})`;
   });
@@ -274,15 +280,33 @@ function processTypeFile(filePath, linkMap) {
 
   const lines = content.split('\n');
   let firstH2 = false;
+  let typeSlug = '';
+  let inProperties = false;
   for (let i = 0; i < lines.length; i++) {
     const m = lines[i].match(/^(#{2,6})\s+(.+)$/);
-    if (!m) continue;
+    if (!m) {
+      if (inProperties) {
+        const propertyMatch = lines[i].match(/^\|\s+(?:~~)?`([^`]+)`/);
+        if (propertyMatch) {
+          const anchor = `${typeSlug}-${slugify(propertyMatch[1])}`;
+          lines[i] = lines[i].replace(/^\|\s+/, `| <a id="${anchor}"></a> `);
+        }
+      }
+      continue;
+    }
 
     if (!firstH2 && m[1].length === 2) {
       firstH2 = true;
+      typeSlug = slugify(m[2]);
       continue;
     }
-    lines[i] = `**${m[2]}**`;
+    inProperties = m[1].length === 2 && m[2] === 'Properties';
+    if (m[1].length <= 3) {
+      const anchor = `${typeSlug}-${slugify(m[2])}`;
+      lines[i] = `<a id="${anchor}"></a>\n\n**${m[2]}**`;
+    } else {
+      lines[i] = `**${m[2]}**`;
+    }
   }
 
   content = rewriteLinks(lines.join('\n'), linkMap);

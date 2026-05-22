@@ -63,5 +63,8 @@ export type {
   TtsVoiceGender,
 } from '@soniox/core';
 
+// Public types — STT
+export { RealtimeSttSession } from '@soniox/core';
+
 // Public types — HTTP errors
 export type { HttpErrorCode, HttpErrorDetails, HttpMethod } from '@soniox/core';

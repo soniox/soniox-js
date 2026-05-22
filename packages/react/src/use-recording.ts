@@ -159,7 +159,7 @@ export interface UseRecordingConfig extends SttSessionConfig {
 
   /**
    * Called when the server acknowledges a finalize request
-   * (see {@link UseRecordingReturn.finalize}).
+   * (see {@link UseRecordingReturn}).
    */
   onFinalized?: (() => void) | undefined;
 
