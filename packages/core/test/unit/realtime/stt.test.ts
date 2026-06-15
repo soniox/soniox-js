@@ -90,6 +90,41 @@ describe('RealtimeSttSession', () => {
     });
   });
 
+  describe('config message', () => {
+    beforeEach(() => {
+      installMockWebSocket();
+    });
+
+    afterEach(() => {
+      restoreMockWebSocket();
+    });
+
+    async function connectWithConfig(config: ConstructorParameters<typeof RealtimeSttSession>[2]) {
+      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, config);
+      const connectPromise = session.connect();
+      const ws = MockWebSocket.instances[MockWebSocket.instances.length - 1]!;
+      ws.open();
+      await connectPromise;
+      return JSON.parse(ws.sent[0] as string) as Record<string, unknown>;
+    }
+
+    it('should include endpoint_sensitivity when provided', async () => {
+      const sentConfig = await connectWithConfig({
+        model: 'stt-rt-v5',
+        enable_endpoint_detection: true,
+        endpoint_sensitivity: 0.5,
+      });
+
+      expect(sentConfig.endpoint_sensitivity).toBe(0.5);
+    });
+
+    it('should send endpoint_sensitivity as undefined when omitted', async () => {
+      const sentConfig = await connectWithConfig({ model: 'stt-rt-v5' });
+
+      expect(sentConfig.endpoint_sensitivity).toBeUndefined();
+    });
+  });
+
   describe('abort signal', () => {
     it('should abort when signal is already aborted', async () => {
       const controller = new AbortController();

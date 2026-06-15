@@ -109,6 +109,18 @@ export type SttSessionConfig = {
   max_endpoint_delay_ms?: number | undefined;
 
   /**
+   * Controls how aggressively endpoints are detected.
+   *
+   * Adjusts how likely the model is to emit an endpoint. Higher values make
+   * endpoints more likely, which can finalize segments sooner. Lower values
+   * make endpoints less likely, which can help the system wait longer before
+   * finalizing.
+   *
+   * Allowed values are between -1.0 and 1.0. The default value is 0.0.
+   */
+  endpoint_sensitivity?: number | undefined;
+
+  /**
    * Optional tracking identifier (max 256 chars).
    */
   client_reference_id?: string | undefined;
