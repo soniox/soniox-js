@@ -6,7 +6,7 @@ import { downsampleBuffer, TARGET_SAMPLE_RATE } from './audio';
 export function AgentTab() {
   const mic = useMicrophonePermission({ autoCheck: true });
 
-  const [model, setModel] = useState('stt-rt-v4');
+  const [model, setModel] = useState('stt-rt-v5');
   const [language, setLanguage] = useState('');
   const [mode, setMode] = useState('auto'); // 'auto' or 'ptt' (push-to-talk)
   const [agentState, setAgentState] = useState('idle');
@@ -118,7 +118,7 @@ export function AgentTab() {
     // Use different endpoint based on mode
     const wsEndpoint = mode === 'ptt' ? '/push-to-talk' : '/agent';
     const url = new URL(`${protocol}://${location.host}${wsEndpoint}`);
-    url.searchParams.set('model', model.trim() || 'stt-rt-v4');
+    url.searchParams.set('model', model.trim() || 'stt-rt-v5');
     if (language.trim()) url.searchParams.set('language', language.trim());
 
     const ws = new WebSocket(url.toString());

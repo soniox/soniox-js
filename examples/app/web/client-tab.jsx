@@ -83,7 +83,7 @@ function VolumeBar({ active }) {
 }
 
 function RecordingUI() {
-  const [model, setModel] = useState('stt-rt-v4');
+  const [model, setModel] = useState('stt-rt-v5');
   const [language, setLanguage] = useState('');
   const [diarization, setDiarization] = useState(false);
   const [endpointEnabled, setEndpointEnabled] = useState(true);
@@ -99,7 +99,7 @@ function RecordingUI() {
   const effectiveGroupBy = translationEnabled ? undefined : groupBy || undefined;
 
   const recording = useRecording({
-    model: model.trim() || 'stt-rt-v4',
+    model: model.trim() || 'stt-rt-v5',
     language_hints: language.trim() ? [language.trim()] : undefined,
     enable_speaker_diarization: diarization,
     enable_endpoint_detection: endpointEnabled,

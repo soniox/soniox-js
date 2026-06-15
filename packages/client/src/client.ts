@@ -136,12 +136,12 @@ export type SttOptions = {
  * });
  *
  * // High-level: record from microphone
- * const recording = client.realtime.record({ model: 'stt-rt-v4' });
+ * const recording = client.realtime.record({ model: 'stt-rt-v5' });
  * recording.on('result', (r) => console.log(r.tokens));
  * await recording.stop();
  *
  * // Low-level: direct session access
- * const session = client.realtime.stt({ model: 'stt-rt-v4' }, { api_key: key });
+ * const session = client.realtime.stt({ model: 'stt-rt-v5' }, { api_key: key });
  * await session.connect();
  * ```
  */

@@ -85,7 +85,7 @@ import { useRecording } from '@soniox/react';
 
 function Transcribe() {
   const { isActive, finalText, partialText, start, stop } = useRecording({
-    model: 'stt-rt-v4',
+    model: 'stt-rt-v5',
   });
 
   return (
@@ -105,7 +105,7 @@ To enable live translation, pass a `translation` config to `useRecording` and us
 
 ```tsx
 const { groups, start, stop } = useRecording({
-  model: 'stt-rt-v4',
+  model: 'stt-rt-v5',
   translation: {
     type: 'one_way',
     target_language: 'es',
@@ -124,7 +124,7 @@ You can enable two-way translation in a similar way:
 
 ```tsx
 const { groups, start, stop } = useRecording({
-  model: 'stt-rt-v4',
+  model: 'stt-rt-v5',
   translation: {
     type: 'two_way',
     language_a: 'en',

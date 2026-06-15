@@ -4,7 +4,7 @@ import { MockWebSocket, installMockWebSocket, restoreMockWebSocket } from '../..
 describe('RealtimeSttSession', () => {
   const mockApiKey = 'test-api-key';
   const mockWsBaseUrl = 'wss://test.soniox.com/transcribe-websocket';
-  const mockConfig = { model: 'stt-rt-v4' };
+  const mockConfig = { model: 'stt-rt-v5' };
 
   describe('initial state', () => {
     it('should start in idle state', () => {

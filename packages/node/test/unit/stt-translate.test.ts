@@ -23,7 +23,7 @@ const createMockFilesAPI = (uploadMock: jest.Mock = jest.fn()): SonioxFilesAPI =
 const createMockTranscriptionData = (overrides: Partial<SonioxTranscriptionData> = {}): SonioxTranscriptionData => ({
   id: TRANSCRIPTION_ID,
   status: 'queued',
-  model: 'stt-async-v4',
+  model: 'stt-async-v5',
   created_at: '2024-11-26T00:00:00Z',
   filename: 'test-audio.mp3',
   enable_speaker_diarization: false,
@@ -131,7 +131,7 @@ describe('SonioxSttApi.translate()', () => {
       const createCall = requestMock.mock.calls[0]?.[0];
       expect(createCall.path).toBe('/v1/transcriptions');
       expect(createCall.body).toMatchObject({
-        model: 'stt-async-v4',
+        model: 'stt-async-v5',
         audio_url: 'https://example.com/audio.mp3',
         translation: { type: 'one_way', target_language: 'es' },
       });
@@ -205,7 +205,7 @@ describe('SonioxSttApi.translate()', () => {
   });
 
   describe('defaults and pass-through', () => {
-    it('defaults the model to stt-async-v4 when omitted', async () => {
+    it('defaults the model to stt-async-v5 when omitted', async () => {
       jest.useFakeTimers();
       const requestMock = makeRequestMockForTranslate(sampleOneWayTokens);
       const api = new SonioxSttApi(createMockHttpClient(requestMock), createMockFilesAPI());
@@ -218,7 +218,7 @@ describe('SonioxSttApi.translate()', () => {
       await jest.advanceTimersByTimeAsync(1000);
       await promise;
 
-      expect(requestMock.mock.calls[0]?.[0]?.body.model).toBe('stt-async-v4');
+      expect(requestMock.mock.calls[0]?.[0]?.body.model).toBe('stt-async-v5');
 
       jest.useRealTimers();
     });

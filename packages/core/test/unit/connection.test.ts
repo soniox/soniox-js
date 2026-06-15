@@ -236,7 +236,7 @@ describe('resolveConnectionConfig', () => {
 
     it('stt_defaults takes precedence over session_defaults', () => {
       const sttDefaults = { model: 'stt-rt-v5' };
-      const sessionDefaults = { model: 'stt-rt-v4' };
+      const sessionDefaults = { model: 'stt-rt-v5' };
       const result = resolveConnectionConfig({
         api_key: apiKey,
         stt_defaults: sttDefaults,

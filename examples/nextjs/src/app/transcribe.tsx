@@ -19,7 +19,7 @@ const STATE_COLORS: Record<string, string> = {
 export default function Transcribe() {
   const { isActive, state, finalText, partialText, isPaused, isSourceMuted, start, stop, pause, resume } = useRecording(
     {
-      model: 'stt-rt-v4',
+      model: 'stt-rt-v5',
       enable_language_identification: true,
       enable_speaker_diarization: true,
       enable_endpoint_detection: true,

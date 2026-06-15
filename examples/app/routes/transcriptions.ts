@@ -22,7 +22,7 @@ export function register(app: Express) {
 
       if (body.audio_url) {
         const transcription = await soniox.stt.transcribeFromUrl(body.audio_url, {
-          model: 'stt-async-v4',
+          model: 'stt-async-v5',
           wait: body.wait,
           enable_speaker_diarization: body.enable_speaker_diarization,
           enable_language_identification: body.enable_language_identification,
@@ -32,7 +32,7 @@ export function register(app: Express) {
 
       if (body.file_id) {
         const transcription = await soniox.stt.transcribeFromFileId(body.file_id, {
-          model: 'stt-async-v4',
+          model: 'stt-async-v5',
           wait: body.wait,
           enable_speaker_diarization: body.enable_speaker_diarization,
           enable_language_identification: body.enable_language_identification,

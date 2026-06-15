@@ -6,7 +6,7 @@ import { WebSocket } from 'ws';
 
 import { getClientForWsRequest } from '../session';
 
-const DEFAULT_RT_MODEL = 'stt-rt-v4';
+const DEFAULT_RT_MODEL = 'stt-rt-v5';
 const DEFAULT_SAMPLE_RATE = 16000;
 
 type SegmentMode = 'raw' | 'segments' | 'buffer';

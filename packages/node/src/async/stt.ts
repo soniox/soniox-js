@@ -467,7 +467,7 @@ export class SonioxTranscription implements ISonioxTranscription {
    * ```typescript
    * // Clean up both transcription and uploaded file
    * const transcription = await client.stt.transcribe({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     file: buffer,
    *     wait: true,
    * });
@@ -578,7 +578,7 @@ export class SonioxTranscription implements ISonioxTranscription {
    * @example
    * ```typescript
    * const transcription = await client.stt.create({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
    * });
    *
@@ -828,20 +828,20 @@ export class SonioxSttApi {
    * ```typescript
    * // Transcribe from URL
    * const transcription = await client.stt.create({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
    * });
    *
    * // Transcribe from uploaded file
    * const file = await client.files.upload(buffer);
    * const transcription = await client.stt.create({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     file_id: file.id,
    * });
    *
    * // With speaker diarization
    * const transcription = await client.stt.create({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
    *     enable_speaker_diarization: true,
    * });
@@ -1008,7 +1008,7 @@ export class SonioxSttApi {
    * ```typescript
    * // Clean up both transcription and uploaded file
    * const transcription = await client.stt.transcribe({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     file: buffer,
    *     wait: true,
    * });
@@ -1156,14 +1156,14 @@ export class SonioxSttApi {
    * ```typescript
    * // Transcribe from URL and wait for completion
    * const result = await client.stt.transcribe({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     audio_url: 'https://soniox.com/media/examples/coffee_shop.mp3',
    *     wait: true,
    * });
    *
    * // Upload file and transcribe in one call
    * const result = await client.stt.transcribe({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     file: buffer,  // or Blob, ReadableStream
    *     filename: 'meeting.mp3',
    *     enable_speaker_diarization: true,
@@ -1172,7 +1172,7 @@ export class SonioxSttApi {
    *
    * // With wait progress callback
    * const result = await client.stt.transcribe({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     file: buffer,
    *     wait: true,
    *     wait_options: {
@@ -1183,7 +1183,7 @@ export class SonioxSttApi {
    *
    * // Auto-cleanup uploaded file after transcription
    * const result = await client.stt.transcribe({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     file: buffer,
    *     wait: true,
    *     cleanup: ['file'], // Deletes uploaded file, keeps transcription record
@@ -1191,7 +1191,7 @@ export class SonioxSttApi {
    *
    * // Auto-cleanup everything after transcription
    * const result = await client.stt.transcribe({
-   *     model: 'stt-async-v4',
+   *     model: 'stt-async-v5',
    *     file: buffer,
    *     wait: true,
    *     cleanup: ['file', 'transcription'], // Deletes both file and transcription record
@@ -1532,7 +1532,7 @@ export class SonioxSttApi {
   }
 }
 
-const DEFAULT_TRANSLATE_MODEL = 'stt-async-v4';
+const DEFAULT_TRANSLATE_MODEL = 'stt-async-v5';
 
 type ResolvedTranslateMode = {
   translation: TranslationConfig;

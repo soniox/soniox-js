@@ -57,7 +57,7 @@ export interface TtsFactory {
  *
  * @example STT
  * ```typescript
- * const session = client.realtime.stt({ model: 'stt-rt-v4' });
+ * const session = client.realtime.stt({ model: 'stt-rt-v5' });
  * await session.connect();
  * ```
  *

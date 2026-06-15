@@ -3,7 +3,7 @@ import { Input, Select, Checkbox, Button, Panel, formatTime } from './components
 import { downsampleBuffer, TARGET_SAMPLE_RATE } from './audio';
 
 export function TranscriptionTab() {
-  const [model, setModel] = useState('stt-rt-v4');
+  const [model, setModel] = useState('stt-rt-v5');
   const [language, setLanguage] = useState('');
   const [segmentMode, setSegmentMode] = useState('raw');
   const [groupBy, setGroupBy] = useState('speaker,language');
@@ -106,7 +106,7 @@ export function TranscriptionTab() {
 
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
     const url = new URL(`${protocol}://${location.host}/realtime`);
-    url.searchParams.set('model', model.trim() || 'stt-rt-v4');
+    url.searchParams.set('model', model.trim() || 'stt-rt-v5');
     if (language.trim()) url.searchParams.set('language', language.trim());
     url.searchParams.set('endpoint', endpoint ? 'true' : 'false');
     url.searchParams.set('diarization', diarization ? 'true' : 'false');

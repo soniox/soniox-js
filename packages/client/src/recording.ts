@@ -190,7 +190,7 @@ const DEFAULT_BUFFER_QUEUE_SIZE = 1000;
  *
  * @example
  * ```typescript
- * const recording = client.realtime.record({ model: 'stt-rt-v4' });
+ * const recording = client.realtime.record({ model: 'stt-rt-v5' });
  * recording.on('result', (r) => console.log(r.tokens));
  * recording.on('error', (e) => console.error(e));
  *
