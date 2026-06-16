@@ -52,7 +52,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@soniox/client": "^2.1.0"
+    "@soniox/client": "^2.1.1"
   },
   "peerDependencies": {
     "react": ">=18.0.0"
