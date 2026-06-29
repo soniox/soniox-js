@@ -153,6 +153,7 @@ export function useTts(config: UseTtsConfig): UseTtsReturn {
         audio_format: input.audio_format,
         sample_rate: input.sample_rate,
         bitrate: input.bitrate,
+        speed: input.speed,
       };
     },
     [extractStreamInput]

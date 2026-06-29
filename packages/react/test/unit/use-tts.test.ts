@@ -74,6 +74,7 @@ describe('useTts REST mode voice requirement', () => {
         useTts({
           mode: 'rest',
           voice: 'Adrian',
+          speed: 1.2,
           onError: (error) => errors.push(error),
           onAudio: (chunk) => chunks.push(chunk),
         }),
@@ -87,9 +88,10 @@ describe('useTts REST mode voice requirement', () => {
 
     expect(errors).toHaveLength(0);
     expect(generateStream).toHaveBeenCalledTimes(1);
-    const options = generateStream.mock.calls[0]![0] as { text: string; voice: string };
+    const options = generateStream.mock.calls[0]![0] as { text: string; voice: string; speed?: number };
     expect(options.text).toBe('Hello world');
     expect(options.voice).toBe('Adrian');
+    expect(options.speed).toBe(1.2);
     expect(chunks).toHaveLength(1);
   });
 });

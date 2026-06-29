@@ -64,6 +64,13 @@ export type TtsStreamInput = {
   bitrate?: number | undefined;
 
   /**
+   * Speaking rate. `1.0` is the normal rate; values below `1.0` slow speech
+   * down and values above `1.0` speed it up. Supported range is `0.7`-`1.3`.
+   * Defaults to `1.0` when omitted.
+   */
+  speed?: number | undefined;
+
+  /**
    * Client-generated stream identifier. Must be unique among active streams
    * on the same connection. Auto-generated if omitted.
    */
@@ -81,6 +88,7 @@ export type TtsStreamConfig = {
   audio_format: string;
   sample_rate?: number | undefined;
   bitrate?: number | undefined;
+  speed?: number | undefined;
   stream_id: string;
 };
 
@@ -187,6 +195,12 @@ export type GenerateSpeechOptions = {
   sample_rate?: number | undefined;
   /** Codec bitrate in bps (for compressed formats). */
   bitrate?: number | undefined;
+  /**
+   * Speaking rate. `1.0` is the normal rate; values below `1.0` slow speech
+   * down and values above `1.0` speed it up. Supported range is `0.7`-`1.3`.
+   * Defaults to `1.0` when omitted.
+   */
+  speed?: number | undefined;
   /** Optional AbortSignal for cancellation. */
   signal?: AbortSignal | undefined;
 };

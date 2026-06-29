@@ -110,6 +110,32 @@ describe('RealtimeTtsConnection', () => {
       expect(sent.voice).toBe('Adrian');
     });
 
+    it('should send speed when provided and omit it otherwise', async () => {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults);
+
+      const withSpeedPromise = conn.stream({ stream_id: 'a', speed: 1.2 });
+      getLastMockWebSocket()!.open();
+      await withSpeedPromise;
+      const withSpeed = JSON.parse(getLastMockWebSocket()!.sent[0] as string);
+      expect(withSpeed.speed).toBe(1.2);
+
+      const noSpeedPromise = conn.stream({ stream_id: 'b' });
+      await noSpeedPromise;
+      const noSpeed = JSON.parse(getLastMockWebSocket()!.sent[1] as string);
+      expect(noSpeed).not.toHaveProperty('speed');
+    });
+
+    it('should let caller speed override tts_defaults', async () => {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, { ...ttsDefaults, speed: 0.8 });
+
+      const streamPromise = conn.stream({ speed: 1.3 });
+      getLastMockWebSocket()!.open();
+      await streamPromise;
+
+      const sent = JSON.parse(getLastMockWebSocket()!.sent[0] as string);
+      expect(sent.speed).toBe(1.3);
+    });
+
     it('should throw when required fields are missing', async () => {
       const conn = new RealtimeTtsConnection(apiKey, wsUrl, {});
       const streamPromise = conn.stream({});

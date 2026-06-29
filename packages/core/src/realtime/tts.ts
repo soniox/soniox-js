@@ -61,6 +61,7 @@ function resolveStreamConfig(input: TtsStreamInput, defaults: Partial<TtsStreamC
     audio_format: audio_format!,
     ...(merged.sample_rate !== undefined && { sample_rate: merged.sample_rate }),
     ...(merged.bitrate !== undefined && { bitrate: merged.bitrate }),
+    ...(merged.speed !== undefined && { speed: merged.speed }),
     stream_id: merged.stream_id ?? generateStreamId(),
   };
 }
