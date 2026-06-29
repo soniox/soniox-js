@@ -11,6 +11,8 @@ import type {
   UploadFileOptions,
 } from '../types/public/index.js';
 
+import { resolveUploadInput } from './upload-input.js';
+
 /**
  * Uploaded file
  */
@@ -168,165 +170,6 @@ function getFileId(file: FileIdentifier): string {
  */
 const MAX_FILE_SIZE = 1073741824;
 
-/**
- * Default filename when none can be inferred
- */
-const DEFAULT_FILENAME = 'file';
-
-/**
- * Checks if the input is an async-iterable Node.js readable stream
- */
-function isNodeReadableStream(input: unknown): input is NodeJS.ReadableStream {
-  return (
-    typeof input === 'object' &&
-    input !== null &&
-    'pipe' in input &&
-    typeof (input as NodeJS.ReadableStream).pipe === 'function' &&
-    Symbol.asyncIterator in input
-  );
-}
-
-/**
- * Checks if the input is a Web ReadableStream
- */
-function isWebReadableStream(input: unknown): input is ReadableStream<Uint8Array> {
-  return (
-    typeof input === 'object' &&
-    input !== null &&
-    'getReader' in input &&
-    typeof (input as ReadableStream).getReader === 'function'
-  );
-}
-
-/**
- * Collects chunks from a Node.js readable stream into a Buffer
- * Aborts early if size exceeds MAX_FILE_SIZE to prevent OOM
- */
-async function collectNodeStream(stream: NodeJS.ReadableStream): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  let totalLength = 0;
-
-  for await (const chunk of stream as AsyncIterable<Buffer | Uint8Array | string>) {
-    if (typeof chunk === 'string') {
-      throw new Error(
-        'Stream returned string chunks. Use a binary stream (e.g., fs.createReadStream without encoding option).'
-      );
-    }
-
-    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-
-    totalLength += buf.length;
-    if (totalLength > MAX_FILE_SIZE) {
-      throw new Error(`File size exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`);
-    }
-
-    chunks.push(buf);
-  }
-
-  return Buffer.concat(chunks);
-}
-
-/**
- * Collects chunks from a Web ReadableStream into a Uint8Array
- * Aborts early if size exceeds MAX_FILE_SIZE to prevent OOM
- */
-async function collectWebStream(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
-  const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalLength = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      totalLength += value.length;
-      if (totalLength > MAX_FILE_SIZE) {
-        throw new Error(`File size exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`);
-      }
-
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return result;
-}
-
-/**
- * Resolves the file input to a Blob and filename
- */
-async function resolveFileInput(
-  input: UploadFileInput,
-  filenameOverride?: string
-): Promise<{ blob: Blob; filename: string }> {
-  // Blob (includes File which has a name property)
-  if (input instanceof Blob) {
-    if (input.size > MAX_FILE_SIZE) {
-      throw new Error(`File size (${input.size} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`);
-    }
-
-    const filename =
-      filenameOverride ?? ('name' in input && typeof input.name === 'string' ? input.name : DEFAULT_FILENAME);
-
-    return {
-      blob: input,
-      filename,
-    };
-  }
-
-  // Buffer
-  if (Buffer.isBuffer(input)) {
-    if (input.length > MAX_FILE_SIZE) {
-      throw new Error(`File size (${input.length} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`);
-    }
-
-    return {
-      blob: new Blob([new Uint8Array(input)]),
-      filename: filenameOverride ?? DEFAULT_FILENAME,
-    };
-  }
-
-  // Uint8Array (but not Buffer)
-  if (input instanceof Uint8Array) {
-    if (input.length > MAX_FILE_SIZE) {
-      throw new Error(`File size (${input.length} bytes) exceeds maximum allowed size (${MAX_FILE_SIZE} bytes)`);
-    }
-
-    return {
-      blob: new Blob([new Uint8Array(input)]),
-      filename: filenameOverride ?? DEFAULT_FILENAME,
-    };
-  }
-
-  // Web ReadableStream
-  if (isWebReadableStream(input)) {
-    const data = await collectWebStream(input);
-    return {
-      blob: new Blob([new Uint8Array(data)]),
-      filename: filenameOverride ?? DEFAULT_FILENAME,
-    };
-  }
-
-  // Node.js ReadableStream
-  if (isNodeReadableStream(input)) {
-    const buffer = await collectNodeStream(input);
-    return {
-      blob: new Blob([new Uint8Array(buffer)]),
-      filename: filenameOverride ?? DEFAULT_FILENAME,
-    };
-  }
-
-  throw new Error('Invalid file input. Expected Buffer, Uint8Array, Blob, or ReadableStream.');
-}
-
 export class SonioxFilesAPI {
   constructor(private http: HttpClient) {}
 
@@ -382,7 +225,10 @@ export class SonioxFilesAPI {
     }
 
     // Resolve the file input to a Blob and filename
-    const { blob, filename: resolvedFilename } = await resolveFileInput(file, filename);
+    const { blob, filename: resolvedFilename } = await resolveUploadInput(file, {
+      maxBytes: MAX_FILE_SIZE,
+      filenameOverride: filename,
+    });
 
     // Build the FormData
     const formData = new FormData();

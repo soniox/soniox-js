@@ -5,6 +5,8 @@ import type { GenerateSpeechOptions, TtsModel } from '@soniox/core';
 
 import type { HttpClient } from '../http/client.js';
 
+import { SonioxVoicesAPI } from './voices.js';
+
 export type { GenerateSpeechOptions } from '@soniox/core';
 
 /**
@@ -19,9 +21,20 @@ export type { GenerateSpeechOptions } from '@soniox/core';
 export class SonioxTtsApi extends TtsRestClient {
   private readonly http: HttpClient;
 
+  /**
+   * Manage custom (cloned) voices: create, list, get, recompute, and delete.
+   *
+   * @example
+   * ```typescript
+   * const voice = await client.tts.voices.create({ name: 'My voice', file: buffer });
+   * ```
+   */
+  readonly voices: SonioxVoicesAPI;
+
   constructor(apiKey: string, ttsApiUrl: string, http: HttpClient) {
     super(apiKey, ttsApiUrl);
     this.http = http;
+    this.voices = new SonioxVoicesAPI(http);
   }
 
   /**

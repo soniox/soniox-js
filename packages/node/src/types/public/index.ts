@@ -44,6 +44,21 @@ export type {
   UploadFileOptions,
 } from './files.js';
 
+// Import and re-export Voices API types
+export type {
+  CreateVoiceInput,
+  CreateVoiceOptions,
+  DeleteAllVoicesOptions,
+  ListVoicesOptions,
+  ListVoicesResponse,
+  RecomputeVoiceOptions,
+  SonioxVoiceData,
+  VoiceIdentifier,
+  VoiceModelStatus,
+  VoiceModelStatusEntry,
+  VoicesCountResponse,
+} from './voices.js';
+
 // Import and re-export Models API types
 export type { SonioxLanguage, SonioxModel, SonioxTranscriptionMode, SonioxTranslationTarget } from './models.js';
 
