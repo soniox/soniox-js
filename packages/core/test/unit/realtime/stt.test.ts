@@ -123,6 +123,22 @@ describe('RealtimeSttSession', () => {
 
       expect(sentConfig.endpoint_sensitivity).toBeUndefined();
     });
+
+    it('should include endpoint_latency_adjustment_level when provided', async () => {
+      const sentConfig = await connectWithConfig({
+        model: 'stt-rt-v5',
+        enable_endpoint_detection: true,
+        endpoint_latency_adjustment_level: 2,
+      });
+
+      expect(sentConfig.endpoint_latency_adjustment_level).toBe(2);
+    });
+
+    it('should send endpoint_latency_adjustment_level as undefined when omitted', async () => {
+      const sentConfig = await connectWithConfig({ model: 'stt-rt-v5' });
+
+      expect(sentConfig.endpoint_latency_adjustment_level).toBeUndefined();
+    });
   });
 
   describe('abort signal', () => {

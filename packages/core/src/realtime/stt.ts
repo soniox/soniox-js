@@ -54,6 +54,7 @@ function buildConfigMessage(config: SttSessionConfig, apiKey: string): Record<st
     client_reference_id: config.client_reference_id,
     max_endpoint_delay_ms: config.max_endpoint_delay_ms,
     endpoint_sensitivity: config.endpoint_sensitivity,
+    endpoint_latency_adjustment_level: config.endpoint_latency_adjustment_level,
     context: config.context,
     translation: config.translation,
   };
