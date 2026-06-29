@@ -1,13 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from 'preact/hooks';
-import { Input, Select, Checkbox, Button, Panel, formatTime } from './components';
+import { Select, Checkbox, Button, Panel, formatTime } from './components';
 import { downsampleBuffer, TARGET_SAMPLE_RATE } from './audio';
+import { RT_MODEL, useSttLanguages } from './languages';
 
 export function TranscriptionTab() {
-  const [model, setModel] = useState('stt-rt-v5');
+  const { languageOptions } = useSttLanguages(RT_MODEL);
   const [language, setLanguage] = useState('');
   const [segmentMode, setSegmentMode] = useState('raw');
   const [groupBy, setGroupBy] = useState('speaker,language');
   const [endpoint, setEndpoint] = useState(true);
+  const [endpointSensitivity, setEndpointSensitivity] = useState(0);
+  const [endpointLatencyLevel, setEndpointLatencyLevel] = useState('0');
   const [diarization, setDiarization] = useState(false);
   const [status, setStatus] = useState('idle');
   const [partial, setPartial] = useState('');
@@ -106,9 +109,15 @@ export function TranscriptionTab() {
 
     const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
     const url = new URL(`${protocol}://${location.host}/realtime`);
-    url.searchParams.set('model', model.trim() || 'stt-rt-v5');
+    url.searchParams.set('model', RT_MODEL);
     if (language.trim()) url.searchParams.set('language', language.trim());
     url.searchParams.set('endpoint', endpoint ? 'true' : 'false');
+    if (endpoint) {
+      url.searchParams.set('endpointSensitivity', String(endpointSensitivity));
+    }
+    if (endpoint && endpointLatencyLevel) {
+      url.searchParams.set('endpointLatencyLevel', endpointLatencyLevel);
+    }
     url.searchParams.set('diarization', diarization ? 'true' : 'false');
     url.searchParams.set('languageId', 'true');
     url.searchParams.set('segmentMode', segmentMode);
@@ -163,7 +172,17 @@ export function TranscriptionTab() {
       log('Microphone permission denied');
       stop();
     }
-  }, [model, language, segmentMode, groupBy, endpoint, diarization, log, handleMessage]);
+  }, [
+    language,
+    segmentMode,
+    groupBy,
+    endpoint,
+    endpointSensitivity,
+    endpointLatencyLevel,
+    diarization,
+    log,
+    handleMessage,
+  ]);
 
   const stop = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -185,9 +204,8 @@ export function TranscriptionTab() {
 
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mt-6 items-end">
-        <Input label="Model" value={model} onChange={setModel} />
-        <Input label="Language hint" value={language} onChange={setLanguage} placeholder="en" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+        <Select label="Language hint" value={language} onChange={setLanguage} options={languageOptions} />
         <Select
           label="Segment Mode"
           value={segmentMode}
@@ -209,8 +227,43 @@ export function TranscriptionTab() {
             { value: '', label: 'No grouping' },
           ]}
         />
-        <Checkbox label="Endpoint" checked={endpoint} onChange={setEndpoint} />
-        <Checkbox label="Diarization" checked={diarization} onChange={setDiarization} />
+      </div>
+
+      <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <Checkbox label="Endpoint detection" checked={endpoint} onChange={setEndpoint} disabled={diarization} />
+          <Checkbox label="Speaker diarization" checked={diarization} onChange={setDiarization} disabled={endpoint} />
+          <span className="text-xs text-gray-500">Endpoint detection and speaker diarization can't be combined.</span>
+        </div>
+
+        {endpoint && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 pt-3 border-t border-gray-200">
+            <label className="flex flex-col gap-1 font-semibold">
+              Endpoint sensitivity: {endpointSensitivity.toFixed(1)}
+              <input
+                type="range"
+                min="-1"
+                max="1"
+                step="0.1"
+                value={endpointSensitivity}
+                onInput={(e) => setEndpointSensitivity(Number(e.target.value))}
+                className="w-full"
+              />
+              <span className="text-xs font-normal text-gray-500">-1.0 … 1.0 (0.0 = default).</span>
+            </label>
+            <Select
+              label="Endpoint latency level"
+              value={endpointLatencyLevel}
+              onChange={setEndpointLatencyLevel}
+              options={[
+                { value: '0', label: '0 (default)' },
+                { value: '1', label: '1' },
+                { value: '2', label: '2' },
+                { value: '3', label: '3' },
+              ]}
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3 mt-4">

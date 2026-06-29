@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'preact/hooks';
 import { useTts } from '@soniox/react';
-import { Button, Panel, Select } from './components';
+import { Button, Checkbox, Panel, Select } from './components';
 
 const STATE_COLORS = {
   idle: 'bg-gray-200 text-gray-600',
@@ -22,8 +22,18 @@ export function TtsTab() {
   const [voiceId, setVoiceId] = useState(DEFAULT_VOICE);
   const [modelsError, setModelsError] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
+  const [speed, setSpeed] = useState(1);
+  const [returnTimestamps, setReturnTimestamps] = useState(false);
+  const [timestamps, setTimestamps] = useState(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [customVoices, setCustomVoices] = useState([]);
+  const [voicesError, setVoicesError] = useState('');
+  const [newVoiceName, setNewVoiceName] = useState('');
+  const [newVoiceFile, setNewVoiceFile] = useState(null);
+  const [voiceBusy, setVoiceBusy] = useState(false);
 
   const chunksRef = useRef([]);
+  const timestampsRef = useRef([]);
   const audioUrlRef = useRef(null);
   const audioRef = useRef(null);
 
@@ -47,6 +57,9 @@ export function TtsTab() {
           const first = list[0];
           setModelId(first.id);
           if (first.voices?.length) setVoiceId(first.voices[0].id);
+          if (first.languages?.length && !first.languages.some((l) => l.code === 'en')) {
+            setLanguage(first.languages[0].code);
+          }
         }
       } catch (err) {
         if (!cancelled) setModelsError(err.message);
@@ -56,6 +69,83 @@ export function TtsTab() {
       cancelled = true;
     };
   }, []);
+
+  const loadVoices = useCallback(async () => {
+    try {
+      const res = await fetch('/voices');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setCustomVoices(Array.isArray(data) ? data : []);
+      setVoicesError('');
+    } catch (err) {
+      setVoicesError(err.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadVoices();
+  }, [loadVoices]);
+
+  const createVoice = useCallback(async () => {
+    if (!newVoiceName.trim() || !newVoiceFile) return;
+    setVoiceBusy(true);
+    setVoicesError('');
+    try {
+      const buffer = await newVoiceFile.arrayBuffer();
+      const res = await fetch('/voices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'x-voice-name': newVoiceName.trim(),
+          'x-filename': newVoiceFile.name || 'reference.wav',
+        },
+        body: buffer,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      setNewVoiceName('');
+      setNewVoiceFile(null);
+      await loadVoices();
+    } catch (err) {
+      setVoicesError(err.message);
+    } finally {
+      setVoiceBusy(false);
+    }
+  }, [newVoiceName, newVoiceFile, loadVoices]);
+
+  const deleteVoice = useCallback(
+    async (id) => {
+      setVoicesError('');
+      try {
+        const res = await fetch(`/voices/${id}`, { method: 'DELETE' });
+        if (!res.ok && res.status !== 204) throw new Error(`HTTP ${res.status}`);
+        await loadVoices();
+      } catch (err) {
+        setVoicesError(err.message);
+      }
+    },
+    [loadVoices]
+  );
+
+  const recomputeVoice = useCallback(
+    async (id) => {
+      setVoicesError('');
+      try {
+        const res = await fetch(`/voices/${id}/recompute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await loadVoices();
+      } catch (err) {
+        setVoicesError(err.message);
+      }
+    },
+    [loadVoices]
+  );
 
   useEffect(() => {
     return () => {
@@ -74,9 +164,11 @@ export function TtsTab() {
 
   const currentModel = useMemo(() => models.find((m) => m.id === modelId), [models, modelId]);
   const voices = currentModel?.voices ?? [];
+  const languages = currentModel?.languages ?? [];
 
-  const onAudio = useCallback((chunk) => {
+  const onAudio = useCallback((chunk, frameTimestamps) => {
     chunksRef.current.push(chunk);
+    if (frameTimestamps) timestampsRef.current.push(frameTimestamps);
   }, []);
 
   const onTerminated = useCallback(() => {
@@ -92,6 +184,23 @@ export function TtsTab() {
     }
     const blob = new Blob([combined], { type: 'audio/wav' });
     replaceAudioUrl(URL.createObjectURL(blob));
+
+    // Flatten character-level timestamps collected across audio frames.
+    const frames = timestampsRef.current;
+    if (frames.length > 0) {
+      const chars = [];
+      for (const f of frames) {
+        const { characters = [], character_start_times_seconds = [], character_end_times_seconds = [] } = f;
+        for (let i = 0; i < characters.length; i++) {
+          chars.push({
+            char: characters[i],
+            start: character_start_times_seconds[i],
+            end: character_end_times_seconds[i],
+          });
+        }
+      }
+      setTimestamps(chars);
+    }
   }, [replaceAudioUrl]);
 
   const ttsOptions = useMemo(
@@ -101,10 +210,13 @@ export function TtsTab() {
       voice: voiceId || DEFAULT_VOICE,
       language: language.trim() || 'en',
       audio_format: 'wav',
+      speed,
+      // return_timestamps is WebSocket-only; the REST endpoint ignores it.
+      return_timestamps: mode === 'websocket' ? returnTimestamps : undefined,
       onAudio,
       onTerminated,
     }),
-    [mode, modelId, voiceId, language, onAudio, onTerminated]
+    [mode, modelId, voiceId, language, speed, returnTimestamps, onAudio, onTerminated]
   );
 
   const { state, isConnecting, isSpeaking, error, speak, cancel } = useTts(ttsOptions);
@@ -113,6 +225,9 @@ export function TtsTab() {
 
   const resetAudio = useCallback(() => {
     chunksRef.current = [];
+    timestampsRef.current = [];
+    setTimestamps(null);
+    setCurrentTime(0);
     replaceAudioUrl(null);
   }, [replaceAudioUrl]);
 
@@ -132,12 +247,24 @@ export function TtsTab() {
     speak(text);
   }, [text, speak, resetAudio]);
 
+  const isVoiceReadyForModel = useCallback(
+    (voice) => modelId && voice.models?.some((m) => m.model === modelId && m.status === 'ready'),
+    [modelId]
+  );
+
   const modelOptions = models.length
     ? models.map((m) => ({ value: m.id, label: m.name || m.id }))
     : [{ value: '', label: 'Loading models…' }];
-  const voiceOptions = voices.length
+  const builtInVoiceOptions = voices.length
     ? voices.map((v) => ({ value: v.id, label: v.id }))
     : [{ value: DEFAULT_VOICE, label: DEFAULT_VOICE }];
+  const customVoiceOptions = customVoices
+    .filter(isVoiceReadyForModel)
+    .map((v) => ({ value: v.id, label: `★ ${v.name}` }));
+  const voiceOptions = [...customVoiceOptions, ...builtInVoiceOptions];
+  const languageOptions = languages.length
+    ? languages.map((l) => ({ value: l.code, label: `${l.name} (${l.code})` }))
+    : [{ value: language || 'en', label: language || 'en' }];
 
   return (
     <div className="mt-2">
@@ -184,20 +311,14 @@ export function TtsTab() {
               setModelId(id);
               const m = models.find((m) => m.id === id);
               if (m?.voices?.length) setVoiceId(m.voices[0].id);
+              if (m?.languages?.length && !m.languages.some((l) => l.code === language)) {
+                setLanguage(m.languages[0].code);
+              }
             }}
             options={modelOptions}
           />
           <Select label="Voice" value={voiceId} onChange={setVoiceId} options={voiceOptions} />
-          <label className="flex flex-col gap-1 font-semibold">
-            Language
-            <input
-              type="text"
-              className="px-3 py-2 text-base font-normal border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={language}
-              onInput={(e) => setLanguage(e.target.value)}
-              placeholder="en"
-            />
-          </label>
+          <Select label="Language" value={language} onChange={setLanguage} options={languageOptions} />
         </div>
         {modelsError && (
           <div className="mt-2 text-xs text-red-600">
@@ -206,6 +327,113 @@ export function TtsTab() {
         )}
         <div className="mt-2 text-xs text-gray-500">
           Audio format is fixed to <code>wav</code> in this demo.
+        </div>
+      </Panel>
+
+      <Panel title="Speech options">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+          <label className="flex flex-col gap-1 font-semibold">
+            Speed: {speed.toFixed(2)}×
+            <input
+              type="range"
+              min="0.7"
+              max="1.3"
+              step="0.05"
+              value={speed}
+              onInput={(e) => setSpeed(Number(e.target.value))}
+              className="w-full"
+            />
+            <span className="text-xs font-normal text-gray-500">Supported range 0.7–1.3 (1.0 = normal).</span>
+          </label>
+          <div className="flex flex-col gap-1">
+            <Checkbox
+              label="Return timestamps"
+              checked={returnTimestamps}
+              onChange={setReturnTimestamps}
+              disabled={mode !== 'websocket'}
+            />
+            <span className="text-xs text-gray-500">
+              {mode === 'websocket'
+                ? 'Character-level alignment, WebSocket only.'
+                : 'Timestamps are only available in WebSocket mode.'}
+            </span>
+          </div>
+        </div>
+      </Panel>
+
+      <Panel title="Custom voices">
+        <p className="text-xs text-gray-500 mb-3">
+          Clone a voice from a short reference clip (up to ~20s, 10 MB) via{' '}
+          <code className="bg-gray-100 px-1 rounded">client.tts.voices</code>. Voices that are{' '}
+          <code className="bg-gray-100 px-1 rounded">ready</code> for the selected model appear in the Voice dropdown
+          above (prefixed with ★).
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+          <label className="flex flex-col gap-1 font-semibold sm:col-span-1">
+            Name
+            <input
+              type="text"
+              className="px-3 py-2 text-base font-normal border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={newVoiceName}
+              onInput={(e) => setNewVoiceName(e.target.value)}
+              placeholder="My narrator"
+            />
+          </label>
+          <label className="flex flex-col gap-1 font-semibold sm:col-span-1">
+            Reference clip
+            <input
+              type="file"
+              accept="audio/*"
+              className="text-sm font-normal"
+              onChange={(e) => setNewVoiceFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <Button onClick={createVoice} disabled={voiceBusy || !newVoiceName.trim() || !newVoiceFile}>
+            {voiceBusy ? 'Creating…' : 'Create voice'}
+          </Button>
+        </div>
+
+        {voicesError && <div className="mt-2 text-xs text-red-600">Voices error: {voicesError}</div>}
+
+        <div className="mt-4 space-y-2">
+          {customVoices.length === 0 ? (
+            <div className="text-sm text-gray-500">No custom voices yet.</div>
+          ) : (
+            customVoices.map((v) => (
+              <div key={v.id} className="flex items-start justify-between gap-3 p-2 bg-gray-100 rounded">
+                <div className="min-w-0">
+                  <div className="font-semibold text-sm truncate">{v.name}</div>
+                  <div className="text-xs text-gray-500 truncate">{v.id}</div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {(v.models ?? []).map((m) => (
+                      <span
+                        key={m.model}
+                        className={`px-1.5 py-0.5 rounded text-xs ${
+                          m.status === 'ready'
+                            ? 'bg-green-100 text-green-700'
+                            : m.status === 'failed'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                        }`}
+                        title={m.error_message || ''}
+                      >
+                        {m.model}: {m.status}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button onClick={() => recomputeVoice(v.id)} variant="secondary">
+                    Recompute
+                  </Button>
+                  <Button onClick={() => deleteVoice(v.id)} variant="secondary">
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </Panel>
 
@@ -229,8 +457,33 @@ export function TtsTab() {
 
       {audioUrl && (
         <div className="mt-4">
-          <audio ref={audioRef} src={audioUrl} controls className="w-full" />
+          <audio
+            ref={audioRef}
+            src={audioUrl}
+            controls
+            className="w-full"
+            onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
+          />
         </div>
+      )}
+
+      {timestamps && timestamps.length > 0 && (
+        <Panel title="Transcript (highlights on play)">
+          <p className="whitespace-pre-wrap leading-relaxed text-base">
+            {timestamps.map((t, i) => {
+              const active = currentTime >= t.start && currentTime < t.end;
+              const played = currentTime >= t.end;
+              return (
+                <span
+                  key={i}
+                  className={active ? 'bg-blue-200 text-gray-900 rounded' : played ? 'text-gray-900' : 'text-gray-400'}
+                >
+                  {t.char}
+                </span>
+              );
+            })}
+          </p>
+        </Panel>
       )}
     </div>
   );

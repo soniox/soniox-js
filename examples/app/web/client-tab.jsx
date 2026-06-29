@@ -8,7 +8,8 @@ import {
   QuotaError,
   ConnectionError,
 } from '@soniox/client';
-import { Input, Select, Checkbox, Button, Panel, formatTime } from './components';
+import { Select, Checkbox, Button, Panel, formatTime } from './components';
+import { RT_MODEL, useSttLanguages } from './languages';
 
 function PermissionGate({ children }) {
   const mic = useMicrophonePermission({ autoCheck: true });
@@ -83,7 +84,7 @@ function VolumeBar({ active }) {
 }
 
 function RecordingUI() {
-  const [model, setModel] = useState('stt-rt-v5');
+  const { languageOptions, translationTargets } = useSttLanguages(RT_MODEL);
   const [language, setLanguage] = useState('');
   const [diarization, setDiarization] = useState(false);
   const [endpointEnabled, setEndpointEnabled] = useState(true);
@@ -99,8 +100,8 @@ function RecordingUI() {
   const effectiveGroupBy = translationEnabled ? undefined : groupBy || undefined;
 
   const recording = useRecording({
-    model: model.trim() || 'stt-rt-v5',
-    language_hints: language.trim() ? [language.trim()] : undefined,
+    model: RT_MODEL,
+    language_hints: language ? [language] : undefined,
     enable_speaker_diarization: diarization,
     enable_endpoint_detection: endpointEnabled,
     enable_language_identification: true,
@@ -114,8 +115,7 @@ function RecordingUI() {
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 items-end">
-        <Input label="Model" value={model} onChange={setModel} />
-        <Input label="Language hint" value={language} onChange={setLanguage} placeholder="en" />
+        <Select label="Language hint" value={language} onChange={setLanguage} options={languageOptions} />
         <Select
           label="Group By"
           value={groupBy}
@@ -126,21 +126,32 @@ function RecordingUI() {
             { value: 'language', label: 'Language' },
           ]}
         />
-      </div>
-
-      <div className="flex flex-wrap gap-4 mt-4 items-end">
-        <Checkbox label="Endpoint detection" checked={endpointEnabled} onChange={setEndpointEnabled} />
-        <Checkbox label="Speaker diarization" checked={diarization} onChange={setDiarization} />
-        <Checkbox label="Translation" checked={translationEnabled} onChange={setTranslationEnabled} />
         {translationEnabled && (
-          <Input
+          <Select
             label="Target language"
             value={targetLanguage}
             onChange={setTargetLanguage}
-            placeholder="es"
-            className="w-28"
+            options={
+              translationTargets.length ? translationTargets : [{ value: targetLanguage, label: targetLanguage }]
+            }
           />
         )}
+      </div>
+
+      <div className="flex flex-wrap gap-4 mt-4 items-end">
+        <Checkbox
+          label="Endpoint detection"
+          checked={endpointEnabled}
+          onChange={setEndpointEnabled}
+          disabled={diarization}
+        />
+        <Checkbox
+          label="Speaker diarization"
+          checked={diarization}
+          onChange={setDiarization}
+          disabled={endpointEnabled}
+        />
+        <Checkbox label="Translation" checked={translationEnabled} onChange={setTranslationEnabled} />
       </div>
 
       {/* Controls */}

@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'preact/hooks';
 import { SonioxProvider } from '@soniox/react';
 import { ClientTab } from './client-tab';
 import { TranscriptionTab } from './realtime-tab';
-import { AgentTab } from './agent-tab';
 import { AsyncTab } from './async-tab';
 import { TtsTab } from './tts-tab';
 import { Button } from './components';
@@ -115,7 +114,6 @@ function App() {
     { id: 'realtime', label: 'Realtime' },
     { id: 'async', label: 'Async' },
     { id: 'tts', label: 'Text-to-Speech' },
-    { id: 'agent', label: 'Voice Agent' },
   ];
 
   return (
@@ -144,7 +142,6 @@ function App() {
         {activeTab === 'realtime' && <TranscriptionTab key={tokenVersion} />}
         {activeTab === 'async' && <AsyncTab key={tokenVersion} />}
         {activeTab === 'tts' && <TtsTab key={tokenVersion} />}
-        {activeTab === 'agent' && <AgentTab key={tokenVersion} />}
       </SonioxProvider>
     </div>
   );

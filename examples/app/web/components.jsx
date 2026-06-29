@@ -32,10 +32,18 @@ export function Select({ label, value, onChange, options, className = '' }) {
   );
 }
 
-export function Checkbox({ label, checked, onChange }) {
+export function Checkbox({ label, checked, onChange, disabled = false }) {
   return (
-    <label className="flex items-center gap-2 font-semibold cursor-pointer">
-      <input type="checkbox" className="w-4 h-4" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <label
+      className={`flex items-center gap-2 font-semibold ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+    >
+      <input
+        type="checkbox"
+        className="w-4 h-4"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       <span>{label}</span>
     </label>
   );
