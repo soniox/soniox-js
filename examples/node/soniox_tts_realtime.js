@@ -30,7 +30,7 @@ function pcmS16leToWav(pcm, { sampleRate, numChannels = 1 }) {
 }
 
 // Send all text at once and collect streamed audio chunks.
-async function singleStream({ text, voice, model, language, audioFormat, sampleRate, output }) {
+async function singleStream({ text, voice, model, language, audioFormat, sampleRate, output, timestamps }) {
   console.log('Creating real-time TTS stream...');
   console.log(`  Voice: ${voice}, Model: ${model}, Language: ${language}, Format: ${audioFormat}`);
 
@@ -42,7 +42,21 @@ async function singleStream({ text, voice, model, language, audioFormat, sampleR
     language,
     audio_format: audioFormat,
     ...(sampleRate !== undefined && { sample_rate: sampleRate }),
+    // Character-level timestamps are WebSocket-only. They arrive as the second
+    // argument of the `audio` event (the async iterator only yields audio bytes).
+    ...(timestamps && { return_timestamps: true }),
   });
+
+  if (timestamps) {
+    stream.on('audio', (_chunk, ts) => {
+      if (!ts) return;
+      for (let i = 0; i < ts.characters.length; i++) {
+        const start = ts.character_start_times_seconds[i].toFixed(2);
+        const end = ts.character_end_times_seconds[i].toFixed(2);
+        console.log(`\n  [${start}s - ${end}s] ${JSON.stringify(ts.characters[i])}`);
+      }
+    });
+  }
 
   // Send the full text and mark the end of input.
   stream.sendText(text, { end: true });
@@ -127,6 +141,7 @@ async function main() {
       sample_rate: { type: 'string', default: '24000' },
       output: { type: 'string', default: 'tts_realtime_output.wav' },
       chunked: { type: 'boolean', default: false },
+      timestamps: { type: 'boolean', default: false },
     },
   });
 
@@ -140,6 +155,7 @@ async function main() {
     audioFormat: argv.audio_format,
     sampleRate,
     output: argv.output,
+    timestamps: argv.timestamps,
   };
 
   if (argv.chunked) {

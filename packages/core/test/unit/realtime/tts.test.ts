@@ -136,6 +136,21 @@ describe('RealtimeTtsConnection', () => {
       expect(sent.speed).toBe(1.3);
     });
 
+    it('should send return_timestamps when provided and omit it otherwise', async () => {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults);
+
+      const withTsPromise = conn.stream({ stream_id: 'a', return_timestamps: true });
+      getLastMockWebSocket()!.open();
+      await withTsPromise;
+      const withTs = JSON.parse(getLastMockWebSocket()!.sent[0] as string);
+      expect(withTs.return_timestamps).toBe(true);
+
+      const noTsPromise = conn.stream({ stream_id: 'b' });
+      await noTsPromise;
+      const noTs = JSON.parse(getLastMockWebSocket()!.sent[1] as string);
+      expect(noTs).not.toHaveProperty('return_timestamps');
+    });
+
     it('should throw when required fields are missing', async () => {
       const conn = new RealtimeTtsConnection(apiKey, wsUrl, {});
       const streamPromise = conn.stream({});
@@ -333,6 +348,46 @@ describe('RealtimeTtsStream', () => {
       const chunk = audioHandler.mock.calls[0][0] as Uint8Array;
       expect(chunk).toBeInstanceOf(Uint8Array);
       expect(Buffer.from(chunk).toString()).toBe('hello');
+    });
+
+    it('should pass timestamps as the second audio arg when present', async () => {
+      const { stream, ws } = await createStream();
+      const audioHandler = jest.fn();
+      stream.on('audio', audioHandler);
+
+      const timestamps = {
+        characters: ['H', 'i'],
+        character_start_times_seconds: [0.0, 0.1],
+        character_end_times_seconds: [0.1, 0.25],
+      };
+      ws.message(
+        JSON.stringify({
+          stream_id: 'test-stream',
+          audio: btoa('hi'),
+          timestamps,
+        })
+      );
+
+      expect(audioHandler).toHaveBeenCalledTimes(1);
+      const chunk = audioHandler.mock.calls[0][0] as Uint8Array;
+      expect(Buffer.from(chunk).toString()).toBe('hi');
+      expect(audioHandler.mock.calls[0][1]).toEqual(timestamps);
+    });
+
+    it('should pass undefined timestamps for audio-only frames', async () => {
+      const { stream, ws } = await createStream();
+      const audioHandler = jest.fn();
+      stream.on('audio', audioHandler);
+
+      ws.message(
+        JSON.stringify({
+          stream_id: 'test-stream',
+          audio: btoa('chunk'),
+        })
+      );
+
+      expect(audioHandler).toHaveBeenCalledTimes(1);
+      expect(audioHandler.mock.calls[0][1]).toBeUndefined();
     });
 
     it('should emit audioEnd when audio_end is true', async () => {

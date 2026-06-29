@@ -24,6 +24,7 @@ export type { SonioxProviderProps, SonioxProviderConfigProps, SonioxProviderClie
 export type { UseRecordingConfig, UseRecordingReturn, RecordingSnapshot, TokenGroup } from './types/public/index.js';
 export type { UseTtsConfig, UseTtsReturn } from './use-tts.js';
 export type { TtsSnapshot, TtsState } from './tts-store.js';
+export type { TtsTimestamps } from '@soniox/client';
 export type { MicrophonePermissionState } from './use-microphone-permission.js';
 export type { UseAudioLevelOptions, UseAudioLevelReturn } from './use-audio-level.js';
 export type { AudioLevelProps } from './audio-level.js';

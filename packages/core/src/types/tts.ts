@@ -71,6 +71,17 @@ export type TtsStreamInput = {
   speed?: number | undefined;
 
   /**
+   * Request character-level audio timestamps in the responses. When enabled,
+   * audio frames may carry a {@link TtsTimestamps} payload aligning each
+   * character of the spoken text to its start/end time in the audio.
+   *
+   * WebSocket (realtime) only — the REST endpoint streams raw audio bytes and
+   * ignores this flag. Timestamps map to the model's preprocessed text, not the
+   * raw input. Defaults to `false` when omitted.
+   */
+  return_timestamps?: boolean | undefined;
+
+  /**
    * Client-generated stream identifier. Must be unique among active streams
    * on the same connection. Auto-generated if omitted.
    */
@@ -89,7 +100,30 @@ export type TtsStreamConfig = {
   sample_rate?: number | undefined;
   bitrate?: number | undefined;
   speed?: number | undefined;
+  return_timestamps?: boolean | undefined;
   stream_id: string;
+};
+
+// =============================================================================
+// TTS Timestamps
+// =============================================================================
+
+/**
+ * Character-level audio alignment for a chunk of generated speech.
+ *
+ * The three arrays are equal-length and parallel: index `i` describes the
+ * `i`-th character of the (preprocessed) spoken text. Returned only when
+ * `return_timestamps` is enabled on the stream, and only over the WebSocket
+ * API. Each payload covers just the characters in its audio frame;
+ * concatenating `characters` across frames reconstructs the full spoken text.
+ */
+export type TtsTimestamps = {
+  /** One entry per character (Unicode codepoint) of the spoken text. */
+  characters: string[];
+  /** Start time of each character, in seconds. */
+  character_start_times_seconds: number[];
+  /** End time of each character, in seconds. */
+  character_end_times_seconds: number[];
 };
 
 // =============================================================================
@@ -136,8 +170,12 @@ export type TtsConnectionOptions = {
  * Events emitted by a TTS stream.
  */
 export type TtsStreamEvents = {
-  /** Decoded audio chunk received. */
-  audio: (chunk: Uint8Array) => void;
+  /**
+   * Decoded audio chunk received. When `return_timestamps` is enabled, the
+   * second argument carries the character-level alignment for this frame (it is
+   * `undefined` for audio-only frames).
+   */
+  audio: (chunk: Uint8Array, timestamps?: TtsTimestamps) => void;
   /** Server marked the final audio payload for this stream. */
   audioEnd: () => void;
   /** Stream has been fully terminated by the server. */
@@ -164,6 +202,7 @@ export type TtsStreamState = 'active' | 'finishing' | 'ended' | 'error';
 export type TtsEvent = {
   stream_id?: string | undefined;
   audio?: string | undefined;
+  timestamps?: TtsTimestamps | undefined;
   audio_end?: boolean | undefined;
   terminated?: boolean | undefined;
   error_code?: number | undefined;

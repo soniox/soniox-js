@@ -63,4 +63,33 @@ try {
 }
 ```
 
+## Realtime TTS timestamps
+
+The realtime (WebSocket) TTS API can return character-level audio timestamps.
+Set `return_timestamps: true` on the stream; the alignment for each frame is
+delivered as the second argument of the `audio` event (it is `undefined` for
+audio-only frames). Timestamps are WebSocket-only — the REST endpoint ignores
+the flag — and map to the model's preprocessed text, not your raw input.
+
+```typescript
+const stream = await client.realtime.tts({
+  voice: 'Adrian',
+  language: 'en',
+  audio_format: 'pcm_s16le',
+  sample_rate: 24000,
+  return_timestamps: true,
+});
+
+stream.on('audio', (chunk, timestamps) => {
+  play(chunk);
+  if (timestamps) {
+    timestamps.characters.forEach((char, i) => {
+      console.log(char, timestamps.character_start_times_seconds[i], timestamps.character_end_times_seconds[i]);
+    });
+  }
+});
+
+stream.sendText('Hello world', { end: true });
+```
+
 For the full documentation please go to our docs: [Full Node SDK Documentation](https://soniox.com/docs/stt/SDKs/node-SDK)

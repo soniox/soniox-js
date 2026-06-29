@@ -62,6 +62,7 @@ function resolveStreamConfig(input: TtsStreamInput, defaults: Partial<TtsStreamC
     ...(merged.sample_rate !== undefined && { sample_rate: merged.sample_rate }),
     ...(merged.bitrate !== undefined && { bitrate: merged.bitrate }),
     ...(merged.speed !== undefined && { speed: merged.speed }),
+    ...(merged.return_timestamps !== undefined && { return_timestamps: merged.return_timestamps }),
     stream_id: merged.stream_id ?? generateStreamId(),
   };
 }
@@ -248,7 +249,7 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
 
     if (event.audio !== undefined) {
       const chunk = decodeBase64ToUint8Array(event.audio);
-      this.emit('audio', chunk);
+      this.emit('audio', chunk, event.timestamps);
       this.enqueueIfIterating(chunk);
     }
 

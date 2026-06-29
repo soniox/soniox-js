@@ -95,3 +95,71 @@ describe('useTts REST mode voice requirement', () => {
     expect(chunks).toHaveLength(1);
   });
 });
+
+describe('useTts WebSocket mode timestamps', () => {
+  type Handler = (...args: unknown[]) => void;
+
+  function createFakeStream() {
+    const listeners = new Map<string, Set<Handler>>();
+    return {
+      state: 'active' as const,
+      sentText: [] as Array<{ text: string; end?: boolean }>,
+      on(event: string, handler: Handler) {
+        if (!listeners.has(event)) listeners.set(event, new Set());
+        listeners.get(event)!.add(handler);
+      },
+      off(event: string, handler: Handler) {
+        listeners.get(event)?.delete(handler);
+      },
+      sendText(text: string, options?: { end?: boolean }) {
+        this.sentText.push({ text, end: options?.end });
+      },
+      cancel() {},
+      emit(event: string, ...args: unknown[]) {
+        for (const handler of listeners.get(event) ?? []) handler(...args);
+      },
+    };
+  }
+
+  it('forwards return_timestamps to the stream input and delivers timestamps via onAudio', async () => {
+    const fakeStream = createFakeStream();
+    const tts = jest.fn(async () => fakeStream);
+
+    const client = new SonioxClient({ api_key: 'temp:test-key' });
+    (client as unknown as { realtime: { tts: typeof tts } }).realtime = { tts };
+
+    const wrapper = ({ children }: { children: ReactNode }) => createElement(SonioxProvider, { client }, children);
+
+    const audioCalls: Array<{ chunk: Uint8Array; timestamps?: unknown }> = [];
+    const { result } = renderHook(
+      () =>
+        useTts({
+          voice: 'Adrian',
+          return_timestamps: true,
+          onAudio: (chunk, timestamps) => audioCalls.push({ chunk, timestamps }),
+        }),
+      { wrapper }
+    );
+
+    await act(async () => {
+      result.current.speak('Hi');
+      await tick(20);
+    });
+
+    expect(tts).toHaveBeenCalledTimes(1);
+    const streamInput = tts.mock.calls[0]![0] as { return_timestamps?: boolean };
+    expect(streamInput.return_timestamps).toBe(true);
+
+    const timestamps = {
+      characters: ['H', 'i'],
+      character_start_times_seconds: [0.0, 0.1],
+      character_end_times_seconds: [0.1, 0.25],
+    };
+    act(() => {
+      fakeStream.emit('audio', new Uint8Array([1, 2, 3]), timestamps);
+    });
+
+    expect(audioCalls).toHaveLength(1);
+    expect(audioCalls[0]!.timestamps).toEqual(timestamps);
+  });
+});
