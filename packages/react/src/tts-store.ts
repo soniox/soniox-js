@@ -5,7 +5,7 @@
  * when audio events arrive.
  */
 
-import type { RealtimeTtsStream } from '@soniox/client';
+import type { RealtimeTtsStream, TtsTimestamps } from '@soniox/client';
 
 /**
  * Aggregate state for the TTS hook.
@@ -44,7 +44,7 @@ export class TtsStore {
   private stream: RealtimeTtsStream | null = null;
 
   // Callback refs — set every render by the hook, read from event handlers.
-  onAudio: ((chunk: Uint8Array) => void) | null = null;
+  onAudio: ((chunk: Uint8Array, timestamps?: TtsTimestamps) => void) | null = null;
   onAudioEnd: (() => void) | null = null;
   onTerminated: (() => void) | null = null;
   onError: ((error: Error) => void) | null = null;
@@ -125,8 +125,8 @@ export class TtsStore {
     }
   }
 
-  private handleAudio = (chunk: Uint8Array): void => {
-    this.onAudio?.(chunk);
+  private handleAudio = (chunk: Uint8Array, timestamps?: TtsTimestamps): void => {
+    this.onAudio?.(chunk, timestamps);
   };
 
   private handleAudioEnd = (): void => {

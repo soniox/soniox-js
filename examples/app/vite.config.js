@@ -16,10 +16,9 @@ export default defineConfig({
       '/files': 'http://localhost:3000',
       '/transcriptions': 'http://localhost:3000',
       '/tts': 'http://localhost:3000',
+      '/voices': 'http://localhost:3000',
       '/webhook': 'http://localhost:3000',
       '/realtime': { target: 'http://localhost:3000', ws: true },
-      '/agent': { target: 'http://localhost:3000', ws: true },
-      '/push-to-talk': { target: 'http://localhost:3000', ws: true },
     },
   },
 });

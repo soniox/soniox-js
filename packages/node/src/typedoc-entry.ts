@@ -18,6 +18,7 @@ export {
   TranscriptionListResult,
 } from './async/stt.js';
 export { SonioxTtsApi } from './async/tts.js';
+export { SonioxVoicesAPI, VoiceListResult, SonioxVoice } from './async/voices.js';
 export { SonioxModelsAPI } from './async/models.js';
 export { SonioxWebhooksAPI } from './async/webhooks.js';
 export { SonioxAuthAPI } from './async/auth.js';
@@ -139,6 +140,21 @@ export type {
   OneWayTranslation,
   TwoWayTranslation,
   TranslationSegment,
+} from './types/public/index.js';
+
+// Public types — Voices
+export type {
+  SonioxVoiceData,
+  VoiceModelStatus,
+  VoiceModelStatusEntry,
+  VoiceIdentifier,
+  CreateVoiceInput,
+  CreateVoiceOptions,
+  ListVoicesOptions,
+  ListVoicesResponse,
+  VoicesCountResponse,
+  RecomputeVoiceOptions,
+  DeleteAllVoicesOptions,
 } from './types/public/index.js';
 
 // Public types — Models

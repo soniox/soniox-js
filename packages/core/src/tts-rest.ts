@@ -20,6 +20,7 @@ type TtsRestPayload = {
   text: string;
   sample_rate?: number;
   bitrate?: number;
+  speed?: number;
 };
 
 function buildPayload(options: GenerateSpeechOptions): TtsRestPayload {
@@ -35,6 +36,9 @@ function buildPayload(options: GenerateSpeechOptions): TtsRestPayload {
   }
   if (options.bitrate !== undefined) {
     payload.bitrate = options.bitrate;
+  }
+  if (options.speed !== undefined) {
+    payload.speed = options.speed;
   }
   return payload;
 }

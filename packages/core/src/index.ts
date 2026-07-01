@@ -99,6 +99,7 @@ export type {
   TtsStreamEvents,
   TtsStreamInput,
   TtsStreamState,
+  TtsTimestamps,
   TtsVoice,
   TtsVoiceGender,
 } from './types/index.js';

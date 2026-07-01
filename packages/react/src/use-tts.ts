@@ -14,6 +14,7 @@ import type {
   SonioxClientOptions,
   SonioxConnectionConfig,
   TtsStreamInput,
+  TtsTimestamps,
 } from '@soniox/client';
 import { useCallback, useContext, useEffect, useRef, useSyncExternalStore } from 'react';
 
@@ -54,8 +55,13 @@ export interface UseTtsConfig extends TtsStreamInput {
    */
   mode?: 'websocket' | 'rest' | undefined;
 
-  /** Called when an audio chunk is received. */
-  onAudio?: ((chunk: Uint8Array) => void) | undefined;
+  /**
+   * Called when an audio chunk is received. In WebSocket mode with
+   * `return_timestamps` enabled, the second argument carries the character-level
+   * alignment for that frame (`undefined` for audio-only frames). REST mode
+   * never provides timestamps.
+   */
+  onAudio?: ((chunk: Uint8Array, timestamps?: TtsTimestamps) => void) | undefined;
   /** Called when the server marks the final audio payload. */
   onAudioEnd?: (() => void) | undefined;
   /** Called when generation is complete. */
@@ -153,6 +159,7 @@ export function useTts(config: UseTtsConfig): UseTtsReturn {
         audio_format: input.audio_format,
         sample_rate: input.sample_rate,
         bitrate: input.bitrate,
+        speed: input.speed,
       };
     },
     [extractStreamInput]

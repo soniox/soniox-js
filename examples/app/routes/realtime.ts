@@ -19,7 +19,15 @@ type RealtimeQueryParams = {
   languageId: boolean;
   segmentMode: SegmentMode;
   groupBy: SegmentGroupKey[];
+  endpointSensitivity: number | undefined;
+  endpointLatencyLevel: number | undefined;
 };
+
+function parseNumber(value: string | null): number | undefined {
+  if (value === null || value.trim() === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
 
 function parseQueryParams(req: http.IncomingMessage): RealtimeQueryParams {
   const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`);
@@ -33,8 +41,20 @@ function parseQueryParams(req: http.IncomingMessage): RealtimeQueryParams {
   const groupBy: SegmentGroupKey[] = groupByParam
     ? (groupByParam.split(',').filter(Boolean) as SegmentGroupKey[])
     : ['speaker', 'language'];
+  const endpointSensitivity = parseNumber(url.searchParams.get('endpointSensitivity'));
+  const endpointLatencyLevel = parseNumber(url.searchParams.get('endpointLatencyLevel'));
 
-  return { model, language, endpoint, diarization, languageId, segmentMode, groupBy };
+  return {
+    model,
+    language,
+    endpoint,
+    diarization,
+    languageId,
+    segmentMode,
+    groupBy,
+    endpointSensitivity,
+    endpointLatencyLevel,
+  };
 }
 
 function buildRealtimeConfig(params: RealtimeQueryParams) {
@@ -47,6 +67,8 @@ function buildRealtimeConfig(params: RealtimeQueryParams) {
     enable_speaker_diarization: params.diarization,
     enable_language_identification: params.languageId,
     language_hints: params.language ? [params.language] : undefined,
+    endpoint_sensitivity: params.endpoint ? params.endpointSensitivity : undefined,
+    endpoint_latency_adjustment_level: params.endpoint ? params.endpointLatencyLevel : undefined,
   };
 }
 

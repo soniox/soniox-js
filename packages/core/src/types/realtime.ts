@@ -121,6 +121,19 @@ export type SttSessionConfig = {
   endpoint_sensitivity?: number | undefined;
 
   /**
+   * Reduces endpoint latency compared to the default endpointing behavior.
+   *
+   * Higher values reduce endpoint latency more aggressively, which means
+   * endpoints are returned sooner and more endpoints may be emitted. This can
+   * split long speech into more segments and may slightly reduce word
+   * recognition accuracy because speech is finalized earlier.
+   *
+   * Allowed values are 0, 1, 2, and 3. The default value is 0 (default
+   * semantic endpointing behavior).
+   */
+  endpoint_latency_adjustment_level?: number | undefined;
+
+  /**
    * Optional tracking identifier (max 256 chars).
    */
   client_reference_id?: string | undefined;

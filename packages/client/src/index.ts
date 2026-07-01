@@ -114,6 +114,7 @@ export type {
   TtsStreamEvents,
   TtsStreamInput,
   TtsStreamState,
+  TtsTimestamps,
   TtsVoice,
   TtsVoiceGender,
 } from '@soniox/core';
