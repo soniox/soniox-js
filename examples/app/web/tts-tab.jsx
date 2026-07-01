@@ -86,6 +86,19 @@ export function TtsTab() {
     void loadVoices();
   }, [loadVoices]);
 
+  const hasProcessingVoices = useMemo(
+    () => customVoices.some((v) => v.models?.some((m) => m.status === 'processing')),
+    [customVoices]
+  );
+
+  useEffect(() => {
+    if (!hasProcessingVoices) return;
+    const id = setInterval(() => {
+      void loadVoices();
+    }, 3000);
+    return () => clearInterval(id);
+  }, [hasProcessingVoices, loadVoices]);
+
   const createVoice = useCallback(async () => {
     if (!newVoiceName.trim() || !newVoiceFile) return;
     setVoiceBusy(true);
