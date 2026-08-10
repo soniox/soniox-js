@@ -302,8 +302,8 @@ export type TtsVoice = {
 export type TtsModel = {
   /** Unique identifier of the model. */
   id: string;
-  /** If this is an alias, the id of the aliased model. */
-  aliased_model_id?: string | null;
+  /** If this is an alias, the id of the aliased model. Null for non-alias models. */
+  aliased_model_id: string | null;
   /** Name of the model. */
   name: string;
   /** Languages supported by this model. */
