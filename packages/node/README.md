@@ -87,18 +87,18 @@ const voice = await client.tts.voices.create({
 });
 
 // 2. Wait until it is ready for the model you want to use.
-let ready = voice.isReady('tts-rt-v1');
+let ready = voice.isReady('tts-rt-v2');
 while (!ready) {
   await new Promise((r) => setTimeout(r, 2000));
   const refreshed = await client.tts.voices.get(voice.id);
-  ready = refreshed?.isReady('tts-rt-v1') ?? false;
+  ready = refreshed?.isReady('tts-rt-v2') ?? false;
 }
 
 // 3. Use the cloned voice by its ID.
 const audio = await client.tts.generate({
   text: 'Hello from my cloned voice.',
   voice: voice.id,
-  model: 'tts-rt-v1',
+  model: 'tts-rt-v2',
   language: 'en',
 });
 ```

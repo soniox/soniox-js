@@ -158,7 +158,7 @@ function TextToSpeech() {
 
   const { speak, isSpeaking } = useTts({
     voice: 'Adrian',
-    model: 'tts-rt-v1',
+    model: 'tts-rt-v2',
     language: 'en',
     audio_format: 'wav',
     onAudio: (chunk) => {

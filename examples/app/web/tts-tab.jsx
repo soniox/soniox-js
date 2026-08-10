@@ -23,6 +23,7 @@ export function TtsTab() {
   const [modelsError, setModelsError] = useState('');
   const [audioUrl, setAudioUrl] = useState(null);
   const [speed, setSpeed] = useState(1);
+  const [reduceSilence, setReduceSilence] = useState(false);
   const [returnTimestamps, setReturnTimestamps] = useState(false);
   const [timestamps, setTimestamps] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -224,12 +225,13 @@ export function TtsTab() {
       language: language.trim() || 'en',
       audio_format: 'wav',
       speed,
+      reduce_silence: reduceSilence,
       // return_timestamps is WebSocket-only; the REST endpoint ignores it.
       return_timestamps: mode === 'websocket' ? returnTimestamps : undefined,
       onAudio,
       onTerminated,
     }),
-    [mode, modelId, voiceId, language, speed, returnTimestamps, onAudio, onTerminated]
+    [mode, modelId, voiceId, language, speed, reduceSilence, returnTimestamps, onAudio, onTerminated]
   );
 
   const { state, isConnecting, isSpeaking, error, speak, cancel } = useTts(ttsOptions);
@@ -358,18 +360,26 @@ export function TtsTab() {
             />
             <span className="text-xs font-normal text-gray-500">Supported range 0.7–1.3 (1.0 = normal).</span>
           </label>
-          <div className="flex flex-col gap-1">
-            <Checkbox
-              label="Return timestamps"
-              checked={returnTimestamps}
-              onChange={setReturnTimestamps}
-              disabled={mode !== 'websocket'}
-            />
-            <span className="text-xs text-gray-500">
-              {mode === 'websocket'
-                ? 'Character-level alignment, WebSocket only.'
-                : 'Timestamps are only available in WebSocket mode.'}
-            </span>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
+              <Checkbox label="Reduce silence" checked={reduceSilence} onChange={setReduceSilence} />
+              <span className="text-xs text-gray-500">
+                Shorten pauses between words for tighter delivery. Off keeps natural pacing.
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Checkbox
+                label="Return timestamps"
+                checked={returnTimestamps}
+                onChange={setReturnTimestamps}
+                disabled={mode !== 'websocket'}
+              />
+              <span className="text-xs text-gray-500">
+                {mode === 'websocket'
+                  ? 'Character-level alignment, WebSocket only.'
+                  : 'Timestamps are only available in WebSocket mode.'}
+              </span>
+            </div>
           </div>
         </div>
       </Panel>

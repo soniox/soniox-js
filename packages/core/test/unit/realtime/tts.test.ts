@@ -136,6 +136,32 @@ describe('RealtimeTtsConnection', () => {
       expect(sent.speed).toBe(1.3);
     });
 
+    it('should send reduce_silence when provided and omit it otherwise', async () => {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults);
+
+      const withFlagPromise = conn.stream({ stream_id: 'a', reduce_silence: true });
+      getLastMockWebSocket()!.open();
+      await withFlagPromise;
+      const withFlag = JSON.parse(getLastMockWebSocket()!.sent[0] as string);
+      expect(withFlag.reduce_silence).toBe(true);
+
+      const noFlagPromise = conn.stream({ stream_id: 'b' });
+      await noFlagPromise;
+      const noFlag = JSON.parse(getLastMockWebSocket()!.sent[1] as string);
+      expect(noFlag).not.toHaveProperty('reduce_silence');
+    });
+
+    it('should let caller reduce_silence override tts_defaults', async () => {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, { ...ttsDefaults, reduce_silence: false });
+
+      const streamPromise = conn.stream({ reduce_silence: true });
+      getLastMockWebSocket()!.open();
+      await streamPromise;
+
+      const sent = JSON.parse(getLastMockWebSocket()!.sent[0] as string);
+      expect(sent.reduce_silence).toBe(true);
+    });
+
     it('should send return_timestamps when provided and omit it otherwise', async () => {
       const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults);
 

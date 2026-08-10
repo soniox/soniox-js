@@ -8,7 +8,7 @@
 import { createAbortError, createHttpError, createNetworkError } from './http-errors.js';
 import type { GenerateSpeechOptions } from './types/tts.js';
 
-const DEFAULT_MODEL = 'tts-rt-v1';
+const DEFAULT_MODEL = 'tts-rt-v2';
 const DEFAULT_LANGUAGE = 'en';
 const DEFAULT_AUDIO_FORMAT = 'wav';
 
@@ -21,6 +21,7 @@ type TtsRestPayload = {
   sample_rate?: number;
   bitrate?: number;
   speed?: number;
+  reduce_silence?: boolean;
 };
 
 function buildPayload(options: GenerateSpeechOptions): TtsRestPayload {
@@ -39,6 +40,9 @@ function buildPayload(options: GenerateSpeechOptions): TtsRestPayload {
   }
   if (options.speed !== undefined) {
     payload.speed = options.speed;
+  }
+  if (options.reduce_silence !== undefined) {
+    payload.reduce_silence = options.reduce_silence;
   }
   return payload;
 }

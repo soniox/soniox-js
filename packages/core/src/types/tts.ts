@@ -31,7 +31,7 @@ export type TtsAudioFormat =
 export type TtsStreamInput = {
   /**
    * Text-to-Speech model to use.
-   * @example 'tts-rt-v1'
+   * @example 'tts-rt-v2'
    */
   model?: string | undefined;
 
@@ -71,6 +71,13 @@ export type TtsStreamInput = {
   speed?: number | undefined;
 
   /**
+   * Shorten pauses between words in the generated speech.
+   * `false` (default) keeps the model's natural pacing; `true` tightens
+   * delivery by reducing silence between words.
+   */
+  reduce_silence?: boolean | undefined;
+
+  /**
    * Request character-level audio timestamps in the responses. When enabled,
    * audio frames may carry a {@link TtsTimestamps} payload aligning each
    * character of the spoken text to its start/end time in the audio.
@@ -100,6 +107,7 @@ export type TtsStreamConfig = {
   sample_rate?: number | undefined;
   bitrate?: number | undefined;
   speed?: number | undefined;
+  reduce_silence?: boolean | undefined;
   return_timestamps?: boolean | undefined;
   stream_id: string;
 };
@@ -219,7 +227,7 @@ export type TtsEvent = {
 export type GenerateSpeechOptions = {
   /** Input text to generate as speech. */
   text: string;
-  /** Text-to-Speech model to use. @default 'tts-rt-v1' */
+  /** Text-to-Speech model to use. @default 'tts-rt-v2' */
   model?: string | undefined;
   /** Language code. @default 'en' */
   language?: string | undefined;
@@ -240,6 +248,12 @@ export type GenerateSpeechOptions = {
    * Defaults to `1.0` when omitted.
    */
   speed?: number | undefined;
+  /**
+   * Shorten pauses between words in the generated speech.
+   * `false` (default) keeps the model's natural pacing; `true` tightens
+   * delivery by reducing silence between words.
+   */
+  reduce_silence?: boolean | undefined;
   /** Optional AbortSignal for cancellation. */
   signal?: AbortSignal | undefined;
 };
@@ -289,4 +303,23 @@ export type TtsModel = {
   languages: TtsLanguage[];
   /** Voices supported by this model. */
   voices: TtsVoice[];
+  /**
+   * Whether the model can return character-level audio timestamps via
+   * `return_timestamps`.
+   */
+  supports_timestamps?: boolean | undefined;
+  /**
+   * Whether the model supports adjusting the speaking rate via the `speed`
+   * parameter.
+   */
+  supports_speed_adjustment: boolean;
+  /** Minimum supported speaking rate. */
+  speed_min: number;
+  /** Maximum supported speaking rate. */
+  speed_max: number;
+  /**
+   * Whether the model supports shortening pauses between words via the
+   * `reduce_silence` parameter.
+   */
+  supports_silence_reduction: boolean;
 };

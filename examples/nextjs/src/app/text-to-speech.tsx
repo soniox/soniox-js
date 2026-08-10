@@ -33,7 +33,7 @@ export default function TextToSpeech() {
 
   const { state, isConnecting, isSpeaking, error, speak, cancel } = useTts({
     voice,
-    model: 'tts-rt-v1',
+    model: 'tts-rt-v2',
     language,
     audio_format: 'wav',
     onAudio: (chunk) => {

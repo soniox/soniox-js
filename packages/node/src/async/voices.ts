@@ -83,8 +83,8 @@ export class SonioxVoice {
    * @example
    * ```typescript
    * const voice = await client.tts.voices.get(voiceId);
-   * if (voice?.isReady('tts-rt-v1')) {
-   *   const audio = await client.tts.generate({ text: 'Hi', voice: voice.id, language: 'en', model: 'tts-rt-v1' });
+   * if (voice?.isReady('tts-rt-v2')) {
+   *   const audio = await client.tts.generate({ text: 'Hi', voice: voice.id, language: 'en', model: 'tts-rt-v2' });
    * }
    * ```
    */

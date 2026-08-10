@@ -28,6 +28,11 @@ const createMockTtsModel = (overrides: Partial<TtsModel> = {}): TtsModel => ({
       gender: 'neutral',
     },
   ],
+  supports_timestamps: true,
+  supports_speed_adjustment: true,
+  speed_min: 0.7,
+  speed_max: 1.3,
+  supports_silence_reduction: true,
   ...overrides,
 });
 

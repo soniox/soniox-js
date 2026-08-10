@@ -160,6 +160,7 @@ export function useTts(config: UseTtsConfig): UseTtsReturn {
         sample_rate: input.sample_rate,
         bitrate: input.bitrate,
         speed: input.speed,
+        reduce_silence: input.reduce_silence,
       };
     },
     [extractStreamInput]

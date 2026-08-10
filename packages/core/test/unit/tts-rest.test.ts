@@ -113,7 +113,7 @@ describe('TtsRestClient', () => {
       expect(payload).toMatchObject({
         text: 'Hello',
         voice: 'Adrian',
-        model: 'tts-rt-v1',
+        model: 'tts-rt-v2',
         language: 'en',
         audio_format: 'wav',
       });
@@ -133,6 +133,22 @@ describe('TtsRestClient', () => {
 
       const withoutSpeed = JSON.parse(fetchMock.mock.calls[1]![1]!.body as string) as Record<string, unknown>;
       expect(withoutSpeed).not.toHaveProperty('speed');
+    });
+
+    it('includes reduce_silence in the body when provided and omits it otherwise', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse(new Uint8Array([1])));
+
+      const client = new TtsRestClient(apiKey, ttsApiUrl);
+      await client.generate({ text: 'Hello', voice: 'Adrian', reduce_silence: true });
+
+      const withFlag = JSON.parse(fetchMock.mock.calls[0]![1]!.body as string) as Record<string, unknown>;
+      expect(withFlag.reduce_silence).toBe(true);
+
+      fetchMock.mockResolvedValueOnce(okResponse(new Uint8Array([1])));
+      await client.generate({ text: 'Hello', voice: 'Adrian' });
+
+      const withoutFlag = JSON.parse(fetchMock.mock.calls[1]![1]!.body as string) as Record<string, unknown>;
+      expect(withoutFlag).not.toHaveProperty('reduce_silence');
     });
 
     it('throws SonioxHttpError with status/headers/body on a non-2xx response', async () => {
