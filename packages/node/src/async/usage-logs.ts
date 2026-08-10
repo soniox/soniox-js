@@ -1,5 +1,11 @@
 import type { HttpClient } from '../http/client.js';
-import type { ListUsageLogsOptions, ListUsageLogsResponse, SonioxUsageLog } from '../types/public/index.js';
+import type {
+  GetUsageSummaryOptions,
+  ListUsageLogsOptions,
+  ListUsageLogsResponse,
+  SonioxUsageLog,
+  UsageSummaryResponse,
+} from '../types/public/index.js';
 
 /**
  * Result set for usage log listing.
@@ -117,5 +123,44 @@ export class SonioxUsageLogsAPI {
     });
 
     return new UsageLogListResult(response.data, this.http, options);
+  }
+
+  /**
+   * Retrieves an aggregated usage summary for the project over a time window.
+   *
+   * Returns totals across all models plus one entry per model that recorded
+   * usage. Per-day series are aligned to each entry's `days` array.
+   *
+   * @param options - Required time window plus optional cancellation.
+   * @returns Aggregated usage summary.
+   * @throws {@link SonioxHttpError} On API errors.
+   *
+   * @example
+   * ```typescript
+   * const summary = await client.usageLogs.getSummary({
+   *   start_time: '2026-04-01T00:00:00Z',
+   *   end_time: '2026-04-03T00:00:00Z',
+   * });
+   *
+   * console.log(summary.total.total_cost_usd);
+   * for (const model of summary.models) {
+   *   console.log(model.model, model.total_num_requests);
+   * }
+   * ```
+   */
+  async getSummary(options: GetUsageSummaryOptions): Promise<UsageSummaryResponse> {
+    const { start_time, end_time, signal } = options;
+
+    const response = await this.http.request<UsageSummaryResponse>({
+      method: 'GET',
+      path: '/v1/usage/summary',
+      query: {
+        start_time,
+        end_time,
+      },
+      ...(signal && { signal }),
+    });
+
+    return response.data;
   }
 }

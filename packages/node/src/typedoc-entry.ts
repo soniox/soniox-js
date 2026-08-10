@@ -79,6 +79,11 @@ export type {
   ConcurrencyLimitsResponse,
   ConcurrencyLimitValues,
   ConcurrencyScopeValues,
+  ConcurrentStreamKind,
+  ConcurrentStreamsHistoryEntry,
+  ConcurrentStreamsHistoryPeriodSec,
+  ConcurrentStreamsHistoryResponse,
+  GetConcurrentStreamsHistoryOptions,
 } from './types/public/index.js';
 
 // Public types — Files
@@ -174,10 +179,13 @@ export type {
 
 // Public types — Usage Logs
 export type {
+  GetUsageSummaryOptions,
   ListUsageLogsOptions,
   ListUsageLogsResponse,
   SonioxUsageLog,
   UsageLogsSort,
+  UsageSummaryEntry,
+  UsageSummaryResponse,
 } from './types/public/index.js';
 
 // Public types — Webhooks

@@ -30,6 +30,11 @@ export type {
   ConcurrencyLimitsResponse,
   ConcurrencyLimitValues,
   ConcurrencyScopeValues,
+  ConcurrentStreamKind,
+  ConcurrentStreamsHistoryEntry,
+  ConcurrentStreamsHistoryPeriodSec,
+  ConcurrentStreamsHistoryResponse,
+  GetConcurrentStreamsHistoryOptions,
 } from './concurrency-limits.js';
 
 // Import and re-export Files API types
@@ -112,7 +117,15 @@ export type {
 } from './translation.js';
 
 // Import and re-export Usage Logs API types
-export type { ListUsageLogsOptions, ListUsageLogsResponse, SonioxUsageLog, UsageLogsSort } from './usage-logs.js';
+export type {
+  GetUsageSummaryOptions,
+  ListUsageLogsOptions,
+  ListUsageLogsResponse,
+  SonioxUsageLog,
+  UsageLogsSort,
+  UsageSummaryEntry,
+  UsageSummaryResponse,
+} from './usage-logs.js';
 
 // Import and re-export Webhooks types
 export type {

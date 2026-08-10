@@ -170,3 +170,147 @@ export type ListUsageLogsResponse = {
    */
   next_page_cursor: string | null;
 };
+
+/**
+ * Options for retrieving an aggregated usage summary.
+ *
+ * Usage is aggregated by whole UTC day over the half-open window
+ * `[start_time, end_time)`: a day is included when the window covers any part
+ * of it. The window must not cover more than 366 UTC days.
+ */
+export type GetUsageSummaryOptions = {
+  /**
+   * Start of the window (inclusive). Must be an ISO 8601 timestamp in UTC.
+   * Its UTC day is included.
+   *
+   * @example '2026-04-01T00:00:00Z'
+   */
+  start_time: string;
+
+  /**
+   * End of the window (exclusive). Must be an ISO 8601 timestamp in UTC and
+   * strictly after `start_time`. Its UTC day is included unless it falls
+   * exactly on midnight.
+   *
+   * @example '2026-04-03T00:00:00Z'
+   */
+  end_time: string;
+
+  /**
+   * AbortSignal for cancelling the request.
+   */
+  signal?: AbortSignal | undefined;
+};
+
+/**
+ * Aggregated usage for a model (or the project total) over a time window.
+ *
+ * Per-day arrays are aligned to {@link UsageSummaryEntry.days}.
+ */
+export type UsageSummaryEntry = {
+  /**
+   * Model identifier. `null` on the {@link UsageSummaryResponse.total} entry.
+   */
+  model: string | null;
+
+  /**
+   * One UTC day (`YYYY-MM-DD`) per element, in ascending order. Every day in
+   * the requested window is present, including days with no usage.
+   *
+   * @format date
+   */
+  days: string[];
+
+  /**
+   * Total cost over the window, in USD.
+   * Equals `total_input_cost_usd` + `total_output_cost_usd` + `total_duration_cost_usd`.
+   */
+  total_cost_usd: string;
+
+  /**
+   * Total cost of input tokens over the window, in USD.
+   */
+  total_input_cost_usd: string;
+
+  /**
+   * Total cost of output tokens over the window, in USD.
+   */
+  total_output_cost_usd: string;
+
+  /**
+   * Total cost over the window for models billed by session duration rather
+   * than by tokens, in USD. `0` for Speech-to-Text and Text-to-Speech models.
+   */
+  total_duration_cost_usd: string;
+
+  /**
+   * Cost per day, in USD, aligned to `days`.
+   */
+  cost_usd: string[];
+
+  /**
+   * Cost of input tokens per day, in USD, aligned to `days`.
+   */
+  input_cost_usd: string[];
+
+  /**
+   * Cost of output tokens per day, in USD, aligned to `days`.
+   */
+  output_cost_usd: string[];
+
+  /**
+   * Duration-billed cost per day, in USD, aligned to `days`.
+   */
+  duration_cost_usd: string[];
+
+  /**
+   * Number of requests over the window.
+   */
+  total_num_requests: number;
+
+  total_input_text_tokens: number;
+  total_input_audio_tokens: number;
+  total_input_audio_duration_ms: number;
+  total_output_text_tokens: number;
+  total_output_audio_tokens: number;
+  total_output_audio_duration_ms: number;
+
+  /**
+   * Billed session duration over the window, in milliseconds, for models
+   * billed by duration. `0` for Speech-to-Text and Text-to-Speech models.
+   */
+  total_duration_ms: number;
+
+  /**
+   * Number of requests per day, aligned to `days`.
+   */
+  num_requests: number[];
+
+  input_text_tokens: number[];
+  input_audio_tokens: number[];
+  input_audio_duration_ms: number[];
+  output_text_tokens: number[];
+  output_audio_tokens: number[];
+  output_audio_duration_ms: number[];
+
+  /**
+   * Billed session duration per day, in milliseconds, aligned to `days`.
+   */
+  duration_ms: number[];
+};
+
+/**
+ * Aggregated usage summary for the authenticated project.
+ */
+export type UsageSummaryResponse = {
+  /**
+   * Cost and activity across all models. Its `model` is `null`.
+   */
+  total: UsageSummaryEntry;
+
+  /**
+   * One entry per model that recorded usage in the window.
+   * Empty when the project had no usage.
+   */
+  models: UsageSummaryEntry[];
+};
