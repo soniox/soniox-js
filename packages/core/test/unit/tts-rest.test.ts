@@ -151,6 +151,22 @@ describe('TtsRestClient', () => {
       expect(withoutFlag).not.toHaveProperty('reduce_silence');
     });
 
+    it('includes client_reference_id in the body when provided and omits it otherwise', async () => {
+      fetchMock.mockResolvedValueOnce(okResponse(new Uint8Array([1])));
+
+      const client = new TtsRestClient(apiKey, ttsApiUrl);
+      await client.generate({ text: 'Hello', voice: 'Adrian', client_reference_id: 'order-123' });
+
+      const withRef = JSON.parse(fetchMock.mock.calls[0]![1]!.body as string) as Record<string, unknown>;
+      expect(withRef.client_reference_id).toBe('order-123');
+
+      fetchMock.mockResolvedValueOnce(okResponse(new Uint8Array([1])));
+      await client.generate({ text: 'Hello', voice: 'Adrian' });
+
+      const withoutRef = JSON.parse(fetchMock.mock.calls[1]![1]!.body as string) as Record<string, unknown>;
+      expect(withoutRef).not.toHaveProperty('client_reference_id');
+    });
+
     it('throws SonioxHttpError with status/headers/body on a non-2xx response', async () => {
       fetchMock.mockResolvedValueOnce(
         errorResponse(400, '{"error_code":3001,"error_message":"Invalid voice"}', {

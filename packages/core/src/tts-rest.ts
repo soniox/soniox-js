@@ -22,6 +22,7 @@ type TtsRestPayload = {
   bitrate?: number;
   speed?: number;
   reduce_silence?: boolean;
+  client_reference_id?: string;
 };
 
 function buildPayload(options: GenerateSpeechOptions): TtsRestPayload {
@@ -43,6 +44,9 @@ function buildPayload(options: GenerateSpeechOptions): TtsRestPayload {
   }
   if (options.reduce_silence !== undefined) {
     payload.reduce_silence = options.reduce_silence;
+  }
+  if (options.client_reference_id !== undefined) {
+    payload.client_reference_id = options.client_reference_id;
   }
   return payload;
 }

@@ -10,6 +10,7 @@ import type { RealtimeError } from '../realtime/errors.js';
 export type TtsAudioFormat =
   | 'pcm_f32le'
   | 'pcm_s16le'
+  | 'pcm_s16be'
   | 'pcm_mulaw'
   | 'pcm_alaw'
   | 'wav'
@@ -254,6 +255,12 @@ export type GenerateSpeechOptions = {
    * delivery by reducing silence between words.
    */
   reduce_silence?: boolean | undefined;
+  /**
+   * Optional tracking identifier. Does not need to be unique.
+   * Ignored if the request authenticates with a temporary API key.
+   * @maxLength 256
+   */
+  client_reference_id?: string | undefined;
   /** Optional AbortSignal for cancellation. */
   signal?: AbortSignal | undefined;
 };

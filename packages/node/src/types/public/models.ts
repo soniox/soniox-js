@@ -47,9 +47,32 @@ export type SonioxModel = {
   languages: SonioxLanguage[];
 
   /**
-   * TODO: Add documentation
+   * Whether the model supports `language_hints_strict`.
    */
   supports_language_hints_strict: boolean;
+
+  /**
+   * Whether the model supports `max_endpoint_delay_ms` on real-time sessions.
+   */
+  supports_max_endpoint_delay: boolean;
+
+  /**
+   * Whether the model supports endpoint sensitivity configuration.
+   */
+  supports_endpoint_sensitivity: boolean;
+
+  /**
+   * Whether the model supports `endpoint_latency_adjustment_level` on
+   * real-time sessions.
+   */
+  supports_endpoint_latency_adjustment: boolean;
+
+  /**
+   * Maximum `endpoint_latency_adjustment_level` the model accepts.
+   * Valid levels are `0` (no adjustment) through this value; `0` means the
+   * feature is unsupported.
+   */
+  endpoint_latency_adjustment_max_level: number;
 
   /**
    * List of supported one-way translation targets. If list is empty, check for one_way_translation field
@@ -70,6 +93,4 @@ export type SonioxModel = {
    * When contains string 'all_languages',' any laguage pair from languages can be used
    */
   two_way_translation: string | null;
-
-  supports_max_endpoint_delay: boolean;
 };
