@@ -511,7 +511,8 @@ export class Recording {
       resolvedConfig.api_key,
       resolvedConfig.stt_ws_url,
       sttConfig,
-      sessionOptions
+      // A browser WebSocket cannot set headers; the key rides in the subprotocol.
+      { auth_transport: 'protocol-list', ...sessionOptions }
     );
     this.session = session;
 
@@ -742,7 +743,8 @@ export class Recording {
       resolvedConfig.api_key,
       resolvedConfig.stt_ws_url,
       sttConfig,
-      sessionOptions
+      // A browser WebSocket cannot set headers; the key rides in the subprotocol.
+      { auth_transport: 'protocol-list', ...sessionOptions }
     );
     this.session = session;
     this.wireSessionEvents(session);

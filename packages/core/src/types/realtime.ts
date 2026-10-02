@@ -154,9 +154,31 @@ export type SttSessionConfig = {
 // =============================================================================
 
 /**
+ * Carrier for the API key on the WebSocket handshake.
+ */
+export type AuthTransport = 'headers' | 'protocol-list';
+
+/**
  * SDK-level session options (not sent to the server).
  */
 export type SttSessionOptions = {
+  /**
+   * How the API key reaches the server on the WebSocket handshake.
+   *
+   * - `'protocol-list'` (default) sends it in the `soniox-api-key` subprotocol,
+   *   which every WebSocket implementation supports.
+   * - `'headers'` sends it as `Authorization: Bearer`, which proxies and access
+   *   logs conventionally redact, unlike `Sec-WebSocket-Protocol`. Only works
+   *   where the WebSocket constructor accepts a `headers` option (Node); other
+   *   runtimes reject it.
+   *
+   * `@soniox/node` selects `'headers'` and `@soniox/client` `'protocol-list'`
+   * for you; set this only to override that choice.
+   *
+   * @default 'protocol-list'
+   */
+  auth_transport?: AuthTransport | undefined;
+
   /**
    * AbortSignal for cancellation.
    */

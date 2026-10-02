@@ -77,6 +77,20 @@ describe('RealtimeTtsConnection', () => {
     });
   });
 
+  describe('handshake auth', () => {
+    it('sends the api key as an Authorization header when asked for "headers"', async () => {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults, { auth_transport: 'headers' });
+      const streamPromise = conn.stream({});
+
+      const ws = getLastMockWebSocket()!;
+      ws.open();
+      await streamPromise;
+
+      expect(ws.protocols).toEqual({ headers: { Authorization: `Bearer ${apiKey}` } });
+      expect(JSON.parse(ws.sent[0] as string).api_key).toBeUndefined();
+    });
+  });
+
   describe('stream', () => {
     it('should auto-connect and open a stream', async () => {
       const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults);
@@ -89,8 +103,11 @@ describe('RealtimeTtsConnection', () => {
       expect(stream).toBeInstanceOf(RealtimeTtsStream);
       expect(stream.streamId).toBeDefined();
 
+      // The key travels on the handshake (subprotocol by default), not in the config message.
+      expect(ws.protocols).toEqual(['soniox-api-key', apiKey]);
+
       const sent = JSON.parse(ws.sent[0] as string);
-      expect(sent.api_key).toBe(apiKey);
+      expect(sent.api_key).toBeUndefined();
       expect(sent.model).toBe('tts-rt-v1');
       expect(sent.voice).toBe('Adrian');
       expect(sent.language).toBe('en');

@@ -3,6 +3,7 @@ import type {
   RealtimeEvent,
   RealtimeResult,
   RealtimeToken,
+  AuthTransport,
   SendStreamOptions,
   StateChangeReason,
   SttSessionConfig,
@@ -12,6 +13,7 @@ import type {
 } from '../types/realtime.js';
 
 import { AsyncEventQueue } from './async-queue.js';
+import { handshakeAuthArg } from './auth.js';
 import { TypedEmitter } from './emitter.js';
 import { AbortError, ConnectionError, StateError, mapErrorResponse } from './errors.js';
 
@@ -39,9 +41,8 @@ function toUint8Array(data: AudioData): Uint8Array {
 /**
  * Build the configuration message to send after WebSocket connection
  */
-function buildConfigMessage(config: SttSessionConfig, apiKey: string): Record<string, unknown> {
+function buildConfigMessage(config: SttSessionConfig): Record<string, unknown> {
   return {
-    api_key: apiKey,
     model: config.model,
     audio_format: config.audio_format ?? 'auto',
     sample_rate: config.sample_rate,
@@ -139,6 +140,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
 
   private readonly apiKey: string;
   private readonly wsBaseUrl: string;
+  private readonly authTransport: AuthTransport | undefined;
   private readonly config: SttSessionConfig;
   private readonly keepaliveIntervalMs: number;
   private readonly connectTimeoutMs: number;
@@ -169,6 +171,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
     const connectMs = options?.connect_timeout_ms ?? DEFAULT_CONNECT_TIMEOUT_MS;
     this.connectTimeoutMs = Number.isFinite(connectMs) && connectMs > 0 ? connectMs : DEFAULT_CONNECT_TIMEOUT_MS;
     this.signal = options?.signal;
+    this.authTransport = options?.auth_transport;
 
     // Set up abort signal handler (store reference for cleanup)
     if (this.signal) {
@@ -443,7 +446,9 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   private async createWebSocket(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       try {
-        const ws = new WebSocket(this.wsBaseUrl);
+        // The lib typings only know the `protocols` form; `'headers'` relies on the
+        // runtime accepting an options bag here, which the wrapping package vouches for.
+        const ws = new WebSocket(this.wsBaseUrl, handshakeAuthArg(this.apiKey, this.authTransport) as string[]);
         this.ws = ws;
         ws.binaryType = 'arraybuffer';
 
@@ -456,7 +461,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
           cleanup();
 
           // Send config message
-          const configMessage = buildConfigMessage(this.config, this.apiKey);
+          const configMessage = buildConfigMessage(this.config);
           ws.send(JSON.stringify(configMessage));
 
           // Set up message handlers

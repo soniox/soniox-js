@@ -9,14 +9,17 @@ export class MockWebSocket {
   static instances: MockWebSocket[] = [];
 
   readonly url: string;
+  /** Subprotocols requested on the handshake, if any */
+  readonly protocols: string | string[] | undefined;
   readyState = MockWebSocket.CONNECTING;
   binaryType = 'arraybuffer';
   /** Tracks all messages sent via send() */
   sent: unknown[] = [];
   private readonly listeners = new Map<string, Set<(event: any) => void>>();
 
-  constructor(url: string) {
+  constructor(url: string, protocols?: string | string[]) {
     this.url = url;
+    this.protocols = protocols;
     MockWebSocket.instances.push(this);
   }
 

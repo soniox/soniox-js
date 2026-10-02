@@ -110,6 +110,8 @@ export class SonioxRealtimeApi {
    */
   stt(config: SttSessionConfig, options?: SttSessionOptions): RealtimeSttSession {
     const mergedOptions: SttSessionOptions = {
+      // Node's WebSocket accepts headers, so keep the key out of the subprotocol.
+      auth_transport: 'headers',
       ...this.options.default_session_options,
       ...options,
     };
@@ -125,7 +127,8 @@ export class SonioxRealtimeApi {
       this.options.api_key,
       this.options.tts_ws_url,
       this.options.tts_defaults ?? {},
-      this.options.tts_connection_options
+      // Node's WebSocket accepts headers, so keep the key out of the subprotocol.
+      { auth_transport: 'headers', ...this.options.tts_connection_options }
     );
     return connection._openStream(input, true);
   }
@@ -135,7 +138,8 @@ export class SonioxRealtimeApi {
       this.options.api_key,
       this.options.tts_ws_url,
       this.options.tts_defaults ?? {},
-      this.options.tts_connection_options
+      // Node's WebSocket accepts headers, so keep the key out of the subprotocol.
+      { auth_transport: 'headers', ...this.options.tts_connection_options }
     );
     await connection.connect();
     return connection;
