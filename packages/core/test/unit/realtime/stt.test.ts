@@ -1,4 +1,5 @@
 import { RealtimeSttSession, StateError, AbortError, ConnectionError } from '@soniox/core';
+import type { SttSessionOptions } from '@soniox/core';
 import { MockWebSocket, installMockWebSocket, restoreMockWebSocket } from '../../utils/mock-websocket';
 
 describe('RealtimeSttSession', () => {
@@ -87,6 +88,45 @@ describe('RealtimeSttSession', () => {
       ws.close('server_closed');
 
       await expect(finishPromise).rejects.toThrow(ConnectionError);
+    });
+  });
+
+  describe('handshake auth', () => {
+    beforeEach(() => {
+      installMockWebSocket();
+    });
+
+    afterEach(() => {
+      restoreMockWebSocket();
+    });
+
+    const connect = async (options?: SttSessionOptions) => {
+      const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, mockConfig, options);
+      const connectPromise = session.connect();
+      const ws = MockWebSocket.instances[0];
+      ws.open();
+      await connectPromise;
+      return ws;
+    };
+
+    it('sends the api key as an Authorization header when asked for "headers"', async () => {
+      const ws = await connect({ auth_transport: 'headers' });
+
+      expect(ws.protocols).toEqual({ headers: { Authorization: `Bearer ${mockApiKey}` } });
+      expect(JSON.parse(ws.sent[0] as string).api_key).toBeUndefined();
+    });
+
+    it('defaults to the subprotocol when no transport is set', async () => {
+      const ws = await connect();
+
+      expect(ws.protocols).toEqual(['soniox-api-key', mockApiKey]);
+    });
+
+    it('honours an explicit "protocol-list"', async () => {
+      const ws = await connect({ auth_transport: 'protocol-list' });
+
+      expect(ws.protocols).toEqual(['soniox-api-key', mockApiKey]);
+      expect(JSON.parse(ws.sent[0] as string).api_key).toBeUndefined();
     });
   });
 

@@ -1,5 +1,7 @@
 import type { RealtimeError } from '../realtime/errors.js';
 
+import type { AuthTransport } from './realtime.js';
+
 // =============================================================================
 // TTS Audio Format
 // =============================================================================
@@ -157,6 +159,23 @@ export type TtsConnectionEvents = {
  * Options for creating a TTS connection.
  */
 export type TtsConnectionOptions = {
+  /**
+   * How the API key reaches the server on the WebSocket handshake.
+   *
+   * - `'protocol-list'` (default) sends it in the `soniox-api-key` subprotocol,
+   *   which every WebSocket implementation supports.
+   * - `'headers'` sends it as `Authorization: Bearer`, which proxies and access
+   *   logs conventionally redact, unlike `Sec-WebSocket-Protocol`. Only works
+   *   where the WebSocket constructor accepts a `headers` option (Node); other
+   *   runtimes reject it.
+   *
+   * `@soniox/node` selects `'headers'` and `@soniox/client` `'protocol-list'`
+   * for you; set this only to override that choice.
+   *
+   * @default 'protocol-list'
+   */
+  auth_transport?: AuthTransport | undefined;
+
   /**
    * Interval for sending keepalive messages (milliseconds).
    * @default 5000

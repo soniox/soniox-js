@@ -1,7 +1,15 @@
 import { readFileSync } from 'fs';
 import path from 'path';
+import { Readable } from 'stream';
 
-import { SonioxNodeClient } from '@soniox/node';
+import {
+  RealtimeSttSession,
+  RealtimeTtsConnection,
+  SONIOX_API_WS_URL,
+  SONIOX_TTS_WS_URL,
+  SonioxNodeClient,
+} from '@soniox/node';
+import type { RealtimeResult, RealtimeToken, RealtimeTtsStream, TemporaryApiKeyUsageType } from '@soniox/node';
 import request from 'supertest';
 
 import { app } from './server';
@@ -10,6 +18,10 @@ const AUDIO_FILE_SHORT = path.join(__dirname, '../../audio_samples/audio_short.m
 const AUDIO_FILE_DIALOG = path.join(__dirname, '../../audio_samples/audio_dialog.mp3');
 
 const describeWithApiKey = process.env.SONIOX_API_KEY ? describe : describe.skip;
+
+function* chunk(buffer: Buffer, size: number): Generator<Buffer> {
+  for (let i = 0; i < buffer.length; i += size) yield buffer.subarray(i, i + size);
+}
 
 // =============================================================================
 // Webhook Handler Tests (no API key required)
@@ -277,6 +289,76 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
       } finally {
         await client.stt.destroy(job.id);
       }
+    }, 60000);
+  });
+
+  describe('Realtime handshake auth', () => {
+    const transcribe = async (session: RealtimeSttSession): Promise<string> => {
+      let text = '';
+      session.on('result', (result: RealtimeResult) => {
+        text += result.tokens
+          .filter((t: RealtimeToken) => t.is_final)
+          .map((t: RealtimeToken) => t.text)
+          .join('');
+      });
+      await session.connect();
+      await session.sendStream(Readable.from(chunk(readFileSync(AUDIO_FILE_SHORT), 3840)), { finish: true });
+      return text;
+    };
+
+    const synthesize = async (stream: RealtimeTtsStream): Promise<number> => {
+      stream.sendText('Hello from the Soniox integration tests.', { end: true });
+      let bytes = 0;
+      for await (const audio of stream) bytes += audio.byteLength;
+      return bytes;
+    };
+
+    const ttsConfig = { model: 'tts-rt-v2', voice: 'Adrian', language: 'en', audio_format: 'wav' } as const;
+
+    const temporaryKey = async (usage_type: TemporaryApiKeyUsageType) =>
+      (await client.auth.createTemporaryKey({ usage_type, expires_in_seconds: 60 })).api_key;
+
+    it('STT authenticates with an Authorization header (node default)', async () => {
+      const text = await transcribe(client.realtime.stt({ model: 'stt-rt-v5' }));
+
+      expect(text.trim().length).toBeGreaterThan(0);
+    }, 60000);
+
+    it('STT authenticates a temporary key via the subprotocol (browser path)', async () => {
+      const session = new RealtimeSttSession(
+        await temporaryKey('transcribe_websocket'),
+        SONIOX_API_WS_URL,
+        { model: 'stt-rt-v5' },
+        { auth_transport: 'protocol-list' }
+      );
+      const text = await transcribe(session);
+
+      expect(text.trim().length).toBeGreaterThan(0);
+    }, 60000);
+
+    it('TTS authenticates with an Authorization header (node default)', async () => {
+      const bytes = await synthesize(await client.realtime.tts(ttsConfig));
+
+      expect(bytes).toBeGreaterThan(0);
+    }, 60000);
+
+    it('TTS authenticates a temporary key via the subprotocol (browser path)', async () => {
+      const connection = new RealtimeTtsConnection(
+        await temporaryKey('tts_rt'),
+        SONIOX_TTS_WS_URL,
+        {},
+        { auth_transport: 'protocol-list' }
+      );
+      const bytes = await synthesize(await connection.stream(ttsConfig));
+      connection.close();
+
+      expect(bytes).toBeGreaterThan(0);
+    }, 60000);
+
+    it('rejects an invalid key on the handshake', async () => {
+      const session = new SonioxNodeClient({ api_key: 'invalid-key' }).realtime.stt({ model: 'stt-rt-v5' });
+
+      await expect(transcribe(session)).rejects.toThrow();
     }, 60000);
   });
 

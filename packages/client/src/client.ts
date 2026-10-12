@@ -348,18 +348,28 @@ export class SonioxClient {
         'state_error'
       );
     }
-    return new RealtimeSttSession(options.api_key, wsUrl, config, mergedSessionOptions);
+    return new RealtimeSttSession(options.api_key, wsUrl, config, {
+      // A browser WebSocket cannot set headers; the key rides in the subprotocol.
+      auth_transport: 'protocol-list',
+      ...mergedSessionOptions,
+    });
   }
 
   private async createSingleTtsStream(input: TtsStreamInput): Promise<RealtimeTtsStream> {
     const resolved = await this._configResolver({ usage: 'tts_rt' });
-    const connection = new RealtimeTtsConnection(resolved.api_key, resolved.tts_ws_url, resolved.tts_defaults);
+    const connection = new RealtimeTtsConnection(resolved.api_key, resolved.tts_ws_url, resolved.tts_defaults, {
+      // A browser WebSocket cannot set headers; the key rides in the subprotocol.
+      auth_transport: 'protocol-list',
+    });
     return connection._openStream(input, true);
   }
 
   private async createTtsConnection(): Promise<RealtimeTtsConnection> {
     const resolved = await this._configResolver({ usage: 'tts_rt' });
-    const connection = new RealtimeTtsConnection(resolved.api_key, resolved.tts_ws_url, resolved.tts_defaults);
+    const connection = new RealtimeTtsConnection(resolved.api_key, resolved.tts_ws_url, resolved.tts_defaults, {
+      // A browser WebSocket cannot set headers; the key rides in the subprotocol.
+      auth_transport: 'protocol-list',
+    });
     await connection.connect();
     return connection;
   }

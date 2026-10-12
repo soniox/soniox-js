@@ -77,6 +77,20 @@ describe('RealtimeTtsConnection', () => {
     });
   });
 
+  describe('handshake auth', () => {
+    it('sends the api key as an Authorization header when asked for "headers"', async () => {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults, { auth_transport: 'headers' });
+      const streamPromise = conn.stream({});
+
+      const ws = getLastMockWebSocket()!;
+      ws.open();
+      await streamPromise;
+
+      expect(ws.protocols).toEqual({ headers: { Authorization: `Bearer ${apiKey}` } });
+      expect(JSON.parse(ws.sent[0] as string).api_key).toBeUndefined();
+    });
+  });
+
   describe('stream', () => {
     it('should auto-connect and open a stream', async () => {
       const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults);
@@ -89,8 +103,11 @@ describe('RealtimeTtsConnection', () => {
       expect(stream).toBeInstanceOf(RealtimeTtsStream);
       expect(stream.streamId).toBeDefined();
 
+      // The key travels on the handshake (subprotocol by default), not in the config message.
+      expect(ws.protocols).toEqual(['soniox-api-key', apiKey]);
+
       const sent = JSON.parse(ws.sent[0] as string);
-      expect(sent.api_key).toBe(apiKey);
+      expect(sent.api_key).toBeUndefined();
       expect(sent.model).toBe('tts-rt-v1');
       expect(sent.voice).toBe('Adrian');
       expect(sent.language).toBe('en');
@@ -463,6 +480,46 @@ describe('RealtimeTtsStream', () => {
 
       expect(errorHandler).toHaveBeenCalledTimes(1);
       expect(stream.state).toBe('error');
+    });
+  });
+
+  describe('owned connection lifecycle', () => {
+    async function openStream(ownsConnection: boolean) {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults);
+      const connectPromise = conn.connect();
+      getLastMockWebSocket()!.open();
+      await connectPromise;
+      const stream = await conn._openStream({ stream_id: 'test-stream' }, ownsConnection);
+      return { conn, stream, ws: getLastMockWebSocket()! };
+    }
+
+    it('closes a single-stream connection when the stream terminates', async () => {
+      const { conn, ws } = await openStream(true);
+
+      ws.message(JSON.stringify({ stream_id: 'test-stream', terminated: true }));
+
+      expect(conn.isConnected).toBe(false);
+      expect(ws.readyState).toBe(MockWebSocket.CLOSED);
+    });
+
+    it('closes a single-stream connection when the stream errors', async () => {
+      const { conn, stream, ws } = await openStream(true);
+      stream.on('error', () => {});
+
+      ws.message(JSON.stringify({ stream_id: 'test-stream', error_code: 500, error_message: 'boom' }));
+
+      expect(conn.isConnected).toBe(false);
+      expect(ws.readyState).toBe(MockWebSocket.CLOSED);
+    });
+
+    it('keeps a shared connection open when one of its streams terminates', async () => {
+      const { conn, ws } = await openStream(false);
+
+      ws.message(JSON.stringify({ stream_id: 'test-stream', terminated: true }));
+
+      expect(conn.isConnected).toBe(true);
+      expect(ws.readyState).toBe(MockWebSocket.OPEN);
+      conn.close();
     });
   });
 

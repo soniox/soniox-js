@@ -1,3 +1,4 @@
+import type { AuthTransport } from '../types/realtime.js';
 import type {
   TtsConnectionEvents,
   TtsConnectionOptions,
@@ -9,6 +10,7 @@ import type {
 } from '../types/tts.js';
 
 import { AsyncEventQueue } from './async-queue.js';
+import { handshakeAuthArg } from './auth.js';
 import { TypedEmitter } from './emitter.js';
 import { ConnectionError, StateError, mapErrorResponse } from './errors.js';
 
@@ -245,6 +247,7 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
       this.emit('error', error);
       this.audioQueue.abort(error);
       this.connection._deactivateStream(this.streamId);
+      this.releaseOwnedConnection();
       return;
     }
 
@@ -260,6 +263,14 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
 
     if (event.terminated) {
       this._endStream();
+      this.releaseOwnedConnection();
+    }
+  }
+
+  /** Single-stream connections have no other user, so they close with the stream. */
+  private releaseOwnedConnection(): void {
+    if (this.ownsConnection) {
+      this.connection.close();
     }
   }
 
@@ -308,6 +319,7 @@ export class RealtimeTtsConnection extends TypedEmitter<TtsConnectionEvents> {
   private readonly ttsDefaults: Partial<TtsStreamConfig>;
   private readonly keepaliveIntervalMs: number;
   private readonly connectTimeoutMs: number;
+  private readonly authTransport: AuthTransport | undefined;
 
   private ws: WebSocket | null = null;
   private connected = false;
@@ -334,6 +346,7 @@ export class RealtimeTtsConnection extends TypedEmitter<TtsConnectionEvents> {
 
     const connectMs = options?.connect_timeout_ms ?? DEFAULT_CONNECT_TIMEOUT_MS;
     this.connectTimeoutMs = Number.isFinite(connectMs) && connectMs > 0 ? connectMs : DEFAULT_CONNECT_TIMEOUT_MS;
+    this.authTransport = options?.auth_transport;
   }
 
   /** Whether the WebSocket is connected. */
@@ -392,10 +405,7 @@ export class RealtimeTtsConnection extends TypedEmitter<TtsConnectionEvents> {
     const stream = new RealtimeTtsStream(config.stream_id, this, ownsConnection);
     this.activeStreams.set(config.stream_id, stream);
 
-    const configPayload = {
-      api_key: this.apiKey,
-      ...config,
-    };
+    const configPayload = { ...config };
     this._sendJson(configPayload);
 
     return stream;
@@ -451,7 +461,9 @@ export class RealtimeTtsConnection extends TypedEmitter<TtsConnectionEvents> {
 
       let ws: WebSocket;
       try {
-        ws = new WebSocket(this.wsUrl);
+        // The lib typings only know the `protocols` form; `'headers'` relies on the
+        // runtime accepting an options bag here, which the wrapping package vouches for.
+        ws = new WebSocket(this.wsUrl, handshakeAuthArg(this.apiKey, this.authTransport) as string[]);
         ws.binaryType = 'arraybuffer';
       } catch (err) {
         clearTimeout(timer);
