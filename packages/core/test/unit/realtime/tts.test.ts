@@ -483,6 +483,46 @@ describe('RealtimeTtsStream', () => {
     });
   });
 
+  describe('owned connection lifecycle', () => {
+    async function openStream(ownsConnection: boolean) {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults);
+      const connectPromise = conn.connect();
+      getLastMockWebSocket()!.open();
+      await connectPromise;
+      const stream = await conn._openStream({ stream_id: 'test-stream' }, ownsConnection);
+      return { conn, stream, ws: getLastMockWebSocket()! };
+    }
+
+    it('closes a single-stream connection when the stream terminates', async () => {
+      const { conn, ws } = await openStream(true);
+
+      ws.message(JSON.stringify({ stream_id: 'test-stream', terminated: true }));
+
+      expect(conn.isConnected).toBe(false);
+      expect(ws.readyState).toBe(MockWebSocket.CLOSED);
+    });
+
+    it('closes a single-stream connection when the stream errors', async () => {
+      const { conn, stream, ws } = await openStream(true);
+      stream.on('error', () => {});
+
+      ws.message(JSON.stringify({ stream_id: 'test-stream', error_code: 500, error_message: 'boom' }));
+
+      expect(conn.isConnected).toBe(false);
+      expect(ws.readyState).toBe(MockWebSocket.CLOSED);
+    });
+
+    it('keeps a shared connection open when one of its streams terminates', async () => {
+      const { conn, ws } = await openStream(false);
+
+      ws.message(JSON.stringify({ stream_id: 'test-stream', terminated: true }));
+
+      expect(conn.isConnected).toBe(true);
+      expect(ws.readyState).toBe(MockWebSocket.OPEN);
+      conn.close();
+    });
+  });
+
   describe('audioQueue iterator-attach gate', () => {
     function buildAudioMessage(streamId: string): string {
       return JSON.stringify({

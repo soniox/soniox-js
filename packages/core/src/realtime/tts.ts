@@ -247,6 +247,7 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
       this.emit('error', error);
       this.audioQueue.abort(error);
       this.connection._deactivateStream(this.streamId);
+      this.releaseOwnedConnection();
       return;
     }
 
@@ -262,6 +263,14 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
 
     if (event.terminated) {
       this._endStream();
+      this.releaseOwnedConnection();
+    }
+  }
+
+  /** Single-stream connections have no other user, so they close with the stream. */
+  private releaseOwnedConnection(): void {
+    if (this.ownsConnection) {
+      this.connection.close();
     }
   }
 
