@@ -224,7 +224,7 @@ startBtn.onclick = () => {
   muteWarning.classList.add('hidden');
 
   recording = client.realtime.record({
-    model: 'stt-rt-v5',
+    model: 'stt-rt-v6',
   });
 
   recording.on('result', (result) => {

@@ -68,7 +68,7 @@ export type TranslateAudioSource =
 export type TranslateBaseOptions = {
   /**
    * Speech-to-text model to use.
-   * @default 'stt-async-v5'
+   * @default 'stt-async-v6'
    * @maxLength 32
    */
   model?: string | undefined;

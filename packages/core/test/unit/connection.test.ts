@@ -221,22 +221,22 @@ describe('resolveConnectionConfig', () => {
     });
 
     it('should use stt_defaults when provided', () => {
-      const defaults = { model: 'stt-rt-v5', language_hints: ['en', 'de'] };
+      const defaults = { model: 'stt-rt-v6', language_hints: ['en', 'de'] };
       const result = resolveConnectionConfig({ api_key: apiKey, stt_defaults: defaults });
       expect(result.stt_defaults).toEqual(defaults);
       expect(result.session_defaults).toEqual(defaults);
     });
 
     it('should fall back to deprecated session_defaults', () => {
-      const defaults = { model: 'stt-rt-v5' };
+      const defaults = { model: 'stt-rt-v6' };
       const result = resolveConnectionConfig({ api_key: apiKey, session_defaults: defaults });
       expect(result.stt_defaults).toEqual(defaults);
       expect(result.session_defaults).toEqual(defaults);
     });
 
     it('stt_defaults takes precedence over session_defaults', () => {
-      const sttDefaults = { model: 'stt-rt-v5' };
-      const sessionDefaults = { model: 'stt-rt-v5' };
+      const sttDefaults = { model: 'stt-rt-v6' };
+      const sessionDefaults = { model: 'stt-rt-v6' };
       const result = resolveConnectionConfig({
         api_key: apiKey,
         stt_defaults: sttDefaults,

@@ -27,7 +27,7 @@ npm run dev
 ## What's in the demo
 
 - **Real-time transcription** – Start/Stop/Pause/Resume/Cancel controls
-  wired to `client.realtime.record({ model: 'stt-rt-v5' })`.
+  wired to `client.realtime.record({ model: 'stt-rt-v6' })`.
 - **Text-to-speech** – Generate speech from any text via:
   - `client.tts.generate(...)` (REST, one buffered response)
   - `client.realtime.tts(...)` (WebSocket, chunks streamed as generated)

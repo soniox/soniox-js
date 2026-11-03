@@ -4,7 +4,7 @@ import { MockWebSocket, installMockWebSocket, restoreMockWebSocket } from '../..
 describe('RealtimeSttSession', () => {
   const mockApiKey = 'test-api-key';
   const mockWsBaseUrl = 'wss://test.soniox.com/transcribe-websocket';
-  const mockConfig = { model: 'stt-rt-v5' };
+  const mockConfig = { model: 'stt-rt-v6' };
 
   describe('initial state', () => {
     it('should start in idle state', () => {
@@ -149,7 +149,7 @@ describe('RealtimeSttSession', () => {
 
     it('should include endpoint_sensitivity when provided', async () => {
       const sentConfig = await connectWithConfig({
-        model: 'stt-rt-v5',
+        model: 'stt-rt-v6',
         enable_endpoint_detection: true,
         endpoint_sensitivity: 0.5,
       });
@@ -158,14 +158,14 @@ describe('RealtimeSttSession', () => {
     });
 
     it('should send endpoint_sensitivity as undefined when omitted', async () => {
-      const sentConfig = await connectWithConfig({ model: 'stt-rt-v5' });
+      const sentConfig = await connectWithConfig({ model: 'stt-rt-v6' });
 
       expect(sentConfig.endpoint_sensitivity).toBeUndefined();
     });
 
     it('should include endpoint_latency_adjustment_level when provided', async () => {
       const sentConfig = await connectWithConfig({
-        model: 'stt-rt-v5',
+        model: 'stt-rt-v6',
         enable_endpoint_detection: true,
         endpoint_latency_adjustment_level: 2,
       });
@@ -174,7 +174,7 @@ describe('RealtimeSttSession', () => {
     });
 
     it('should send endpoint_latency_adjustment_level as undefined when omitted', async () => {
-      const sentConfig = await connectWithConfig({ model: 'stt-rt-v5' });
+      const sentConfig = await connectWithConfig({ model: 'stt-rt-v6' });
 
       expect(sentConfig.endpoint_latency_adjustment_level).toBeUndefined();
     });

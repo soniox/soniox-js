@@ -123,7 +123,7 @@ function filterSpecialTokens(tokens: RealtimeToken[]): RealtimeToken[] {
  *
  * @example
  * ```typescript
- * const session = new RealtimeSttSession(apiKey, wsUrl, { model: 'stt-rt-v5' });
+ * const session = new RealtimeSttSession(apiKey, wsUrl, { model: 'stt-rt-v6' });
  *
  * session.on('result', (result) => {
  *   console.log(result.tokens.map(t => t.text).join(''));

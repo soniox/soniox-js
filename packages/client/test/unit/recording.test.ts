@@ -481,7 +481,7 @@ describe('Recording', () => {
 
   describe('function-form session_config', () => {
     it('receives resolved config with session_defaults and returns sttConfig', async () => {
-      const serverDefaults = { model: 'stt-rt-v5', language_hints: ['en'] };
+      const serverDefaults = { model: 'stt-rt-v6', language_hints: ['en'] };
       const configFn = jest.fn((resolved: ResolvedConnectionConfig) => ({
         ...resolved.session_defaults,
         enable_endpoint_detection: true,
