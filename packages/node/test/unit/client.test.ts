@@ -24,6 +24,11 @@ describe('SonioxNodeClient', () => {
       expect(client).toBeInstanceOf(SonioxNodeClient);
     });
 
+    it('creates client with IN region', () => {
+      const client = new SonioxNodeClient({ api_key: API_KEY, region: 'in' });
+      expect(client).toBeInstanceOf(SonioxNodeClient);
+    });
+
     it('accepts unknown region by deriving URLs from {region}.soniox.com', () => {
       const client = new SonioxNodeClient({ api_key: API_KEY, region: 'asia' });
       expect(client).toBeInstanceOf(SonioxNodeClient);

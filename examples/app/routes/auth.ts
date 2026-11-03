@@ -11,7 +11,7 @@ const SUPPORTED_USAGE_TYPES: TemporaryApiKeyUsageType[] = ['transcribe_websocket
 // temporary key for STT or TTS.
 //
 // We also echo the region / base_domain this server is running against. The
-// temporary key is scoped to a specific regional deployment (US/EU/JP), so
+// temporary key is scoped to a specific regional deployment (US/EU/JP/IN), so
 // the browser SDK must connect to the matching regional endpoints — otherwise
 // it would fall back to the default US endpoints and the key would fail auth.
 export function register(app: Express) {

@@ -25,15 +25,15 @@ const client = new SonioxNodeClient({
 `SonioxNodeClient` reads the following environment variables when the
 corresponding constructor option is not provided:
 
-| Variable              | Maps to option         | Notes                                                        |
-| --------------------- | ---------------------- | ------------------------------------------------------------ |
-| `SONIOX_API_KEY`      | `api_key`              | Required if `api_key` is not passed explicitly.              |
-| `SONIOX_REGION`       | `region`               | Only `'eu'` and `'jp'` are defined; US is the default.       |
-| `SONIOX_BASE_DOMAIN`  | `base_domain`          | Overrides `region` and forms the default hosts.              |
-| `SONIOX_API_BASE_URL` | `base_url`             | Overrides the REST API host (e.g. `https://api.soniox.com`). |
-| `SONIOX_WS_URL`       | `realtime.ws_base_url` | Overrides the STT realtime WebSocket URL.                    |
-| `SONIOX_TTS_API_URL`  | `tts_api_url`          | Overrides the REST TTS host.                                 |
-| `SONIOX_TTS_WS_URL`   | `realtime.tts_ws_url`  | Overrides the TTS realtime WebSocket URL.                    |
+| Variable              | Maps to option         | Notes                                                          |
+| --------------------- | ---------------------- | -------------------------------------------------------------- |
+| `SONIOX_API_KEY`      | `api_key`              | Required if `api_key` is not passed explicitly.                |
+| `SONIOX_REGION`       | `region`               | Only `'eu'`, `'jp'` and `'in'` are defined; US is the default. |
+| `SONIOX_BASE_DOMAIN`  | `base_domain`          | Overrides `region` and forms the default hosts.                |
+| `SONIOX_API_BASE_URL` | `base_url`             | Overrides the REST API host (e.g. `https://api.soniox.com`).   |
+| `SONIOX_WS_URL`       | `realtime.ws_base_url` | Overrides the STT realtime WebSocket URL.                      |
+| `SONIOX_TTS_API_URL`  | `tts_api_url`          | Overrides the REST TTS host.                                   |
+| `SONIOX_TTS_WS_URL`   | `realtime.tts_ws_url`  | Overrides the TTS realtime WebSocket URL.                      |
 
 Resolution precedence for every setting is:
 

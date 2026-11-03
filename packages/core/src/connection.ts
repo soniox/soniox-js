@@ -29,6 +29,7 @@ export type ConfigContext = {
  * Defined regions:
  * - `'eu'` — European Union (`*.eu.soniox.com`)
  * - `'jp'` — Japan (`*.jp.soniox.com`)
+ * - `'in'` — India (`*.in.soniox.com`)
  * - `undefined` — Default (United States). The US region has no subdomain.
  *
  * A region name (other than `'us'`) is shorthand for setting `base_domain`
@@ -41,7 +42,7 @@ export type ConfigContext = {
  *
  * @see https://soniox.com/docs/stt/data-residency
  */
-export type SonioxRegion = 'eu' | 'jp' | (string & {});
+export type SonioxRegion = 'eu' | 'jp' | 'in' | (string & {});
 
 /**
  * Connection configuration for Soniox APIs.

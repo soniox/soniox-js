@@ -50,6 +50,21 @@ describe('resolveConnectionConfig', () => {
         session_defaults: {},
       });
     });
+
+    it('should resolve IN region', () => {
+      const result = resolveConnectionConfig({ api_key: apiKey, region: 'in' });
+
+      expect(result).toEqual({
+        api_key: apiKey,
+        api_domain: 'https://api.in.soniox.com',
+        stt_ws_url: 'wss://stt-rt.in.soniox.com/transcribe-websocket',
+        tts_api_url: 'https://tts-rt.in.soniox.com',
+        tts_ws_url: 'wss://tts-rt.in.soniox.com/tts-websocket',
+        stt_defaults: {},
+        tts_defaults: {},
+        session_defaults: {},
+      });
+    });
   });
 
   describe('explicit URL overrides', () => {
