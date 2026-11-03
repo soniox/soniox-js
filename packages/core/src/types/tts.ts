@@ -210,7 +210,8 @@ export type TtsStreamEvents = {
   terminated: () => void;
   /**
    * A stream-level error occurred. Always a {@link RealtimeError}
-   * subclass mapped from the server `error_code` / `error_message`.
+   * subclass mapped from the server `error_code` / `error_message`; the
+   * original server frame (including `error_type`) is available on `error.raw`.
    */
   error: (error: RealtimeError) => void;
 };
@@ -234,6 +235,8 @@ export type TtsEvent = {
   audio_end?: boolean | undefined;
   terminated?: boolean | undefined;
   error_code?: number | undefined;
+  /** Machine-readable error category, e.g. `voice_failed` or `service_unavailable`. */
+  error_type?: string | undefined;
   error_message?: string | undefined;
 };
 

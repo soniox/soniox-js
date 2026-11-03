@@ -40,9 +40,7 @@ export type WebhookAuthConfig = {
  * Headers object type - supports both standard headers and record types
  */
 export type WebhookHeaders =
-  | Headers
-  | Record<string, string | string[] | undefined>
-  | { get(name: string): string | null };
+  Headers | Record<string, string | string[] | undefined> | { get(name: string): string | null };
 
 /**
  * Result of webhook handling

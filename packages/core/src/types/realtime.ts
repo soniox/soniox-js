@@ -103,6 +103,16 @@ export type SttSessionConfig = {
   enable_endpoint_detection?: boolean | undefined;
 
   /**
+   * Allow the session to receive what your agent is saying, via
+   * {@link RealtimeSttSession.sendAgentText}.
+   *
+   * Agent text is recognized when the user says those same words back, and the
+   * agent's own voice bleeding into the microphone is not transcribed as the
+   * user. Only accepted by models whose `supports_agent_text_input` is true.
+   */
+  enable_agent_text_input?: boolean | undefined;
+
+  /**
    * Maximum delay between the end of speech and returned endpoint.
    * Allowed values for maximum delay are between 500ms and 3000ms. The default value is 2000ms
    */
@@ -444,10 +454,7 @@ export type RealtimeResult = {
  * Typed event for async iterator consumption.
  */
 export type RealtimeEvent =
-  | { kind: 'result'; data: RealtimeResult }
-  | { kind: 'endpoint' }
-  | { kind: 'finalized' }
-  | { kind: 'finished' };
+  { kind: 'result'; data: RealtimeResult } | { kind: 'endpoint' } | { kind: 'finalized' } | { kind: 'finished' };
 
 // =============================================================================
 // Session State
@@ -457,14 +464,7 @@ export type RealtimeEvent =
  * Session lifecycle states.
  */
 export type SttSessionState =
-  | 'idle'
-  | 'connecting'
-  | 'connected'
-  | 'finishing'
-  | 'finished'
-  | 'canceled'
-  | 'closed'
-  | 'error';
+  'idle' | 'connecting' | 'connected' | 'finishing' | 'finished' | 'canceled' | 'closed' | 'error';
 
 /**
  * Reason for a state transition.
@@ -474,13 +474,7 @@ export type SttSessionState =
  * connection failures, etc.
  */
 export type StateChangeReason =
-  | 'user_action'
-  | 'connected'
-  | 'connection_lost'
-  | 'reconnecting'
-  | 'reconnected'
-  | 'error'
-  | 'finished';
+  'user_action' | 'connected' | 'connection_lost' | 'reconnecting' | 'reconnected' | 'error' | 'finished';
 
 // =============================================================================
 // Session Events

@@ -118,6 +118,11 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
     return this._state;
   }
 
+  /** @internal Whether this stream is the sole user of its connection. */
+  get _ownsConnection(): boolean {
+    return this.ownsConnection;
+  }
+
   /**
    * Send one text chunk to the TTS stream.
    *
@@ -236,13 +241,7 @@ export class RealtimeTtsStream extends TypedEmitter<TtsStreamEvents> implements 
   /** @internal Dispatch a server event to this stream. */
   _handleEvent(event: TtsEvent): void {
     if (event.error_code !== undefined) {
-      const errPayload: { error_code: number; error_message?: string } = {
-        error_code: event.error_code,
-      };
-      if (event.error_message !== undefined) {
-        errPayload.error_message = event.error_message;
-      }
-      const error = mapErrorResponse(errPayload);
+      const error = mapErrorResponse(event);
       this._state = 'error';
       this.emit('error', error);
       this.audioQueue.abort(error);
@@ -519,7 +518,8 @@ export class RealtimeTtsConnection extends TypedEmitter<TtsConnectionEvents> {
 
     const streamId = parsed.stream_id;
 
-    if (streamId !== undefined) {
+    // The server reports connection-level errors with `stream_id: ""`.
+    if (streamId) {
       const stream = this.activeStreams.get(streamId);
       if (stream) {
         stream._handleEvent(parsed);
@@ -528,14 +528,14 @@ export class RealtimeTtsConnection extends TypedEmitter<TtsConnectionEvents> {
     }
 
     if (parsed.error_code !== undefined) {
-      const errPayload: { error_code: number; error_message?: string } = {
-        error_code: parsed.error_code,
-      };
-      if (parsed.error_message !== undefined) {
-        errPayload.error_message = parsed.error_message;
+      this.emit('error', mapErrorResponse(parsed));
+
+      // Single-stream callers never see the connection, so surface the error on their stream.
+      for (const stream of [...this.activeStreams.values()]) {
+        if (stream._ownsConnection) {
+          stream._handleEvent(parsed);
+        }
       }
-      const error = mapErrorResponse(errPayload);
-      this.emit('error', error);
     }
   }
 

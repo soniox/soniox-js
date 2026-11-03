@@ -21,6 +21,12 @@ node soniox_realtime.js --audio_path ../../audio_samples/coffee_shop.mp3 --trans
 node soniox_realtime.js --audio_path ../../audio_samples/two_way_translation.mp3 --translation two_way
 ```
 
+## Agent text input (voice agents)
+
+```sh
+node soniox_agent_text.js
+```
+
 ## Async examples
 
 ```sh

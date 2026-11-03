@@ -5,7 +5,7 @@ import type { TemporaryApiKeyResponse } from '../../src/types/public';
 function createMockHttpClient(requestMock?: jest.Mock): HttpClient {
   return {
     request: requestMock ?? jest.fn(),
-  } as unknown as HttpClient;
+  };
 }
 
 function createMockTemporaryKeyResponse(): TemporaryApiKeyResponse {

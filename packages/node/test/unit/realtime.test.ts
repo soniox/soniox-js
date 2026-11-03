@@ -19,7 +19,7 @@ describe('SonioxRealtimeApi handshake auth', () => {
 
   it('STT sessions send the api key as an Authorization header', async () => {
     const client = new SonioxNodeClient({ api_key: API_KEY });
-    const session = client.realtime.stt({ model: 'stt-rt-v5' });
+    const session = client.realtime.stt({ model: 'stt-rt-v6' });
 
     const connectPromise = session.connect();
     const ws = getLastMockWebSocket()!;
@@ -44,7 +44,7 @@ describe('SonioxRealtimeApi handshake auth', () => {
 
   it('a caller-provided auth_transport overrides the node default', async () => {
     const client = new SonioxNodeClient({ api_key: API_KEY });
-    const session = client.realtime.stt({ model: 'stt-rt-v5' }, { auth_transport: 'protocol-list' });
+    const session = client.realtime.stt({ model: 'stt-rt-v6' }, { auth_transport: 'protocol-list' });
 
     const connectPromise = session.connect();
     const ws = getLastMockWebSocket()!;

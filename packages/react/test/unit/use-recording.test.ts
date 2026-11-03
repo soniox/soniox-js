@@ -98,12 +98,12 @@ class MockWebSocket {
   }
 
   simulateMessage(data: string) {
-    this.fire('message', { data } as MessageEvent);
+    this.fire('message', { data });
   }
 
   simulateClose(reason = '') {
     this.readyState = MockWebSocket.CLOSED;
-    this.fire('close', { reason } as CloseEvent);
+    this.fire('close', { reason });
   }
 
   private fire(event: string, payload: unknown) {
@@ -481,6 +481,7 @@ describe('useRecording', () => {
       pause: result.current.pause,
       resume: result.current.resume,
       finalize: result.current.finalize,
+      sendAgentText: result.current.sendAgentText,
       clearTranscript: result.current.clearTranscript,
     };
 
@@ -492,6 +493,7 @@ describe('useRecording', () => {
     expect(result.current.pause).toBe(first.pause);
     expect(result.current.resume).toBe(first.resume);
     expect(result.current.finalize).toBe(first.finalize);
+    expect(result.current.sendAgentText).toBe(first.sendAgentText);
     expect(result.current.clearTranscript).toBe(first.clearTranscript);
   });
 });

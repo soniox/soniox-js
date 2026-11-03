@@ -190,7 +190,7 @@ const DEFAULT_BUFFER_QUEUE_SIZE = 1000;
  *
  * @example
  * ```typescript
- * const recording = client.realtime.record({ model: 'stt-rt-v5' });
+ * const recording = client.realtime.record({ model: 'stt-rt-v6' });
  * recording.on('result', (r) => console.log(r.tokens));
  * recording.on('error', (e) => console.error(e));
  *
@@ -226,6 +226,7 @@ export class Recording {
   // Stop promise handling
   private stopResolver: (() => void) | null = null;
   private stopRejecter: ((error: Error) => void) | null = null;
+  private stopPromise: Promise<void> | null = null;
 
   /** @internal */
   constructor(
@@ -304,7 +305,9 @@ export class Recording {
     }
 
     if (this._state === 'stopping') {
-      // Already stopping, return existing promise
+      if (this.stopPromise) {
+        return this.stopPromise;
+      }
       return new Promise<void>((resolve, reject) => {
         this.once('finished', resolve);
         this.once('error', reject);
@@ -315,17 +318,17 @@ export class Recording {
     this.source.stop();
 
     if (this.session && this.session.state === 'connected') {
-      const finishPromise = new Promise<void>((resolve, reject) => {
-        this.stopResolver = resolve;
-        this.stopRejecter = reject;
-      });
+      const finishPromise = this.createStopPromise();
 
       try {
         await this.session.finish();
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         this.settleStop(error);
-        this.cleanup('error', 'error');
+        // cancel() or a session error may already have moved to a terminal state.
+        if (!this.isTerminalState()) {
+          this.cleanup('error', 'error');
+        }
         return;
       }
 
@@ -336,10 +339,7 @@ export class Recording {
     // shouldAbortReconnect() will detect 'stopping' and settle.
     const sessionPending = !this.session || this.session.state === 'idle' || this.session.state === 'connecting';
     if (sessionPending) {
-      return new Promise<void>((resolve, reject) => {
-        this.stopResolver = resolve;
-        this.stopRejecter = reject;
-      });
+      return this.createStopPromise();
     }
 
     // Session is in a terminal state (closed/error/finished/canceled) —
@@ -359,6 +359,7 @@ export class Recording {
 
     this.source.stop();
     this.session?.close();
+    this.settleStop();
     this.cleanup('canceled', 'user_action');
   }
 
@@ -367,6 +368,24 @@ export class Recording {
    */
   finalize(options?: { trailing_silence_ms?: number }): void {
     this.session?.finalize(options);
+  }
+
+  /**
+   * Send what your agent is saying, so those words are recognized when the user
+   * says them back and the agent's own voice is not transcribed as the user.
+   *
+   * Requires `enable_agent_text_input` on the recording config. Send each piece
+   * a little before the caller hears it - 500ms to 1s ahead of playback - since
+   * the server places it by where it sits among the audio frames. Close every
+   * turn with `end_of_segment: true`, which is also how a barge-in is handled.
+   *
+   * Dropped while no session is connected - before the connection opens, or
+   * during a reconnect - because text sent then would land beside the wrong
+   * audio rather than where it belongs.
+   */
+  sendAgentText(text: string, options?: { end_of_segment?: boolean }): void {
+    if (this.session?.state !== 'connected') return;
+    this.session.sendAgentText(text, options);
   }
 
   /**
@@ -558,7 +577,9 @@ export class Recording {
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         this.settleStop(error);
-        this.cleanup('error', 'error');
+        if (!this.isTerminalState()) {
+          this.cleanup('error', 'error');
+        }
       }
       // The 'finished' event handler will settle the stop promise and clean up.
     }
@@ -835,11 +856,24 @@ export class Recording {
     return TERMINAL_STATES.includes(this._state);
   }
 
+  private createStopPromise(): Promise<void> {
+    const promise = new Promise<void>((resolve, reject) => {
+      this.stopResolver = resolve;
+      this.stopRejecter = reject;
+    });
+    // The same failure is reported through the `error` event, and the drain path
+    // may never hand this promise to the caller, so keep it from going unhandled.
+    promise.catch(() => {});
+    this.stopPromise = promise;
+    return promise;
+  }
+
   private settleStop(error?: Error): void {
     const resolve = this.stopResolver;
     const reject = this.stopRejecter;
     this.stopResolver = null;
     this.stopRejecter = null;
+    this.stopPromise = null;
 
     if (error) {
       reject?.(error);

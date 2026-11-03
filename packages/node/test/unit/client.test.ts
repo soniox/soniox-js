@@ -24,6 +24,11 @@ describe('SonioxNodeClient', () => {
       expect(client).toBeInstanceOf(SonioxNodeClient);
     });
 
+    it('creates client with IN region', () => {
+      const client = new SonioxNodeClient({ api_key: API_KEY, region: 'in' });
+      expect(client).toBeInstanceOf(SonioxNodeClient);
+    });
+
     it('accepts unknown region by deriving URLs from {region}.soniox.com', () => {
       const client = new SonioxNodeClient({ api_key: API_KEY, region: 'asia' });
       expect(client).toBeInstanceOf(SonioxNodeClient);
@@ -85,12 +90,12 @@ describe('SonioxNodeClient', () => {
     it('merges stt_defaults into sessions created via realtime.stt()', () => {
       const client = new SonioxNodeClient({
         api_key: API_KEY,
-        stt_defaults: { model: 'stt-rt-v5', language_hints: ['en', 'de'] },
+        stt_defaults: { model: 'stt-rt-v6', language_hints: ['en', 'de'] },
       });
       const session = client.realtime.stt({ enable_language_identification: true });
       const config = (session as unknown as { config: Record<string, unknown> }).config;
       expect(config).toEqual({
-        model: 'stt-rt-v5',
+        model: 'stt-rt-v6',
         language_hints: ['en', 'de'],
         enable_language_identification: true,
       });
@@ -99,11 +104,11 @@ describe('SonioxNodeClient', () => {
     it('caller-provided fields override stt_defaults', () => {
       const client = new SonioxNodeClient({
         api_key: API_KEY,
-        stt_defaults: { model: 'stt-rt-v5' },
+        stt_defaults: { model: 'stt-rt-v6' },
       });
-      const session = client.realtime.stt({ model: 'stt-rt-v5' });
+      const session = client.realtime.stt({ model: 'stt-rt-v6' });
       const config = (session as unknown as { config: { model: string } }).config;
-      expect(config.model).toBe('stt-rt-v5');
+      expect(config.model).toBe('stt-rt-v6');
     });
 
     it('forwards tts_defaults into the TTS multi-stream connection', async () => {

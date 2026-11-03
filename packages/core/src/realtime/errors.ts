@@ -144,7 +144,10 @@ export function isRetriableError(error: unknown): boolean {
  * @param response - Error response from the WebSocket
  * @returns Appropriate error subclass
  */
-export function mapErrorResponse(response: { error_code?: number; error_message?: string }): RealtimeError {
+export function mapErrorResponse(response: {
+  error_code?: number | undefined;
+  error_message?: string | undefined;
+}): RealtimeError {
   const { error_code, error_message } = response;
   const message = error_message ?? 'Unknown error';
 

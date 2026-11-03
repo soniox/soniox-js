@@ -1,11 +1,10 @@
-import { RealtimeSttSession, StateError, AbortError, ConnectionError } from '@soniox/core';
-import type { SttSessionOptions } from '@soniox/core';
+import { RealtimeSttSession, StateError, AbortError, BadRequestError, ConnectionError } from '@soniox/core';
 import { MockWebSocket, installMockWebSocket, restoreMockWebSocket } from '../../utils/mock-websocket';
 
 describe('RealtimeSttSession', () => {
   const mockApiKey = 'test-api-key';
   const mockWsBaseUrl = 'wss://test.soniox.com/transcribe-websocket';
-  const mockConfig = { model: 'stt-rt-v5' };
+  const mockConfig = { model: 'stt-rt-v6' };
 
   describe('initial state', () => {
     it('should start in idle state', () => {
@@ -150,7 +149,7 @@ describe('RealtimeSttSession', () => {
 
     it('should include endpoint_sensitivity when provided', async () => {
       const sentConfig = await connectWithConfig({
-        model: 'stt-rt-v5',
+        model: 'stt-rt-v6',
         enable_endpoint_detection: true,
         endpoint_sensitivity: 0.5,
       });
@@ -159,14 +158,14 @@ describe('RealtimeSttSession', () => {
     });
 
     it('should send endpoint_sensitivity as undefined when omitted', async () => {
-      const sentConfig = await connectWithConfig({ model: 'stt-rt-v5' });
+      const sentConfig = await connectWithConfig({ model: 'stt-rt-v6' });
 
       expect(sentConfig.endpoint_sensitivity).toBeUndefined();
     });
 
     it('should include endpoint_latency_adjustment_level when provided', async () => {
       const sentConfig = await connectWithConfig({
-        model: 'stt-rt-v5',
+        model: 'stt-rt-v6',
         enable_endpoint_detection: true,
         endpoint_latency_adjustment_level: 2,
       });
@@ -175,7 +174,7 @@ describe('RealtimeSttSession', () => {
     });
 
     it('should send endpoint_latency_adjustment_level as undefined when omitted', async () => {
-      const sentConfig = await connectWithConfig({ model: 'stt-rt-v5' });
+      const sentConfig = await connectWithConfig({ model: 'stt-rt-v6' });
 
       expect(sentConfig.endpoint_latency_adjustment_level).toBeUndefined();
     });
@@ -374,6 +373,72 @@ describe('RealtimeSttSession', () => {
       expect(new Uint8Array((sentAudio[0] as Uint8Array).buffer)).toEqual(new Uint8Array([1, 2]));
       expect(new Uint8Array((sentAudio[1] as Uint8Array).buffer)).toEqual(new Uint8Array([3, 4]));
       expect(new Uint8Array((sentAudio[2] as Uint8Array).buffer)).toEqual(new Uint8Array([5, 6]));
+    });
+    describe('sendAgentText', () => {
+      const agentConfig = { model: 'stt-rt-v6', enable_agent_text_input: true };
+
+      beforeEach(() => {
+        installMockWebSocket();
+      });
+
+      afterEach(() => {
+        restoreMockWebSocket();
+      });
+
+      async function connectAgentSession(config: typeof mockConfig = agentConfig) {
+        const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, config);
+        const connectPromise = session.connect();
+        const ws = MockWebSocket.instances[MockWebSocket.instances.length - 1];
+        ws.open();
+        await connectPromise;
+        return { session, ws };
+      }
+
+      it('should ride between the audio chunks in the order sent', async () => {
+        const { session, ws } = await connectAgentSession();
+
+        session.sendAudio(new Uint8Array([1, 2]));
+        session.sendAgentText('We have a flat white');
+        session.sendAudio(new Uint8Array([3, 4]));
+        session.sendAgentText('', { end_of_segment: true });
+
+        // ws.sent[0] is the config JSON message; the stream follows.
+        expect(ws.sent.slice(1)).toEqual([
+          new Uint8Array([1, 2]),
+          JSON.stringify({ type: 'agent_text', text: 'We have a flat white', end_of_segment: false }),
+          new Uint8Array([3, 4]),
+          JSON.stringify({ type: 'agent_text', text: '', end_of_segment: true }),
+        ]);
+      });
+
+      it('should ask for agent text input in the start request', async () => {
+        const { ws } = await connectAgentSession();
+
+        // Without this the server refuses every agent_text frame that follows.
+        expect(JSON.parse(ws.sent[0] as string)).toMatchObject({ enable_agent_text_input: true });
+      });
+
+      it('should default end_of_segment to false, as the wire does', async () => {
+        const { session, ws } = await connectAgentSession();
+
+        session.sendAgentText('Still talking');
+
+        expect(ws.sent[1]).toBe(JSON.stringify({ type: 'agent_text', text: 'Still talking', end_of_segment: false }));
+      });
+
+      it('should throw BadRequestError when the config did not enable it', async () => {
+        const { session } = await connectAgentSession(mockConfig);
+
+        expect(() => session.sendAgentText('hello')).toThrow(BadRequestError);
+        expect(() => session.sendAgentText('hello')).toThrow('Set enable_agent_text_input');
+      });
+
+      it('should throw StateError when not connected', () => {
+        const session = new RealtimeSttSession(mockApiKey, mockWsBaseUrl, agentConfig);
+
+        expect(() => session.sendAgentText('hello')).toThrow(StateError);
+        expect(() => session.sendAgentText('hello')).toThrow('session is in "idle" state');
+      });
     });
 
     it('should call finish when finish option is true', async () => {

@@ -25,15 +25,15 @@ const client = new SonioxNodeClient({
 `SonioxNodeClient` reads the following environment variables when the
 corresponding constructor option is not provided:
 
-| Variable              | Maps to option         | Notes                                                        |
-| --------------------- | ---------------------- | ------------------------------------------------------------ |
-| `SONIOX_API_KEY`      | `api_key`              | Required if `api_key` is not passed explicitly.              |
-| `SONIOX_REGION`       | `region`               | Only `'eu'` and `'jp'` are defined; US is the default.       |
-| `SONIOX_BASE_DOMAIN`  | `base_domain`          | Overrides `region` and forms the default hosts.              |
-| `SONIOX_API_BASE_URL` | `base_url`             | Overrides the REST API host (e.g. `https://api.soniox.com`). |
-| `SONIOX_WS_URL`       | `realtime.ws_base_url` | Overrides the STT realtime WebSocket URL.                    |
-| `SONIOX_TTS_API_URL`  | `tts_api_url`          | Overrides the REST TTS host.                                 |
-| `SONIOX_TTS_WS_URL`   | `realtime.tts_ws_url`  | Overrides the TTS realtime WebSocket URL.                    |
+| Variable              | Maps to option         | Notes                                                          |
+| --------------------- | ---------------------- | -------------------------------------------------------------- |
+| `SONIOX_API_KEY`      | `api_key`              | Required if `api_key` is not passed explicitly.                |
+| `SONIOX_REGION`       | `region`               | Only `'eu'`, `'jp'` and `'in'` are defined; US is the default. |
+| `SONIOX_BASE_DOMAIN`  | `base_domain`          | Overrides `region` and forms the default hosts.                |
+| `SONIOX_API_BASE_URL` | `base_url`             | Overrides the REST API host (e.g. `https://api.soniox.com`).   |
+| `SONIOX_WS_URL`       | `realtime.ws_base_url` | Overrides the STT realtime WebSocket URL.                      |
+| `SONIOX_TTS_API_URL`  | `tts_api_url`          | Overrides the REST TTS host.                                   |
+| `SONIOX_TTS_WS_URL`   | `realtime.tts_ws_url`  | Overrides the TTS realtime WebSocket URL.                      |
 
 Resolution precedence for every setting is:
 
@@ -150,5 +150,46 @@ stream.on('audio', (chunk, timestamps) => {
 
 stream.sendText('Hello world', { end: true });
 ```
+
+## Agent text input (voice agents)
+
+Tell Soniox what your agent is saying, so those words are recognized when the
+user says them back and the agent's own voice bleeding into the microphone is
+not transcribed as the user. Set `enable_agent_text_input` on the session and
+call `sendAgentText()` as the reply is spoken. Agent text carries no timestamps:
+the server places each piece where it sits among the audio frames, so send it a
+little before the caller hears it - 500ms to 1s ahead of playback - paced by how
+much has really been played, not by how fast the model or the Text-to-Speech
+produced it. The model must report `supports_agent_text_input` in
+`client.models.list()`.
+
+```typescript
+const session = client.realtime.stt({
+  model: 'stt-rt-v6',
+  language_hints: ['en'],
+  enable_agent_text_input: true,
+});
+
+await session.connect();
+
+// Mid-turn, which is what end_of_segment defaults to.
+session.sendAgentText('We have a flat white');
+session.sendAgentText(' and a cortado today.');
+
+// Every turn ends with end_of_segment - on its own here, or on the last piece
+// of text. Do this when the voice stops, including when the caller barged in:
+// then only the words they actually heard were sent.
+session.sendAgentText('', { end_of_segment: true });
+```
+
+Realtime TTS supplies the alignment with `return_timestamps`: each `audio`
+event's `timestamps.characters` are that chunk's characters, and their times run
+from the start of the stream: anchor stream position 0 to your playback clock
+and they say when the caller hears each one.
+
+Send only what the agent says out loud, and clean the reply before it reaches the
+Text-to-Speech. Soniox TTS drops emoji and collapses whitespace, but passes
+markdown, SSML and expression tags like `[laughs]` through untouched, so stripping
+those is yours to do on the way in. See `examples/node/soniox_agent_text.js`.
 
 For the full documentation please go to our docs: [Full Node SDK Documentation](https://soniox.com/docs/stt/SDKs/node-SDK)

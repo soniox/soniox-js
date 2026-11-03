@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'preact/hooks';
 
 // Hardcoded real-time STT model used across the demo tabs.
-export const RT_MODEL = 'stt-rt-v5';
+export const RT_MODEL = 'stt-rt-v6';
 
 /**
  * Fetches the available STT models from the backend (`/models` proxy) and

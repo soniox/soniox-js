@@ -167,7 +167,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
     it('transcribes from file and waits for completion', async () => {
       const buffer = readFileSync(AUDIO_FILE_SHORT);
       const transcription = await client.stt.transcribeFromFile(buffer, {
-        model: 'stt-async-v5',
+        model: 'stt-async-v6',
         filename: 'test-audio.mp3',
         wait: true,
       });
@@ -214,7 +214,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
     it('transcribes with speaker diarization', async () => {
       const buffer = readFileSync(AUDIO_FILE_DIALOG);
       const transcription = await client.stt.transcribeFromFile(buffer, {
-        model: 'stt-async-v5',
+        model: 'stt-async-v6',
         filename: 'test-audio.mp3',
         enable_speaker_diarization: true,
         wait: true,
@@ -229,7 +229,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
     it('transcribes with language identification', async () => {
       const buffer = readFileSync(AUDIO_FILE_DIALOG);
       const transcription = await client.stt.transcribeFromFile(buffer, {
-        model: 'stt-async-v5',
+        model: 'stt-async-v6',
         filename: 'test-audio.mp3',
         enable_language_identification: true,
         wait: true,
@@ -319,7 +319,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
       (await client.auth.createTemporaryKey({ usage_type, expires_in_seconds: 60 })).api_key;
 
     it('STT authenticates with an Authorization header (node default)', async () => {
-      const text = await transcribe(client.realtime.stt({ model: 'stt-rt-v5' }));
+      const text = await transcribe(client.realtime.stt({ model: 'stt-rt-v6' }));
 
       expect(text.trim().length).toBeGreaterThan(0);
     }, 60000);
@@ -328,7 +328,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
       const session = new RealtimeSttSession(
         await temporaryKey('transcribe_websocket'),
         SONIOX_API_WS_URL,
-        { model: 'stt-rt-v5' },
+        { model: 'stt-rt-v6' },
         { auth_transport: 'protocol-list' }
       );
       const text = await transcribe(session);
@@ -356,7 +356,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
     }, 60000);
 
     it('rejects an invalid key on the handshake', async () => {
-      const session = new SonioxNodeClient({ api_key: 'invalid-key' }).realtime.stt({ model: 'stt-rt-v5' });
+      const session = new SonioxNodeClient({ api_key: 'invalid-key' }).realtime.stt({ model: 'stt-rt-v6' });
 
       await expect(transcribe(session)).rejects.toThrow();
     }, 60000);
@@ -366,7 +366,7 @@ describeWithApiKey('Soniox SDK Integration Tests', () => {
     it('destroy() removes both transcription and uploaded file', async () => {
       const buffer = readFileSync(AUDIO_FILE_SHORT);
       const transcription = await client.stt.transcribeFromFile(buffer, {
-        model: 'stt-async-v5',
+        model: 'stt-async-v6',
         filename: 'test-cleanup.mp3',
         wait: true,
       });

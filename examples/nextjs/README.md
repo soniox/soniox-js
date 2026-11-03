@@ -49,7 +49,7 @@ async function getSonioxConfig(context) {
     body: JSON.stringify({ usage_type: context?.usage ?? 'transcribe_websocket' }),
   });
   // Forward region / base_domain from the server so the browser connects to
-  // the same regional endpoints the temporary key is scoped to (EU / JP / US).
+  // the same regional endpoints the temporary key is scoped to (EU / JP / IN / US).
   const { apiKey, region, baseDomain } = await res.json();
   return {
     api_key: apiKey,
@@ -65,7 +65,7 @@ function App() {
 
 ### Running in a non-US region
 
-If you deploy against EU or JP, set `SONIOX_REGION` (or `SONIOX_BASE_DOMAIN`)
+If you deploy against EU, JP or IN, set `SONIOX_REGION` (or `SONIOX_BASE_DOMAIN`)
 on the server. The `/api/get-temporary-api-key` route echoes those values back
 to the browser so `getSonioxConfig` can forward them to the SDK — otherwise
 the browser falls back to US endpoints and the regional key fails to auth.
@@ -73,7 +73,7 @@ the browser falls back to US endpoints and the regional key fails to auth.
 ```bash
 # .env
 SONIOX_API_KEY=<SONIOX_API_KEY>
-SONIOX_REGION=eu     # or 'jp'; leave unset for US
+SONIOX_REGION=eu     # or 'jp' / 'in'; leave unset for US
 ```
 
 ## Transcribing microphone stream
@@ -85,7 +85,7 @@ import { useRecording } from '@soniox/react';
 
 function Transcribe() {
   const { isActive, finalText, partialText, start, stop } = useRecording({
-    model: 'stt-rt-v5',
+    model: 'stt-rt-v6',
   });
 
   return (
@@ -105,7 +105,7 @@ To enable live translation, pass a `translation` config to `useRecording` and us
 
 ```tsx
 const { groups, start, stop } = useRecording({
-  model: 'stt-rt-v5',
+  model: 'stt-rt-v6',
   translation: {
     type: 'one_way',
     target_language: 'es',
@@ -124,7 +124,7 @@ You can enable two-way translation in a similar way:
 
 ```tsx
 const { groups, start, stop } = useRecording({
-  model: 'stt-rt-v5',
+  model: 'stt-rt-v6',
   translation: {
     type: 'two_way',
     language_a: 'en',

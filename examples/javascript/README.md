@@ -27,9 +27,17 @@ npm run dev
 ## What's in the demo
 
 - **Real-time transcription** – Start/Stop/Pause/Resume/Cancel controls
-  wired to `client.realtime.record({ model: 'stt-rt-v5' })`.
+  wired to `client.realtime.record({ model: 'stt-rt-v6' })`.
 - **Text-to-speech** – Generate speech from any text via:
   - `client.tts.generate(...)` (REST, one buffered response)
   - `client.realtime.tts(...)` (WebSocket, chunks streamed as generated)
 
   Audio is played back inline through an `<audio>` element.
+
+- **Voice agent (agent text + echo cancellation)** – opens the microphone with
+  `echoCancellation` on, speaks a line through realtime TTS, and sends each
+  piece of it with `recording.sendAgentText()` 700ms before the caller hears it,
+  scheduled off the TTS character timestamps and the `AudioContext` clock, so
+  the agent's own voice is not transcribed as the user. "Barge in" stops the
+  playback and closes the turn with what was actually heard. Use speakers rather
+  than headphones, and note the model must report `supports_agent_text_input`.

@@ -50,6 +50,21 @@ describe('resolveConnectionConfig', () => {
         session_defaults: {},
       });
     });
+
+    it('should resolve IN region', () => {
+      const result = resolveConnectionConfig({ api_key: apiKey, region: 'in' });
+
+      expect(result).toEqual({
+        api_key: apiKey,
+        api_domain: 'https://api.in.soniox.com',
+        stt_ws_url: 'wss://stt-rt.in.soniox.com/transcribe-websocket',
+        tts_api_url: 'https://tts-rt.in.soniox.com',
+        tts_ws_url: 'wss://tts-rt.in.soniox.com/tts-websocket',
+        stt_defaults: {},
+        tts_defaults: {},
+        session_defaults: {},
+      });
+    });
   });
 
   describe('explicit URL overrides', () => {
@@ -221,22 +236,22 @@ describe('resolveConnectionConfig', () => {
     });
 
     it('should use stt_defaults when provided', () => {
-      const defaults = { model: 'stt-rt-v5', language_hints: ['en', 'de'] };
+      const defaults = { model: 'stt-rt-v6', language_hints: ['en', 'de'] };
       const result = resolveConnectionConfig({ api_key: apiKey, stt_defaults: defaults });
       expect(result.stt_defaults).toEqual(defaults);
       expect(result.session_defaults).toEqual(defaults);
     });
 
     it('should fall back to deprecated session_defaults', () => {
-      const defaults = { model: 'stt-rt-v5' };
+      const defaults = { model: 'stt-rt-v6' };
       const result = resolveConnectionConfig({ api_key: apiKey, session_defaults: defaults });
       expect(result.stt_defaults).toEqual(defaults);
       expect(result.session_defaults).toEqual(defaults);
     });
 
     it('stt_defaults takes precedence over session_defaults', () => {
-      const sttDefaults = { model: 'stt-rt-v5' };
-      const sessionDefaults = { model: 'stt-rt-v5' };
+      const sttDefaults = { model: 'stt-rt-v6' };
+      const sessionDefaults = { model: 'stt-rt-v6' };
       const result = resolveConnectionConfig({
         api_key: apiKey,
         stt_defaults: sttDefaults,
