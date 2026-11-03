@@ -75,6 +75,11 @@ export type SonioxModel = {
   endpoint_latency_adjustment_max_level: number;
 
   /**
+   * Whether the model supports `enable_agent_text_input` on real-time sessions.
+   */
+  supports_agent_text_input?: boolean | undefined;
+
+  /**
    * List of supported one-way translation targets. If list is empty, check for one_way_translation field
    */
   translation_targets: SonioxTranslationTarget[];

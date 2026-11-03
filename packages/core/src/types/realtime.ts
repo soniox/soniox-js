@@ -103,6 +103,16 @@ export type SttSessionConfig = {
   enable_endpoint_detection?: boolean | undefined;
 
   /**
+   * Allow the session to receive what your agent is saying, via
+   * {@link RealtimeSttSession.sendAgentText}.
+   *
+   * Agent text is recognized when the user says those same words back, and the
+   * agent's own voice bleeding into the microphone is not transcribed as the
+   * user. Only accepted by models whose `supports_agent_text_input` is true.
+   */
+  enable_agent_text_input?: boolean | undefined;
+
+  /**
    * Maximum delay between the end of speech and returned endpoint.
    * Allowed values for maximum delay are between 500ms and 3000ms. The default value is 2000ms
    */

@@ -370,6 +370,24 @@ export class Recording {
   }
 
   /**
+   * Send what your agent is saying, so those words are recognized when the user
+   * says them back and the agent's own voice is not transcribed as the user.
+   *
+   * Requires `enable_agent_text_input` on the recording config. Send each piece
+   * a little before the caller hears it - 500ms to 1s ahead of playback - since
+   * the server places it by where it sits among the audio frames. Close every
+   * turn with `end_of_segment: true`, which is also how a barge-in is handled.
+   *
+   * Dropped while no session is connected - before the connection opens, or
+   * during a reconnect - because text sent then would land beside the wrong
+   * audio rather than where it belongs.
+   */
+  sendAgentText(text: string, options?: { end_of_segment?: boolean }): void {
+    if (this.session?.state !== 'connected') return;
+    this.session.sendAgentText(text, options);
+  }
+
+  /**
    * Pause recording.
    *
    * Pauses the audio source (stops microphone capture) and pauses the

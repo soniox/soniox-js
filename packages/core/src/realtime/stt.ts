@@ -15,7 +15,7 @@ import type {
 import { AsyncEventQueue } from './async-queue.js';
 import { handshakeAuthArg } from './auth.js';
 import { TypedEmitter } from './emitter.js';
-import { AbortError, ConnectionError, StateError, mapErrorResponse } from './errors.js';
+import { AbortError, BadRequestError, ConnectionError, StateError, mapErrorResponse } from './errors.js';
 
 // Default keepalive interval
 const DEFAULT_KEEPALIVE_INTERVAL_MS = 5000;
@@ -52,6 +52,7 @@ function buildConfigMessage(config: SttSessionConfig): Record<string, unknown> {
     enable_speaker_diarization: config.enable_speaker_diarization,
     enable_language_identification: config.enable_language_identification,
     enable_endpoint_detection: config.enable_endpoint_detection,
+    enable_agent_text_input: config.enable_agent_text_input,
     client_reference_id: config.client_reference_id,
     max_endpoint_delay_ms: config.max_endpoint_delay_ms,
     endpoint_sensitivity: config.endpoint_sensitivity,
@@ -322,6 +323,47 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
       message.trailing_silence_ms = options.trailing_silence_ms;
     }
     this.sendMessage(JSON.stringify(message), false);
+  }
+
+  /**
+   * Send what your agent is saying, so those words are recognized when the user
+   * says them back and the agent's own voice is not transcribed as the user.
+   *
+   * The server places each piece where it sits among the audio frames, so send
+   * it a little before the caller hears it - 500ms to 1s ahead of playback -
+   * paced by how much of the reply has really been played, not by how fast the
+   * model or the Text-to-Speech produced it.
+   *
+   * A segment is one agent turn. Close every turn with `end_of_segment: true`,
+   * either on the last piece of text or on its own. Do the same on a barge-in:
+   * send whatever was already played, close the segment, and drop the rest of
+   * the reply, which the caller never heard.
+   *
+   * Requires `enable_agent_text_input` on the session config.
+   *
+   * @param text - The next piece of what the agent is saying, spaces included;
+   *   Soniox joins the pieces exactly as sent. May be empty.
+   * @param options - `end_of_segment` defaults to false, as on the wire
+   * @throws {@link BadRequestError} If the config did not enable agent text input
+   * @throws {@link StateError} If not connected
+   */
+  sendAgentText(text: string, options?: { end_of_segment?: boolean }): void {
+    this.checkAborted();
+
+    if (!this.config.enable_agent_text_input) {
+      throw new BadRequestError('Set enable_agent_text_input on the session config to send agent text');
+    }
+
+    if (this._state !== 'connected') {
+      throw new StateError(`Cannot send agent text: session is in "${this._state}" state`);
+    }
+
+    const message = {
+      type: 'agent_text',
+      text,
+      end_of_segment: options?.end_of_segment ?? false,
+    };
+    this.sendMessage(JSON.stringify(message), true);
   }
 
   /**

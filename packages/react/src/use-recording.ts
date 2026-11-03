@@ -203,6 +203,17 @@ export interface UseRecordingReturn extends RecordingSnapshot {
   resume: () => void;
   /** Request the server to finalize current non-final tokens. */
   finalize: (options?: { trailing_silence_ms?: number }) => void;
+  /**
+   * Send what your agent is saying, so those words are recognized when the user
+   * says them back and the agent's own voice is not transcribed as the user.
+   *
+   * Requires `enable_agent_text_input` on the session config. Send each piece a
+   * little before the caller hears it - 500ms to 1s ahead of playback - since the
+   * server places it by where it sits among the audio frames. Close every turn
+   * with `end_of_segment: true`, which is also how a barge-in is handled.
+   * Dropped while no session is connected.
+   */
+  sendAgentText: (text: string, options?: { end_of_segment?: boolean }) => void;
   /** Clear transcript state (finalText, partialText, utterances, segments). */
   clearTranscript: () => void;
   /**
@@ -429,6 +440,10 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     recordingRef.current?.finalize(options);
   }, []);
 
+  const sendAgentText = useCallback((text: string, options?: { end_of_segment?: boolean }): void => {
+    recordingRef.current?.sendAgentText(text, options);
+  }, []);
+
   const clearTranscript = useCallback((): void => {
     store.clearTranscript();
   }, [store]);
@@ -481,6 +496,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     pause,
     resume,
     finalize,
+    sendAgentText,
     clearTranscript,
     reconnect,
 

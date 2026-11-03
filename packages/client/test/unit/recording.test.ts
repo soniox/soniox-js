@@ -271,6 +271,47 @@ describe('Recording', () => {
   // Pause / Resume
   // ---------------------------------------------------------------------------
 
+  describe('sendAgentText', () => {
+    it('rides between the audio chunks once connected', async () => {
+      const recording = new Recording(staticResolver(), { model: 'stt-rt-v6', enable_agent_text_input: true }, source);
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const ws = MockWebSocket.instances[0];
+
+      source.emitData(new Uint8Array([1, 2]).buffer);
+      recording.sendAgentText('We have a flat white');
+      source.emitData(new Uint8Array([3, 4]).buffer);
+      recording.sendAgentText('', { end_of_segment: true });
+
+      // ws.sent[0] is the config JSON message; the stream follows.
+      expect(ws.sent.slice(1)).toEqual([
+        new Uint8Array([1, 2]),
+        JSON.stringify({ type: 'agent_text', text: 'We have a flat white', end_of_segment: false }),
+        new Uint8Array([3, 4]),
+        JSON.stringify({ type: 'agent_text', text: '', end_of_segment: true }),
+      ]);
+
+      recording.cancel();
+    });
+
+    it('is dropped rather than misplaced before the session connects', async () => {
+      const recording = new Recording(
+        delayedResolver(50),
+        { model: 'stt-rt-v6', enable_agent_text_input: true },
+        source
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(() => recording.sendAgentText('too early')).not.toThrow();
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const ws = MockWebSocket.instances[0];
+      expect(ws.sent.some((frame) => typeof frame === 'string' && frame.includes('too early'))).toBe(false);
+
+      recording.cancel();
+    });
+  });
+
   describe('pause/resume', () => {
     async function createConnectedRecording() {
       const recording = new Recording(staticResolver(), { model: 'test' }, source, {

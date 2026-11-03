@@ -481,6 +481,7 @@ describe('useRecording', () => {
       pause: result.current.pause,
       resume: result.current.resume,
       finalize: result.current.finalize,
+      sendAgentText: result.current.sendAgentText,
       clearTranscript: result.current.clearTranscript,
     };
 
@@ -492,6 +493,7 @@ describe('useRecording', () => {
     expect(result.current.pause).toBe(first.pause);
     expect(result.current.resume).toBe(first.resume);
     expect(result.current.finalize).toBe(first.finalize);
+    expect(result.current.sendAgentText).toBe(first.sendAgentText);
     expect(result.current.clearTranscript).toBe(first.clearTranscript);
   });
 });
