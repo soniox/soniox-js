@@ -1,4 +1,12 @@
-import { RealtimeTtsConnection, RealtimeTtsStream, StateError, ConnectionError } from '@soniox/core';
+import {
+  RealtimeTtsConnection,
+  RealtimeTtsStream,
+  StateError,
+  ConnectionError,
+  AuthError,
+  BadRequestError,
+  NetworkError,
+} from '@soniox/core';
 import {
   MockWebSocket,
   installMockWebSocket,
@@ -480,6 +488,81 @@ describe('RealtimeTtsStream', () => {
 
       expect(errorHandler).toHaveBeenCalledTimes(1);
       expect(stream.state).toBe('error');
+    });
+
+    it('should keep error_type on the stream error raw payload', async () => {
+      const { stream, ws } = await createStream();
+      const errorHandler = jest.fn();
+      stream.on('error', errorHandler);
+
+      const frame = {
+        stream_id: 'test-stream',
+        error_code: 503,
+        error_type: 'voice_failed',
+        error_message: 'Voice failed',
+      };
+      ws.message(JSON.stringify(frame));
+
+      const error = errorHandler.mock.calls[0][0];
+      expect(error).toBeInstanceOf(NetworkError);
+      expect(error.raw).toEqual(frame);
+    });
+  });
+
+  describe('connection-level errors', () => {
+    async function openConnection() {
+      const conn = new RealtimeTtsConnection(apiKey, wsUrl, ttsDefaults);
+      const connectPromise = conn.connect();
+      getLastMockWebSocket()!.open();
+      await connectPromise;
+      return { conn, ws: getLastMockWebSocket()! };
+    }
+
+    it.each([
+      ['empty', { stream_id: '' }],
+      ['missing', {}],
+    ])('emits on the connection when stream_id is %s', async (_label, idField) => {
+      const { conn, ws } = await openConnection();
+      const errorHandler = jest.fn();
+      conn.on('error', errorHandler);
+
+      const frame = { ...idField, error_code: 400, error_type: 'invalid_request', error_message: 'Bad' };
+      ws.message(JSON.stringify(frame));
+
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+      const error = errorHandler.mock.calls[0][0];
+      expect(error).toBeInstanceOf(BadRequestError);
+      expect(error.raw).toEqual(frame);
+      conn.close();
+    });
+
+    it('does not fail streams on a shared connection', async () => {
+      const { conn, ws } = await openConnection();
+      conn.on('error', () => {});
+      const stream = await conn.stream({ stream_id: 'test-stream' });
+
+      ws.message(JSON.stringify({ stream_id: '', error_code: 400, error_message: 'Bad' }));
+
+      expect(stream.state).toBe('active');
+      expect(conn.isConnected).toBe(true);
+      conn.close();
+    });
+
+    it('fails the stream of a single-stream connection', async () => {
+      const { conn, ws } = await openConnection();
+      const stream = await conn._openStream({ stream_id: 'test-stream' }, true);
+      const errorHandler = jest.fn();
+      stream.on('error', errorHandler);
+
+      const frame = { stream_id: '', error_code: 401, error_type: 'unauthenticated', error_message: 'Invalid key' };
+      ws.message(JSON.stringify(frame));
+
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+      const error = errorHandler.mock.calls[0][0];
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error.raw).toEqual(frame);
+      expect(stream.state).toBe('error');
+      expect(conn.isConnected).toBe(false);
     });
   });
 
