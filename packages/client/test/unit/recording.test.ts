@@ -102,13 +102,13 @@ class MockWebSocket {
 
   // Simulate server sending a message
   simulateMessage(data: string) {
-    this.fire('message', { data } as MessageEvent);
+    this.fire('message', { data });
   }
 
   // Simulate close
   simulateClose(reason = '') {
     this.readyState = MockWebSocket.CLOSED;
-    this.fire('close', { reason } as CloseEvent);
+    this.fire('close', { reason });
   }
 
   // Simulate error

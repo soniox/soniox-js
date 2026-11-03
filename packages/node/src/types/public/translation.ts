@@ -312,8 +312,7 @@ export type SonioxTranslation = OneWayTranslation | TwoWayTranslation;
  * supply it directly.
  */
 export type TranslateFromTranscriptMode =
-  | { type: 'one_way'; to: string; from?: string }
-  | { type: 'two_way'; language_a: string; language_b: string };
+  { type: 'one_way'; to: string; from?: string } | { type: 'two_way'; language_a: string; language_b: string };
 
 /**
  * Type contract for SonioxTranslationJob class.

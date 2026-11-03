@@ -70,7 +70,7 @@ function parseResultMessage(data: string): RealtimeResult & { raw: unknown } {
 
   // Check for error response
   if ('error_code' in raw || 'error_message' in raw) {
-    throw mapErrorResponse(raw as { error_code?: number; error_message?: string });
+    throw mapErrorResponse(raw);
   }
 
   // Parse tokens

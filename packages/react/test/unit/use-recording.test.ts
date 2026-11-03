@@ -98,12 +98,12 @@ class MockWebSocket {
   }
 
   simulateMessage(data: string) {
-    this.fire('message', { data } as MessageEvent);
+    this.fire('message', { data });
   }
 
   simulateClose(reason = '') {
     this.readyState = MockWebSocket.CLOSED;
-    this.fire('close', { reason } as CloseEvent);
+    this.fire('close', { reason });
   }
 
   private fire(event: string, payload: unknown) {

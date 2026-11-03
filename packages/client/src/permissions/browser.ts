@@ -49,7 +49,7 @@ export class BrowserPermissionResolver implements PermissionResolver {
     if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
       try {
         const result = await navigator.permissions.query({
-          name: 'microphone' as PermissionName,
+          name: 'microphone',
         });
         return {
           status: result.state === 'prompt' ? 'prompt' : result.state,

@@ -114,8 +114,8 @@ const IDLE_SNAPSHOT: RecordingSnapshot = Object.freeze({
   text: '',
   finalText: '',
   partialText: '',
-  segments: Object.freeze([]) as readonly RealtimeSegment[],
-  utterances: Object.freeze([]) as readonly RealtimeUtterance[],
+  segments: Object.freeze([]),
+  utterances: Object.freeze([]),
   tokens: EMPTY_TOKENS,
   partialTokens: EMPTY_TOKENS,
   finalTokens: EMPTY_TOKENS,
@@ -178,8 +178,8 @@ export class RecordingStore {
   onFinalized: (() => void) | null = null;
   onError: ((error: Error) => void) | null = null;
   onStateChange:
-    | ((update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason }) => void)
-    | null = null;
+    ((update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason }) => void) | null =
+    null;
   onFinished: (() => void) | null = null;
   onConnected: (() => void) | null = null;
   onSourceMuted: (() => void) | null = null;

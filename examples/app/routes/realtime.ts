@@ -170,7 +170,7 @@ export function register(wss: WebSocketServer) {
       if (isBinary) {
         const chunk = data instanceof Buffer ? data : Buffer.from(data as ArrayBuffer);
         if (!connected) {
-          pendingAudio.push(chunk as Buffer<ArrayBufferLike>);
+          pendingAudio.push(chunk);
           return;
         }
         try {

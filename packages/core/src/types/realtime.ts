@@ -454,10 +454,7 @@ export type RealtimeResult = {
  * Typed event for async iterator consumption.
  */
 export type RealtimeEvent =
-  | { kind: 'result'; data: RealtimeResult }
-  | { kind: 'endpoint' }
-  | { kind: 'finalized' }
-  | { kind: 'finished' };
+  { kind: 'result'; data: RealtimeResult } | { kind: 'endpoint' } | { kind: 'finalized' } | { kind: 'finished' };
 
 // =============================================================================
 // Session State
@@ -467,14 +464,7 @@ export type RealtimeEvent =
  * Session lifecycle states.
  */
 export type SttSessionState =
-  | 'idle'
-  | 'connecting'
-  | 'connected'
-  | 'finishing'
-  | 'finished'
-  | 'canceled'
-  | 'closed'
-  | 'error';
+  'idle' | 'connecting' | 'connected' | 'finishing' | 'finished' | 'canceled' | 'closed' | 'error';
 
 /**
  * Reason for a state transition.
@@ -484,13 +474,7 @@ export type SttSessionState =
  * connection failures, etc.
  */
 export type StateChangeReason =
-  | 'user_action'
-  | 'connected'
-  | 'connection_lost'
-  | 'reconnecting'
-  | 'reconnected'
-  | 'error'
-  | 'finished';
+  'user_action' | 'connected' | 'connection_lost' | 'reconnecting' | 'reconnected' | 'error' | 'finished';
 
 // =============================================================================
 // Session Events
