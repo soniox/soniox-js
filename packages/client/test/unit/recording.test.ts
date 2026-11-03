@@ -983,6 +983,92 @@ describe('Recording', () => {
     });
   });
 
+  describe('stop() when the drain fails', () => {
+    let unhandled: unknown[];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+
+    beforeEach(() => {
+      unhandled = [];
+      process.on('unhandledRejection', onUnhandled);
+    });
+
+    afterEach(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+
+    async function startRecording(): Promise<Recording> {
+      const recording = new Recording(staticResolver(), { model: 'test' }, source, {
+        buffer_queue_size: 100,
+      });
+      await new Promise<void>((resolve) => {
+        recording.on('state_change', ({ new_state }) => {
+          if (new_state === 'recording') resolve();
+        });
+      });
+      return recording;
+    }
+
+    async function flushUnhandled(): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+
+    it('resolves without an unhandled rejection when canceled mid-drain', async () => {
+      const recording = await startRecording();
+
+      const stopPromise = recording.stop();
+      recording.cancel();
+      await stopPromise;
+      await flushUnhandled();
+
+      expect(recording.state).toBe('canceled');
+      expect(unhandled).toEqual([]);
+    });
+
+    it('settles a second stop() call when canceled mid-drain', async () => {
+      const recording = await startRecording();
+
+      const first = recording.stop();
+      const second = recording.stop();
+      recording.cancel();
+
+      await expect(Promise.all([first, second])).resolves.toBeDefined();
+      await flushUnhandled();
+      expect(unhandled).toEqual([]);
+    });
+
+    it('does not leak a rejection when the socket closes before finished', async () => {
+      const recording = await startRecording();
+      const errors: Error[] = [];
+      recording.on('error', (err) => errors.push(err));
+
+      const stopPromise = recording.stop();
+      MockWebSocket.instances[0]!.simulateClose();
+      await stopPromise;
+      await flushUnhandled();
+
+      expect(recording.state).toBe('error');
+      expect(errors).toHaveLength(1);
+      expect(unhandled).toEqual([]);
+    });
+
+    it('does not leak a rejection when the server answers with an error frame', async () => {
+      const recording = await startRecording();
+      const errors: Error[] = [];
+      recording.on('error', (err) => errors.push(err));
+
+      const stopPromise = recording.stop();
+      MockWebSocket.instances[0]!.simulateMessage(
+        JSON.stringify({ error_code: 400, error_message: 'No audio received' })
+      );
+      await stopPromise;
+      await flushUnhandled();
+
+      expect(recording.state).toBe('error');
+      expect(errors.map((e) => e.message)).toEqual(['No audio received']);
+      expect(unhandled).toEqual([]);
+    });
+  });
+
   describe('connect timeout', () => {
     beforeEach(() => {
       jest.useFakeTimers();
