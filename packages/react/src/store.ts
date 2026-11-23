@@ -185,7 +185,7 @@ export class RecordingStore {
   onSourceMuted: (() => void) | null = null;
   onSourceUnmuted: (() => void) | null = null;
   onReconnecting: ((event: ReconnectingEvent) => void) | null = null;
-  onReconnected: ((event: { attempt: number }) => void) | null = null;
+  onReconnected: ((event: { attempt: number; resumed: boolean }) => void) | null = null;
 
   // ---------------------------------------------------------------------------
   // useSyncExternalStore contract
@@ -381,7 +381,7 @@ export class RecordingStore {
         this.onReconnecting?.(event);
       },
 
-      reconnected: (event: { attempt: number }) => {
+      reconnected: (event: { attempt: number; resumed: boolean }) => {
         this._reconnectAttempt = 0;
         this.notify();
         this.onReconnected?.(event);
@@ -598,7 +598,7 @@ interface BoundHandlers {
   state_change: (update: { old_state: RecordingState; new_state: RecordingState; reason?: StateChangeReason }) => void;
   connected: () => void;
   reconnecting: (event: ReconnectingEvent) => void;
-  reconnected: (event: { attempt: number }) => void;
+  reconnected: (event: { attempt: number; resumed: boolean }) => void;
   session_restart: (event: { reset_transcript: boolean }) => void;
   source_muted: () => void;
   source_unmuted: () => void;

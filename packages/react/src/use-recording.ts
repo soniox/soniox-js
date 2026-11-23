@@ -186,8 +186,11 @@ export interface UseRecordingConfig extends SttSessionConfig {
   /** Called before a reconnection attempt. Call `preventDefault()` to cancel. */
   onReconnecting?: ((event: ReconnectingEvent) => void) | undefined;
 
-  /** Called after a successful reconnection. */
-  onReconnected?: ((event: { attempt: number }) => void) | undefined;
+  /**
+   * Called after a drop was recovered from. `resumed` is true when the same
+   * stream continued, false when a fresh session replaced it.
+   */
+  onReconnected?: ((event: { attempt: number; resumed: boolean }) => void) | undefined;
 }
 
 export interface UseRecordingReturn extends RecordingSnapshot {
@@ -225,8 +228,8 @@ export interface UseRecordingReturn extends RecordingSnapshot {
    * stale connections after sleep/wake or backgrounding.
    */
   reconnect: () => void;
-  /** @internal Debug-only: force-close the WebSocket to simulate a disconnect. */
-  __debugForceDisconnect: () => void;
+  /** @internal Debug-only: force a fresh session, as {@link Recording.__debugForceSessionRestart}. */
+  __debugForceSessionRestart: () => void;
   /**
    * Whether the built-in browser `MicrophoneSource` is available.
    * Custom `AudioSource` implementations work regardless of this value.
@@ -452,8 +455,8 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     recordingRef.current?.reconnect();
   }, []);
 
-  const __debugForceDisconnect = useCallback((): void => {
-    recordingRef.current?.__debugForceDisconnect();
+  const __debugForceSessionRestart = useCallback((): void => {
+    recordingRef.current?.__debugForceSessionRestart();
   }, []);
 
   // Cleanup on unmount.
@@ -501,7 +504,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     reconnect,
 
     // Debug
-    __debugForceDisconnect,
+    __debugForceSessionRestart,
 
     // Platform support
     isSupported: supportRef.current.isSupported,
