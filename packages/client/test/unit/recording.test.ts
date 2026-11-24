@@ -936,20 +936,31 @@ describe('Recording', () => {
       return dial;
     }
 
-    it('asks the server for a reconnect token by default', async () => {
+    /** A recording that asked for stream reconnect itself, without the fresh-session fallback. */
+    async function createResumableRecording() {
+      const recording = new Recording(staticResolver(), { model: 'test', enable_reconnect: true }, source, {
+        auto_reconnect: false,
+      });
+      await jest.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
+      await jest.advanceTimersByTimeAsync(0);
+      return recording;
+    }
+
+    it('asks the server for a reconnect token when auto_reconnect is on', async () => {
       await createConnectedRecording();
 
       expect(JSON.parse(MockWebSocket.instances[0]!.sent[0] as string).enable_reconnect).toBe(true);
     });
 
-    it('asks the server for a reconnect token even when auto_reconnect is off', async () => {
+    it('does not ask for a reconnect token when auto_reconnect is off', async () => {
       await createConnectedRecording({ auto_reconnect: false });
 
-      expect(JSON.parse(MockWebSocket.instances[0]!.sent[0] as string).enable_reconnect).toBe(true);
+      expect(JSON.parse(MockWebSocket.instances[0]!.sent[0] as string).enable_reconnect).toBeUndefined();
     });
 
-    it('continues the same stream after a drop even when auto_reconnect is off', async () => {
-      const recording = await createConnectedRecording({ auto_reconnect: false });
+    it('continues the same stream after a drop with enable_reconnect alone', async () => {
+      const recording = await createResumableRecording();
       const reconnected: { attempt: number; resumed: boolean }[] = [];
       recording.on('reconnected', (event) => reconnected.push(event));
       offerReconnect(MockWebSocket.instances[0]!);
@@ -980,8 +991,8 @@ describe('Recording', () => {
       expect(recording.state).toBe('recording');
     });
 
-    it('reconnect() continues the same stream even when auto_reconnect is off', async () => {
-      const recording = await createConnectedRecording({ auto_reconnect: false });
+    it('reconnect() continues the same stream with enable_reconnect alone', async () => {
+      const recording = await createResumableRecording();
       const reconnected: { attempt: number; resumed: boolean }[] = [];
       recording.on('reconnected', (event) => reconnected.push(event));
       offerReconnect(MockWebSocket.instances[0]!);

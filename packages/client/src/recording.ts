@@ -43,20 +43,18 @@ export type RecordingState =
  */
 export type ReconnectOptions = {
   /**
-   * Start a fresh session when the stream is lost, instead of ending the
-   * recording.
+   * Recover from a dropped connection instead of ending the recording.
    *
-   * A dropped connection is first repaired by continuing the same stream,
-   * whatever this is set to: the recording asks for
+   * The recording first tries to continue the same stream, by asking for
    * [stream reconnect](https://soniox.com/docs/stt/rt/stream-reconnect) in the
-   * start request unless `enable_reconnect: false` is set. When the server
-   * grants it, a drop is repaired underneath - one transcript, the same
-   * speakers, one bill - and `reconnected` says `resumed: true`.
+   * start request (unless `enable_reconnect` is set explicitly): when the
+   * server grants it, a drop is repaired underneath - one transcript, the same
+   * speakers, one bill - and `reconnected` says `resumed: true`. Starting a
+   * fresh session is the fallback, for a stream that cannot be continued; it
+   * leaves a gap in the transcript and says `resumed: false`.
    *
-   * This option covers what that cannot: a stream that cannot be continued
-   * (offline longer than its reconnect window, or refused by the server).
-   * The fresh session leaves a gap in the transcript and `reconnected` says
-   * `resumed: false`. Without it, the recording ends with the error.
+   * Without this option, setting `enable_reconnect: true` still continues
+   * the same stream after a drop, but a lost stream ends the recording.
    *
    * @default false
    */
@@ -673,15 +671,14 @@ export class Recording {
 
   /**
    * Build the session config for a new session.
-   * A dropped connection is repaired by continuing the same stream, so the
-   * start request asks the server for a reconnect token unless the caller
-   * opted out.
+   * `auto_reconnect` prefers continuing the same stream, so the start request
+   * has to ask the server for a reconnect token unless the caller opted out.
    */
   private sessionConfig(resolvedConfig: ResolvedConnectionConfig): SttSessionConfig {
     const config =
       typeof this.sttConfigInput === 'function' ? this.sttConfigInput(resolvedConfig) : this.sttConfigInput;
 
-    if (config.enable_reconnect !== undefined) {
+    if (!this.autoReconnect || config.enable_reconnect !== undefined) {
       return config;
     }
     return { ...config, enable_reconnect: true };

@@ -122,11 +122,10 @@ export interface UseRecordingConfig extends SttSessionConfig {
   // -- Reconnection -----------------------------------------------------------
 
   /**
-   * Start a fresh session when the stream is lost, instead of ending the
-   * recording. A dropped connection is first repaired by continuing the same
-   * stream whatever this is set to (unless `enable_reconnect: false`); this
-   * covers a stream that cannot be continued, and leaves a gap in the
-   * transcript.
+   * Recover from a dropped connection instead of ending the recording.
+   * Continues the same stream when the server allows it (this turns on
+   * `enable_reconnect` unless it is set explicitly), and otherwise starts a
+   * fresh session, which leaves a gap in the transcript.
    * @default false
    */
   auto_reconnect?: boolean | undefined;
