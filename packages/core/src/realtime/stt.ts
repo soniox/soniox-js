@@ -1037,7 +1037,7 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
           return;
         }
         if (outcome.fatal) {
-          this.failTakeover(outcome.error);
+          this.failTakeover(outcome.error, true);
           return;
         }
         if (this.isTerminalState(this._state)) {
@@ -1188,9 +1188,18 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   }
 
   /** The stream is gone for good, with the reason the last attempt gave */
-  private failTakeover(error: ConnectionError): void {
+  private failTakeover(error: ConnectionError, refused = false): void {
     if (this.isTerminalState(this._state)) {
       return;
+    }
+
+    // Unless the server refused it, it may still hold the stream - an attempt
+    // it accepted but whose answer was lost, or takeovers that kept dying - and
+    // `cleanup()` will not end a stream marked ended. End it before the error
+    // lets a caller start a fresh one beside it.
+    const state = this.reconnect;
+    if (!refused && state?.url != null && state.token !== null) {
+      this.endStrandedStream(state, state.url, state.token);
     }
 
     this.streamEnded = true;

@@ -404,10 +404,15 @@ export class Recording {
       return;
     }
 
-    this.source.stop();
+    // The session first: its 1000 close is what ends a resumable stream, and a
+    // source that fails to stop must not keep it from going out
     this.session?.close();
-    this.settleStop();
-    this.cleanup('canceled', 'user_action');
+    try {
+      this.source.stop();
+    } finally {
+      this.settleStop();
+      this.cleanup('canceled', 'user_action');
+    }
   }
 
   /**

@@ -1044,6 +1044,18 @@ describe('Recording', () => {
         expect(recording.state).toBe('canceled');
       });
 
+      it('still ends the stream when the audio source fails to stop', async () => {
+        const recording = await createConnectedRecording();
+        source.stop = () => {
+          throw new Error('track already gone');
+        };
+
+        expect(() => recording.cancel()).toThrow('track already gone');
+
+        expect(MockWebSocket.instances[0]!.closeCode).toBe(1000);
+        expect(recording.state).toBe('canceled');
+      });
+
       it('leaves a recording without stream reconnect alone', async () => {
         const recording = await createConnectedRecording({ auto_reconnect: false });
 

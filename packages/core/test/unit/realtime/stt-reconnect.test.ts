@@ -738,8 +738,10 @@ describe('RealtimeSttSession stream reconnect', () => {
         'The stream was not continued before its reconnect window closed',
       ]);
       // Two dials fitted in what the pong left of the window; measured from
-      // the start of the stream instead, there would have been none.
-      expect(MockWebSocket.instances).toHaveLength(3);
+      // the start of the stream instead, there would have been none. Then one
+      // more, closed with 1000, in case the server still holds the stream.
+      expect(MockWebSocket.instances).toHaveLength(4);
+      expect(dialing().closeCode).toBe(1000);
       void session;
     });
 
@@ -980,8 +982,32 @@ describe('RealtimeSttSession stream reconnect', () => {
       expect(errors.map((error) => error.message)).toEqual([
         'The stream could not be continued: it was continued 5 times with no response from the server',
       ]);
-      // MAX_RESUMES_WITHOUT_A_FRAME of them, behind the stream's own connection
-      expect(MockWebSocket.instances).toHaveLength(6);
+      // MAX_RESUMES_WITHOUT_A_FRAME of them, behind the stream's own connection,
+      // and one more to end the stream the server is still holding
+      expect(MockWebSocket.instances).toHaveLength(7);
+      const ending = dialing();
+      ending.open();
+      expect(JSON.parse(ending.sent[0] as string)).toMatchObject({ type: 'reconnect' });
+      ending.message(JSON.stringify({ type: 'reconnected', reconnect_token: 'token-final', last_request: 1 }));
+      expect(ending.closeCode).toBe(1000);
+    });
+
+    it('should end the stream before reporting a failed takeover', async () => {
+      // A caller that starts a fresh stream on the error must not leave this
+      // one running beside it
+      const { session, ws } = await startStream({ idle_timeout_ms: 8000 });
+      let dialsWhenReported = 0;
+      session.on('error', () => {
+        dialsWhenReported = MockWebSocket.instances.length;
+      });
+
+      ws.close('server_crash');
+      await jest.advanceTimersByTimeAsync(10000);
+
+      expect(dialsWhenReported).toBeGreaterThan(0);
+      expect(MockWebSocket.instances).toHaveLength(dialsWhenReported);
+      expect(dialing().url).toBe(RECONNECT_URL);
+      expect(dialing().closeCode).toBe(1000);
     });
 
     it('should continue a working stream as often as it drops', async () => {
