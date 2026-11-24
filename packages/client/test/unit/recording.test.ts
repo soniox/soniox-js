@@ -96,7 +96,10 @@ class MockWebSocket {
     this.sent.push(data);
   }
 
-  close() {
+  closeCode: number | undefined;
+
+  close(code?: number) {
+    this.closeCode = code;
     this.readyState = MockWebSocket.CLOSED;
   }
 
@@ -1019,6 +1022,44 @@ describe('Recording', () => {
       expect(reconnected).toEqual([{ attempt: 1, resumed: false }]);
       expect(recording.state).toBe('recording');
       expect(MockWebSocket.instances).toHaveLength(3);
+    });
+
+    describe('pagehide', () => {
+      it('ends the stream with a 1000 close when the page goes away', async () => {
+        const recording = await createConnectedRecording();
+        offerReconnect(MockWebSocket.instances[0]!);
+
+        window.dispatchEvent(new Event('pagehide'));
+
+        expect(recording.state).toBe('canceled');
+        expect(MockWebSocket.instances[0]!.closeCode).toBe(1000);
+        expect(source.stopped).toBe(true);
+      });
+
+      it('ends a stream that asked for reconnect without auto_reconnect', async () => {
+        const recording = await createResumableRecording();
+
+        window.dispatchEvent(new Event('pagehide'));
+
+        expect(recording.state).toBe('canceled');
+      });
+
+      it('leaves a recording without stream reconnect alone', async () => {
+        const recording = await createConnectedRecording({ auto_reconnect: false });
+
+        window.dispatchEvent(new Event('pagehide'));
+
+        expect(recording.state).toBe('recording');
+      });
+
+      it('stops listening once the recording has ended', async () => {
+        const removed = jest.spyOn(window, 'removeEventListener');
+        const recording = await createConnectedRecording();
+
+        recording.cancel();
+
+        expect(removed).toHaveBeenCalledWith('pagehide', expect.any(Function));
+      });
     });
 
     it('leaves enable_reconnect alone when the caller set it', async () => {

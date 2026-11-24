@@ -23,6 +23,11 @@ const TERMINAL_STATES: readonly RecordingState[] = ['stopped', 'canceled', 'erro
 const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 
+/** The window, where there is one with page lifecycle events (not React Native). */
+function pageLifecycleTarget(): Window | null {
+  return typeof window !== 'undefined' && typeof window.addEventListener === 'function' ? window : null;
+}
+
 /**
  * Unified recording lifecycle states.
  */
@@ -55,6 +60,10 @@ export type ReconnectOptions = {
    *
    * Without this option, setting `enable_reconnect: true` still continues
    * the same stream after a drop, but a lost stream ends the recording.
+   *
+   * While stream reconnect is on, the recording is canceled on the page's
+   * `pagehide` (reload, tab close, navigation), so the stream ends at once
+   * instead of waiting out its idle timeout.
    *
    * @default false
    */
@@ -255,6 +264,10 @@ export class Recording {
   private _isSourceMuted = false;
   private _reconnectAttempt = 0;
 
+  /** Whether the current session asked the server to keep its stream after a drop. */
+  private streamReconnect = false;
+  private readonly onPageHide = (): void => this.handlePageHide();
+
   // Stop promise handling
   private stopResolver: (() => void) | null = null;
   private stopRejecter: ((error: Error) => void) | null = null;
@@ -285,6 +298,8 @@ export class Recording {
     this.maxReconnectAttempts = options?.max_reconnect_attempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
     this.reconnectBaseDelay = options?.reconnect_base_delay_ms ?? DEFAULT_RECONNECT_BASE_DELAY_MS;
     this.resetTranscriptOnReconnect = options?.reset_transcript_on_reconnect ?? false;
+
+    pageLifecycleTarget()?.addEventListener('pagehide', this.onPageHide);
 
     // Start the async lifecycle on the next microtask so callers can attach listeners first
     queueMicrotask(() => {
@@ -678,10 +693,10 @@ export class Recording {
     const config =
       typeof this.sttConfigInput === 'function' ? this.sttConfigInput(resolvedConfig) : this.sttConfigInput;
 
-    if (!this.autoReconnect || config.enable_reconnect !== undefined) {
-      return config;
-    }
-    return { ...config, enable_reconnect: true };
+    const resolved =
+      !this.autoReconnect || config.enable_reconnect !== undefined ? config : { ...config, enable_reconnect: true };
+    this.streamReconnect = resolved.enable_reconnect === true;
+    return resolved;
   }
 
   private wireSessionEvents(session: RealtimeSttSession): void {
@@ -897,7 +912,22 @@ export class Recording {
     return false;
   }
 
+  /**
+   * End the stream when the page goes away.
+   *
+   * With stream reconnect, only a close with code 1000 ends a stream; the
+   * browser's own close on reload, tab close or navigation (1001) leaves it
+   * waiting out its idle timeout - billed, and holding a concurrent request
+   * slot. `pagehide` fires on all three, and a 1000 close sent from it does
+   * reach the server.
+   */
+  private handlePageHide(): void {
+    if (!this.streamReconnect) return;
+    this.cancel();
+  }
+
   private cleanup(finalState: RecordingState, reason?: StateChangeReason): void {
+    pageLifecycleTarget()?.removeEventListener('pagehide', this.onPageHide);
     this.setState(finalState, reason);
     this.audioBuffer = [];
     this.isBuffering = false;
