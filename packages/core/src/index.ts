@@ -68,6 +68,7 @@ export type {
   RealtimeSegment,
   RealtimeSegmentBufferOptions,
   RealtimeSegmentOptions,
+  RealtimeStreamFrame,
   RealtimeToken,
   RealtimeUtterance,
   RealtimeUtteranceBufferOptions,

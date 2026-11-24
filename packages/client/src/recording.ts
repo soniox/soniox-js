@@ -23,6 +23,11 @@ const TERMINAL_STATES: readonly RecordingState[] = ['stopped', 'canceled', 'erro
 const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 
+/** The window, where there is one with page lifecycle events (not React Native). */
+function pageLifecycleTarget(): Window | null {
+  return typeof window !== 'undefined' && typeof window.addEventListener === 'function' ? window : null;
+}
+
 /**
  * Unified recording lifecycle states.
  */
@@ -43,26 +48,57 @@ export type RecordingState =
  */
 export type ReconnectOptions = {
   /**
-   * Enable automatic reconnection on retriable errors.
+   * Recover from a dropped connection instead of ending the recording.
+   *
+   * The recording first tries to continue the same stream, by asking for
+   * [stream reconnect](https://soniox.com/docs/stt/rt/stream-reconnect) in the
+   * start request (unless `enable_reconnect` is set explicitly): when the
+   * server grants it, a drop is repaired underneath - one transcript, the same
+   * speakers, one bill - and `reconnected` says `resumed: true`. Starting a
+   * fresh session is the fallback, for a stream that cannot be continued; it
+   * leaves a gap in the transcript and says `resumed: false`.
+   *
+   * Without this option, setting `enable_reconnect: true` still continues
+   * the same stream after a drop, but a lost stream ends the recording.
+   *
+   * While stream reconnect is on, the recording is canceled on the page's
+   * `pagehide` (reload, tab close, navigation), so the stream ends at once
+   * instead of waiting out its idle timeout.
+   *
    * @default false
    */
   auto_reconnect?: boolean | undefined;
 
   /**
-   * Maximum number of consecutive reconnection attempts before giving up.
+   * Maximum number of consecutive fresh sessions to start before giving up.
+   *
+   * Continuing the same stream does not count against this: it is bounded by
+   * the stream's own reconnect window instead, which the server sets with
+   * `idle_timeout_ms`.
+   *
    * @default 3
    */
   max_reconnect_attempts?: number | undefined;
 
   /**
-   * Base delay in milliseconds for exponential backoff (1x, 2x, 4x, ...).
+   * Base delay in milliseconds for exponential backoff (1x, 2x, 4x, ...)
+   * before starting a fresh session.
+   *
+   * It does not pace continuing the same stream, which has the stream's
+   * reconnect window to get back in and spends it on its own schedule.
+   *
    * @default 1000
    */
   reconnect_base_delay_ms?: number | undefined;
 
   /**
    * When true, clear accumulated transcript state (finalText, segments,
-   * utterances) on reconnect. Window-tracking state is always reset.
+   * utterances) when a fresh session starts. Window-tracking state is always
+   * reset.
+   *
+   * It has nothing to clear when the same stream continued: that transcript
+   * is still the stream's own.
+   *
    * @default false
    */
   reset_transcript_on_reconnect?: boolean | undefined;
@@ -113,11 +149,16 @@ export type RecordingEvents = {
   /** About to attempt a reconnection. Call `preventDefault()` to cancel. */
   reconnecting: (event: ReconnectingEvent) => void;
 
-  /** Successfully reconnected after a drop. */
-  reconnected: (event: { attempt: number }) => void;
+  /**
+   * Recovered from a drop. `resumed` is true when the same stream continued,
+   * and false when a fresh session took over; `attempt` counts the fresh
+   * sessions it took, so it is 0 on a resumed stream.
+   */
+  reconnected: (event: { attempt: number; resumed: boolean }) => void;
 
   /**
-   * New STT session started (initial or after reconnect).
+   * New STT session started (initial or after a fresh session replaced a
+   * dropped one; never when the same stream continued).
    * Consumers should reset any session-local tracking state (e.g. token
    * window comparisons). The `reset_transcript` flag indicates whether
    * accumulated transcript state should also be cleared.
@@ -223,6 +264,10 @@ export class Recording {
   private _isSourceMuted = false;
   private _reconnectAttempt = 0;
 
+  /** Whether the current session asked the server to keep its stream after a drop. */
+  private streamReconnect = false;
+  private readonly onPageHide = (): void => this.handlePageHide();
+
   // Stop promise handling
   private stopResolver: (() => void) | null = null;
   private stopRejecter: ((error: Error) => void) | null = null;
@@ -253,6 +298,8 @@ export class Recording {
     this.maxReconnectAttempts = options?.max_reconnect_attempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS;
     this.reconnectBaseDelay = options?.reconnect_base_delay_ms ?? DEFAULT_RECONNECT_BASE_DELAY_MS;
     this.resetTranscriptOnReconnect = options?.reset_transcript_on_reconnect ?? false;
+
+    pageLifecycleTarget()?.addEventListener('pagehide', this.onPageHide);
 
     // Start the async lifecycle on the next microtask so callers can attach listeners first
     queueMicrotask(() => {
@@ -357,10 +404,15 @@ export class Recording {
       return;
     }
 
-    this.source.stop();
+    // The session first: its 1000 close is what ends a resumable stream, and a
+    // source that fails to stop must not keep it from going out
     this.session?.close();
-    this.settleStop();
-    this.cleanup('canceled', 'user_action');
+    try {
+      this.source.stop();
+    } finally {
+      this.settleStop();
+      this.cleanup('canceled', 'user_action');
+    }
   }
 
   /**
@@ -380,8 +432,10 @@ export class Recording {
    * turn with `end_of_segment: true`, which is also how a barge-in is handled.
    *
    * Dropped while no session is connected - before the connection opens, or
-   * during a reconnect - because text sent then would land beside the wrong
-   * audio rather than where it belongs.
+   * while a fresh session replaces a dropped one - because text sent then
+   * would land beside the wrong audio rather than where it belongs. A stream
+   * that is being taken over keeps its session, so the text is kept with the
+   * audio around it and goes out in order.
    */
   sendAgentText(text: string, options?: { end_of_segment?: boolean }): void {
     if (this.session?.state !== 'connected') return;
@@ -428,12 +482,13 @@ export class Recording {
   }
 
   /**
-   * @internal Debug-only: simulate an unexpected network disconnection.
-   * Tears down the current session and feeds a retriable error into the
-   * error handler so the reconnection logic kicks in exactly as it would
-   * during a real connection drop.
+   * @internal Debug-only: force a fresh session. It closes the current one,
+   * which ends the stream, and feeds a retriable error into the error handler,
+   * so it exercises the fallback path and not a drop. For a drop - which the
+   * stream is continued through - use the session's
+   * `__debugForceDisconnect()`.
    */
-  __debugForceDisconnect(): void {
+  __debugForceSessionRestart(): void {
     if (this._state !== 'recording' && this._state !== 'paused') return;
     this.session?.close();
     this.session = null;
@@ -441,19 +496,24 @@ export class Recording {
   }
 
   /**
-   * Force a reconnection — tears down the current session and audio
-   * encoder, then establishes a new session via the standard reconnect
-   * flow (backoff, config re-resolution, buffer drain).
+   * Recover from a connection that may be stale.
    *
-   * Use this to recover from stale connections after platform lifecycle
-   * events such as laptop sleep/wake (web `visibilitychange`) or app
-   * backgrounding (React Native `AppState`).
+   * Use this after platform lifecycle events such as laptop sleep/wake (web
+   * `visibilitychange`) or app backgrounding (React Native `AppState`).
    *
-   * Requires `auto_reconnect` to be enabled. No-op when the recording
-   * is not in `recording` or `paused` state.
+   * It first moves the same stream to a new connection, which keeps the
+   * transcript whole and reports `reconnected` with `resumed: true`. When the
+   * stream cannot be continued - its reconnect window has passed, or the
+   * server refuses - and `auto_reconnect` is on, it falls back to a fresh
+   * session (backoff, config re-resolution, buffer drain), which leaves a gap
+   * in the transcript and reports `resumed: false`.
+   *
+   * No-op when the recording is not in `recording` or `paused` state, or when
+   * the stream cannot be continued and `auto_reconnect` is off.
    */
   reconnect(): void {
     if (this._state !== 'recording' && this._state !== 'paused') return;
+    if (this.session?.resumeStream()) return;
     if (!this.autoReconnect) return;
     this.session?.close();
     this.session = null;
@@ -513,8 +573,7 @@ export class Recording {
     }
 
     // Resolve session config (may depend on server-provided stt_defaults)
-    const sttConfig =
-      typeof this.sttConfigInput === 'function' ? this.sttConfigInput(resolvedConfig) : this.sttConfigInput;
+    const sttConfig = this.sessionConfig(resolvedConfig);
 
     // Create session and connect
     this.setState('connecting', 'user_action');
@@ -630,6 +689,21 @@ export class Recording {
     return s === 'recording' || s === 'paused' || s === 'reconnecting' || s === 'connecting';
   }
 
+  /**
+   * Build the session config for a new session.
+   * `auto_reconnect` prefers continuing the same stream, so the start request
+   * has to ask the server for a reconnect token unless the caller opted out.
+   */
+  private sessionConfig(resolvedConfig: ResolvedConnectionConfig): SttSessionConfig {
+    const config =
+      typeof this.sttConfigInput === 'function' ? this.sttConfigInput(resolvedConfig) : this.sttConfigInput;
+
+    const resolved =
+      !this.autoReconnect || config.enable_reconnect !== undefined ? config : { ...config, enable_reconnect: true };
+    this.streamReconnect = resolved.enable_reconnect === true;
+    return resolved;
+  }
+
   private wireSessionEvents(session: RealtimeSttSession): void {
     session.on('result', (result) => this.emitter.emit('result', result));
     session.on('token', (token) => this.emitter.emit('token', token));
@@ -641,6 +715,22 @@ export class Recording {
       this.emitter.emit('finished');
       this.settleStop();
       this.cleanup('stopped', 'finished');
+    });
+
+    session.on('resuming', () => {
+      // The session is repairing the drop itself, so nothing restarts here and no
+      // fresh-session attempt is spent - and there is nothing left to prevent
+      this.emitter.emit('reconnecting', {
+        attempt: 0,
+        max_attempts: this.maxReconnectAttempts,
+        delay_ms: 0,
+        preventDefault: () => undefined,
+      });
+    });
+
+    session.on('resumed', () => {
+      // The session repaired the drop itself: no fresh session was spent
+      this.emitter.emit('reconnected', { attempt: 0, resumed: true });
     });
 
     session.on('error', (error) => {
@@ -748,8 +838,7 @@ export class Recording {
 
     if (this.shouldAbortReconnect()) return;
 
-    const sttConfig =
-      typeof this.sttConfigInput === 'function' ? this.sttConfigInput(resolvedConfig) : this.sttConfigInput;
+    const sttConfig = this.sessionConfig(resolvedConfig);
 
     this.setState('connecting', 'reconnecting');
 
@@ -810,7 +899,7 @@ export class Recording {
     }
 
     this.emitter.emit('connected');
-    this.emitter.emit('reconnected', { attempt: this._reconnectAttempt });
+    this.emitter.emit('reconnected', { attempt: this._reconnectAttempt, resumed: false });
     this._reconnectAttempt = 0;
   }
 
@@ -828,7 +917,22 @@ export class Recording {
     return false;
   }
 
+  /**
+   * End the stream when the page goes away.
+   *
+   * With stream reconnect, only a close with code 1000 ends a stream; the
+   * browser's own close on reload, tab close or navigation (1001) leaves it
+   * waiting out its idle timeout - billed, and holding a concurrent request
+   * slot. `pagehide` fires on all three, and a 1000 close sent from it does
+   * reach the server.
+   */
+  private handlePageHide(): void {
+    if (!this.streamReconnect) return;
+    this.cancel();
+  }
+
   private cleanup(finalState: RecordingState, reason?: StateChangeReason): void {
+    pageLifecycleTarget()?.removeEventListener('pagehide', this.onPageHide);
     this.setState(finalState, reason);
     this.audioBuffer = [];
     this.isBuffering = false;

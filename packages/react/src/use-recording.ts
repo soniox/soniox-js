@@ -122,7 +122,10 @@ export interface UseRecordingConfig extends SttSessionConfig {
   // -- Reconnection -----------------------------------------------------------
 
   /**
-   * Enable automatic reconnection on retriable errors.
+   * Recover from a dropped connection instead of ending the recording.
+   * Continues the same stream when the server allows it (this turns on
+   * `enable_reconnect` unless it is set explicitly), and otherwise starts a
+   * fresh session, which leaves a gap in the transcript.
    * @default false
    */
   auto_reconnect?: boolean | undefined;
@@ -186,8 +189,11 @@ export interface UseRecordingConfig extends SttSessionConfig {
   /** Called before a reconnection attempt. Call `preventDefault()` to cancel. */
   onReconnecting?: ((event: ReconnectingEvent) => void) | undefined;
 
-  /** Called after a successful reconnection. */
-  onReconnected?: ((event: { attempt: number }) => void) | undefined;
+  /**
+   * Called after a drop was recovered from. `resumed` is true when the same
+   * stream continued, false when a fresh session replaced it.
+   */
+  onReconnected?: ((event: { attempt: number; resumed: boolean }) => void) | undefined;
 }
 
 export interface UseRecordingReturn extends RecordingSnapshot {
@@ -217,16 +223,17 @@ export interface UseRecordingReturn extends RecordingSnapshot {
   /** Clear transcript state (finalText, partialText, utterances, segments). */
   clearTranscript: () => void;
   /**
-   * Force a reconnection — tears down the current session and audio
-   * encoder, then establishes a new session. Requires `auto_reconnect`.
+   * Recover from a connection that may be stale. Continues the same stream
+   * on a new connection when it can; otherwise, with `auto_reconnect`, starts
+   * a fresh session. See {@link Recording.reconnect}.
    *
    * Call this from platform lifecycle handlers (e.g. web
    * `visibilitychange`, React Native `AppState`) to recover from
    * stale connections after sleep/wake or backgrounding.
    */
   reconnect: () => void;
-  /** @internal Debug-only: force-close the WebSocket to simulate a disconnect. */
-  __debugForceDisconnect: () => void;
+  /** @internal Debug-only: force a fresh session, as {@link Recording.__debugForceSessionRestart}. */
+  __debugForceSessionRestart: () => void;
   /**
    * Whether the built-in browser `MicrophoneSource` is available.
    * Custom `AudioSource` implementations work regardless of this value.
@@ -452,8 +459,8 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     recordingRef.current?.reconnect();
   }, []);
 
-  const __debugForceDisconnect = useCallback((): void => {
-    recordingRef.current?.__debugForceDisconnect();
+  const __debugForceSessionRestart = useCallback((): void => {
+    recordingRef.current?.__debugForceSessionRestart();
   }, []);
 
   // Cleanup on unmount.
@@ -501,7 +508,7 @@ export function useRecording(config: UseRecordingConfig): UseRecordingReturn {
     reconnect,
 
     // Debug
-    __debugForceDisconnect,
+    __debugForceSessionRestart,
 
     // Platform support
     isSupported: supportRef.current.isSupported,

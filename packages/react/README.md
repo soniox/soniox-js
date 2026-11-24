@@ -66,7 +66,9 @@ const { speak } = useTts({
 ```
 
 The model must report `supports_agent_text_input`, and calls are dropped while
-no session is connected - before the connection opens, or during a reconnect -
-because text sent then would land beside the wrong audio.
+no session is connected - before the connection opens, or while a fresh session
+replaces a dropped one - because text sent then would land beside the wrong
+audio. A stream that is being taken over keeps its session, so the text is kept
+with the audio around it.
 
 For the full documentation please go to our docs: [Full React SDK Documentation](https://soniox.com/docs/stt/SDKs/react-SDK)

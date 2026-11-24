@@ -15,6 +15,8 @@ export class MockWebSocket {
   binaryType = 'arraybuffer';
   /** Tracks all messages sent via send() */
   sent: unknown[] = [];
+  /** Close code the code under test asked for, when it gave one */
+  closeCode: number | undefined;
   private readonly listeners = new Map<string, Set<(event: any) => void>>();
 
   constructor(url: string, protocols?: string | string[]) {
@@ -33,9 +35,17 @@ export class MockWebSocket {
     this.listeners.get(type)?.delete(listener);
   }
 
+  /** Which send this connection refuses, counted from one. The rest go through. */
+  failSendNumber: number | null = null;
+  private sendAttempts = 0;
+
   send(data: unknown): void {
     if (this.readyState !== MockWebSocket.OPEN) {
       throw new Error('WebSocket is not open');
+    }
+    this.sendAttempts += 1;
+    if (this.sendAttempts === this.failSendNumber) {
+      throw new Error('WebSocket is closing');
     }
     this.sent.push(data);
   }
@@ -46,13 +56,27 @@ export class MockWebSocket {
     this.dispatch('open', { type: 'open' });
   }
 
-  /** Simulate the WebSocket closing */
-  close(reason = ''): void {
+  /**
+   * Close the socket
+   * Called as `close(code?, reason?)` by the code under test, and as
+   * `close(reason)` by tests simulating the server closing
+   */
+  close(codeOrReason: number | string = '', reason = ''): void {
     if (this.readyState === MockWebSocket.CLOSED) {
+      // The first close is the one that counts, as on a real socket
       return;
     }
+    if (typeof codeOrReason === 'number') {
+      this.closeCode = codeOrReason;
+    }
     this.readyState = MockWebSocket.CLOSED;
-    this.dispatch('close', { type: 'close', reason });
+    // A server close with no code reads as 1005 on a real socket, and the
+    // code is what a test about which closes are resumable needs to set
+    this.dispatch('close', {
+      type: 'close',
+      code: typeof codeOrReason === 'number' ? codeOrReason : 1005,
+      reason: typeof codeOrReason === 'string' ? codeOrReason : reason,
+    });
   }
 
   /** Simulate receiving a message from the server */
@@ -60,10 +84,16 @@ export class MockWebSocket {
     this.dispatch('message', { data });
   }
 
+  /** Simulate a transport failure: a refused handshake, or a dead socket */
+  error(message = ''): void {
+    this.dispatch('error', { type: 'error', message });
+  }
+
   private dispatch(type: string, event: any): void {
     const handlers = this.listeners.get(type);
     if (!handlers) return;
-    for (const handler of handlers) {
+    // Copied, so a listener added during delivery does not also receive it
+    for (const handler of [...handlers]) {
       handler(event);
     }
   }

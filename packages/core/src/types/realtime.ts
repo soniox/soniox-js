@@ -113,6 +113,33 @@ export type SttSessionConfig = {
   enable_agent_text_input?: boolean | undefined;
 
   /**
+   * Let the stream continue on a new connection when this one drops, without
+   * losing or repeating any part of the transcript.
+   *
+   * The session then pings the server to notice a drop within seconds, and
+   * keeps the messages a pong has not confirmed so it can send them again. A
+   * `resumed` event says a drop was recovered from: it stays one stream, with
+   * one transcript, the same speakers and one bill.
+   *
+   * The server decides per stream whether it can offer this, and says so right
+   * after the start request. When it does not, nothing can continue the stream
+   * - but the session still pings it, so a connection that stops answering is
+   * reported as lost rather than going unnoticed.
+   *
+   * @see https://soniox.com/docs/stt/rt/stream-reconnect
+   */
+  enable_reconnect?: boolean | undefined;
+
+  /**
+   * How long the server keeps the stream when nothing arrives (milliseconds).
+   * Between 3000 and 20000; the default is 20000.
+   *
+   * With `enable_reconnect` it is also how long the stream waits to be taken
+   * over after a drop, and the session paces its pings by it.
+   */
+  idle_timeout_ms?: number | undefined;
+
+  /**
    * Maximum delay between the end of speech and returned endpoint.
    * Allowed values for maximum delay are between 500ms and 3000ms. The default value is 2000ms
    */
@@ -422,6 +449,55 @@ export type RealtimeUtteranceBufferOptions = {
 };
 
 /**
+ * A frame from the real-time WebSocket, as the stream-reconnect protocol
+ * reads it.
+ *
+ * With `enable_reconnect`, a stream carries frames that are not transcription
+ * results - the reconnect token, pongs, the reply to a reconnect - and every
+ * response carries a `seq`. The session answers these itself; they are not
+ * surfaced to consumers.
+ */
+export type RealtimeStreamFrame = {
+  /** Protocol message type, for frames that are not a transcription result. */
+  type?: string | undefined;
+
+  /** Position of this response in the stream, when reconnect is enabled. */
+  seq?: number | undefined;
+
+  /** The id of the ping this pong answers. */
+  id?: number | undefined;
+
+  /** Token that lets a new connection continue this stream. */
+  reconnect_token?: string | undefined;
+
+  /** URL to connect to when continuing this stream. */
+  reconnect_url?: string | undefined;
+
+  /** How many of our messages the server received, in a `reconnected` frame. */
+  last_request?: number | undefined;
+
+  /** Error code if the stream failed. */
+  error_code?: number | undefined;
+
+  /**
+   * Stable identifier for the kind of error, which the wording is not.
+   *
+   * `connection_replaced` is the one that does not end the stream: a newer
+   * connection took it over and this one is finished with. Every refused
+   * reconnect is `reconnect_failed`, whatever the reason in `error_message`.
+   *
+   * @see https://soniox.com/docs/api-reference/errors
+   */
+  error_type?: string | undefined;
+
+  /** Human-readable description of the error. */
+  error_message?: string | undefined;
+
+  /** Whether this is the final result (stream ending). */
+  finished?: boolean | undefined;
+};
+
+/**
  * A result message from the real-time WebSocket.
  */
 export type RealtimeResult = {
@@ -454,7 +530,12 @@ export type RealtimeResult = {
  * Typed event for async iterator consumption.
  */
 export type RealtimeEvent =
-  { kind: 'result'; data: RealtimeResult } | { kind: 'endpoint' } | { kind: 'finalized' } | { kind: 'finished' };
+  | { kind: 'result'; data: RealtimeResult }
+  | { kind: 'endpoint' }
+  | { kind: 'finalized' }
+  | { kind: 'finished' }
+  | { kind: 'resuming' }
+  | { kind: 'resumed' };
 
 // =============================================================================
 // Session State
@@ -518,6 +599,24 @@ export type SttSessionEvents = {
    * Session connected and ready.
    */
   connected: () => void;
+
+  /**
+   * The connection dropped and the stream is being continued on a new one.
+   *
+   * Nothing is lost yet and nothing has restarted; audio sent from here is
+   * kept and goes out once the stream is back. A `resumed` follows if it
+   * works, and an `error` if the stream could not be continued at all. The
+   * wait can last as long as the stream's `idle_timeout_ms`, so this is what
+   * an interface has to show to avoid looking like it is still recording.
+   */
+  resuming: () => void;
+
+  /**
+   * The stream continued on a new connection after a drop, with
+   * `enable_reconnect`. Nothing restarted: same transcript, same speakers,
+   * one bill, and the messages the server missed went out again.
+   */
+  resumed: () => void;
 
   /**
    * Session disconnected.
