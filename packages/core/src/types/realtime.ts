@@ -545,14 +545,7 @@ export type RealtimeEvent =
  * Session lifecycle states.
  */
 export type SttSessionState =
-  | 'idle'
-  | 'connecting'
-  | 'connected'
-  | 'finishing'
-  | 'finished'
-  | 'canceled'
-  | 'closed'
-  | 'error';
+  'idle' | 'connecting' | 'connected' | 'finishing' | 'finished' | 'canceled' | 'closed' | 'error';
 
 /**
  * Reason for a state transition.
@@ -562,13 +555,7 @@ export type SttSessionState =
  * connection failures, etc.
  */
 export type StateChangeReason =
-  | 'user_action'
-  | 'connected'
-  | 'connection_lost'
-  | 'reconnecting'
-  | 'reconnected'
-  | 'error'
-  | 'finished';
+  'user_action' | 'connected' | 'connection_lost' | 'reconnecting' | 'reconnected' | 'error' | 'finished';
 
 // =============================================================================
 // Session Events
