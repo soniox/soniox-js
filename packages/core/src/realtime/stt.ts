@@ -488,6 +488,28 @@ export class RealtimeSttSession implements AsyncIterable<RealtimeEvent> {
   }
 
   /**
+   * Move the stream to a new connection, as if this one had dropped.
+   *
+   * Use it when the connection may be stale but the stream may still be
+   * alive, e.g. after a laptop wakes up or an app returns to the foreground.
+   * The stream continues with `resuming` and `resumed` events. If it can no
+   * longer be continued (the reconnect window has passed, or the server
+   * refuses), the session fails with a retriable `ConnectionError`, the same
+   * as after a real drop.
+   *
+   * @returns False, doing nothing, when this stream cannot be continued: the
+   *   session did not ask for `enable_reconnect`, the server did not grant it,
+   *   or the stream has ended.
+   */
+  resumeStream(): boolean {
+    if (!this.canResume()) {
+      return false;
+    }
+    void this.takeOver();
+    return true;
+  }
+
+  /**
    * Register an event handler
    */
   on<E extends keyof SttSessionEvents>(event: E, handler: SttSessionEvents[E]): this {

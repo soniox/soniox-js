@@ -70,6 +70,74 @@ describe('RealtimeSttSession stream reconnect', () => {
     return dial;
   }
 
+  describe('resumeStream()', () => {
+    it('should move a live stream to a new connection and resend what was not confirmed', async () => {
+      const { session, ws } = await startStream();
+      const events: string[] = [];
+      session.on('resuming', () => events.push('resuming'));
+      session.on('resumed', () => events.push('resumed'));
+      session.sendAudio(new Uint8Array([1]));
+
+      expect(session.resumeStream()).toBe(true);
+      expect(ws.closeCode).toBe(4000);
+      expect(dialing().url).toBe(RECONNECT_URL);
+
+      const dial = await accept({ last_request: 0 });
+
+      expect(JSON.parse(dial.sent[0] as string)).toEqual({
+        type: 'reconnect',
+        reconnect_token: 'token-1',
+        last_seq: 0,
+      });
+      expect(dial.sent.slice(1)).toEqual([new Uint8Array([1])]);
+      expect(events).toEqual(['resuming', 'resumed']);
+      expect(session.state).toBe('connected');
+
+      session.close();
+    });
+
+    it('should do nothing when the server offered no reconnect', async () => {
+      const { session, ws } = await startStream({}, { offer: false });
+
+      expect(session.resumeStream()).toBe(false);
+      expect(MockWebSocket.instances).toEqual([ws]);
+      expect(ws.readyState).toBe(MockWebSocket.OPEN);
+
+      session.close();
+    });
+
+    it('should do nothing without enable_reconnect', async () => {
+      const { session } = await startStream({ enable_reconnect: undefined });
+
+      expect(session.resumeStream()).toBe(false);
+      expect(MockWebSocket.instances).toHaveLength(1);
+
+      session.close();
+    });
+
+    it('should do nothing once the stream has ended', async () => {
+      const { session, ws } = await startStream();
+      ws.message(JSON.stringify({ tokens: [], finished: true, seq: 1 }));
+
+      expect(session.resumeStream()).toBe(false);
+      expect(MockWebSocket.instances).toHaveLength(1);
+    });
+
+    it('should fail with a retriable error when the reconnect window has passed', async () => {
+      const { session } = await startStream({ idle_timeout_ms: 10000 });
+      const errors: Error[] = [];
+      session.on('error', (error) => errors.push(error));
+      // A sleeping machine runs no timers: nothing was pinged or noticed
+      jest.setSystemTime(Date.now() + 60000);
+
+      expect(session.resumeStream()).toBe(true);
+      await jest.advanceTimersByTimeAsync(0);
+
+      expect(errors.map((error) => error.constructor.name)).toEqual(['ConnectionError']);
+      expect(session.state).toBe('error');
+    });
+  });
+
   describe('enable_reconnect', () => {
     it('should ask the server for a reconnect token in the start request', async () => {
       const { session, ws } = await startStream({ idle_timeout_ms: 10000 });

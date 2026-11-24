@@ -43,14 +43,20 @@ export type RecordingState =
  */
 export type ReconnectOptions = {
   /**
-   * Recover from a dropped connection instead of ending the recording.
+   * Start a fresh session when the stream is lost, instead of ending the
+   * recording.
    *
-   * The recording first tries to continue the same stream, by asking for
+   * A dropped connection is first repaired by continuing the same stream,
+   * whatever this is set to: the recording asks for
    * [stream reconnect](https://soniox.com/docs/stt/rt/stream-reconnect) in the
-   * start request: when the server grants it, a drop is repaired underneath -
-   * one transcript, the same speakers, one bill - and `reconnected` says
-   * `resumed: true`. Starting a fresh session is the fallback, which leaves a
-   * gap in the transcript and says `resumed: false`.
+   * start request unless `enable_reconnect: false` is set. When the server
+   * grants it, a drop is repaired underneath - one transcript, the same
+   * speakers, one bill - and `reconnected` says `resumed: true`.
+   *
+   * This option covers what that cannot: a stream that cannot be continued
+   * (offline longer than its reconnect window, or refused by the server).
+   * The fresh session leaves a gap in the transcript and `reconnected` says
+   * `resumed: false`. Without it, the recording ends with the error.
    *
    * @default false
    */
@@ -472,20 +478,24 @@ export class Recording {
   }
 
   /**
-   * Force a fresh session — tears down the current one and the audio
-   * encoder, then establishes a new session via the fallback reconnect
-   * flow (backoff, config re-resolution, buffer drain). The dropped stream is
-   * not continued; it is ended, or left to its idle timeout.
+   * Recover from a connection that may be stale.
    *
-   * Use this to recover from stale connections after platform lifecycle
-   * events such as laptop sleep/wake (web `visibilitychange`) or app
-   * backgrounding (React Native `AppState`).
+   * Use this after platform lifecycle events such as laptop sleep/wake (web
+   * `visibilitychange`) or app backgrounding (React Native `AppState`).
    *
-   * Requires `auto_reconnect` to be enabled. No-op when the recording
-   * is not in `recording` or `paused` state.
+   * It first moves the same stream to a new connection, which keeps the
+   * transcript whole and reports `reconnected` with `resumed: true`. When the
+   * stream cannot be continued - its reconnect window has passed, or the
+   * server refuses - and `auto_reconnect` is on, it falls back to a fresh
+   * session (backoff, config re-resolution, buffer drain), which leaves a gap
+   * in the transcript and reports `resumed: false`.
+   *
+   * No-op when the recording is not in `recording` or `paused` state, or when
+   * the stream cannot be continued and `auto_reconnect` is off.
    */
   reconnect(): void {
     if (this._state !== 'recording' && this._state !== 'paused') return;
+    if (this.session?.resumeStream()) return;
     if (!this.autoReconnect) return;
     this.session?.close();
     this.session = null;
@@ -663,14 +673,15 @@ export class Recording {
 
   /**
    * Build the session config for a new session.
-   * `auto_reconnect` prefers continuing the same stream, so the start request
-   * has to ask the server for a reconnect token unless the caller opted out.
+   * A dropped connection is repaired by continuing the same stream, so the
+   * start request asks the server for a reconnect token unless the caller
+   * opted out.
    */
   private sessionConfig(resolvedConfig: ResolvedConnectionConfig): SttSessionConfig {
     const config =
       typeof this.sttConfigInput === 'function' ? this.sttConfigInput(resolvedConfig) : this.sttConfigInput;
 
-    if (!this.autoReconnect || config.enable_reconnect !== undefined) {
+    if (config.enable_reconnect !== undefined) {
       return config;
     }
     return { ...config, enable_reconnect: true };

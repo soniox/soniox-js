@@ -122,7 +122,11 @@ export interface UseRecordingConfig extends SttSessionConfig {
   // -- Reconnection -----------------------------------------------------------
 
   /**
-   * Enable automatic reconnection on retriable errors.
+   * Start a fresh session when the stream is lost, instead of ending the
+   * recording. A dropped connection is first repaired by continuing the same
+   * stream whatever this is set to (unless `enable_reconnect: false`); this
+   * covers a stream that cannot be continued, and leaves a gap in the
+   * transcript.
    * @default false
    */
   auto_reconnect?: boolean | undefined;
@@ -220,8 +224,9 @@ export interface UseRecordingReturn extends RecordingSnapshot {
   /** Clear transcript state (finalText, partialText, utterances, segments). */
   clearTranscript: () => void;
   /**
-   * Force a reconnection — tears down the current session and audio
-   * encoder, then establishes a new session. Requires `auto_reconnect`.
+   * Recover from a connection that may be stale. Continues the same stream
+   * on a new connection when it can; otherwise, with `auto_reconnect`, starts
+   * a fresh session. See {@link Recording.reconnect}.
    *
    * Call this from platform lifecycle handlers (e.g. web
    * `visibilitychange`, React Native `AppState`) to recover from

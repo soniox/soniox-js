@@ -936,10 +936,78 @@ describe('Recording', () => {
       return dial;
     }
 
-    it('asks the server for a reconnect token when auto_reconnect is on', async () => {
+    it('asks the server for a reconnect token by default', async () => {
       await createConnectedRecording();
 
       expect(JSON.parse(MockWebSocket.instances[0]!.sent[0] as string).enable_reconnect).toBe(true);
+    });
+
+    it('asks the server for a reconnect token even when auto_reconnect is off', async () => {
+      await createConnectedRecording({ auto_reconnect: false });
+
+      expect(JSON.parse(MockWebSocket.instances[0]!.sent[0] as string).enable_reconnect).toBe(true);
+    });
+
+    it('continues the same stream after a drop even when auto_reconnect is off', async () => {
+      const recording = await createConnectedRecording({ auto_reconnect: false });
+      const reconnected: { attempt: number; resumed: boolean }[] = [];
+      recording.on('reconnected', (event) => reconnected.push(event));
+      offerReconnect(MockWebSocket.instances[0]!);
+
+      MockWebSocket.instances[0]!.simulateClose('server_crash');
+      await answerReconnect({ type: 'reconnected', reconnect_token: 'token-2', last_request: 0 });
+
+      expect(reconnected).toEqual([{ attempt: 0, resumed: true }]);
+      expect(recording.state).toBe('recording');
+    });
+
+    it('reconnect() continues the same stream when it can', async () => {
+      const recording = await createConnectedRecording();
+      const events: string[] = [];
+      recording.on('session_restart', () => events.push('session_restart'));
+      recording.on('state_change', ({ new_state }) => events.push(new_state));
+      const reconnected: { attempt: number; resumed: boolean }[] = [];
+      recording.on('reconnected', (event) => reconnected.push(event));
+      offerReconnect(MockWebSocket.instances[0]!);
+
+      recording.reconnect();
+      const dial = await answerReconnect({ type: 'reconnected', reconnect_token: 'token-2', last_request: 0 });
+
+      expect(dial.url).toBe(RECONNECT_URL);
+      expect(reconnected).toEqual([{ attempt: 0, resumed: true }]);
+      expect(events).toEqual([]);
+      expect(source.restartCount).toBe(0);
+      expect(recording.state).toBe('recording');
+    });
+
+    it('reconnect() continues the same stream even when auto_reconnect is off', async () => {
+      const recording = await createConnectedRecording({ auto_reconnect: false });
+      const reconnected: { attempt: number; resumed: boolean }[] = [];
+      recording.on('reconnected', (event) => reconnected.push(event));
+      offerReconnect(MockWebSocket.instances[0]!);
+
+      recording.reconnect();
+      await answerReconnect({ type: 'reconnected', reconnect_token: 'token-2', last_request: 0 });
+
+      expect(reconnected).toEqual([{ attempt: 0, resumed: true }]);
+    });
+
+    it('reconnect() starts a fresh session when the stream cannot be continued', async () => {
+      const recording = await createConnectedRecording({ reconnect_base_delay_ms: 50 });
+      const events: string[] = [];
+      recording.on('session_restart', () => events.push('session_restart'));
+      const reconnected: { attempt: number; resumed: boolean }[] = [];
+      recording.on('reconnected', (event) => reconnected.push(event));
+      offerReconnect(MockWebSocket.instances[0]!);
+
+      recording.reconnect();
+      await answerReconnect({ error_code: 400, error_message: 'The stream has ended. Start a new stream.' });
+      await flushReconnect(50);
+
+      expect(events).toEqual(['session_restart']);
+      expect(reconnected).toEqual([{ attempt: 1, resumed: false }]);
+      expect(recording.state).toBe('recording');
+      expect(MockWebSocket.instances).toHaveLength(3);
     });
 
     it('leaves enable_reconnect alone when the caller set it', async () => {

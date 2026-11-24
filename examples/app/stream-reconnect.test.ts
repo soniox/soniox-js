@@ -194,6 +194,21 @@ describeWithApiKey('Realtime STT stream reconnect (live API)', () => {
     expectWholeTranscript(run, baseline);
   }, 60000);
 
+  it('moves a healthy stream to a new connection on request', async () => {
+    const run = await transcribe(client.realtime.stt(config), {
+      afterChunk: (i, session) => {
+        if (i === Math.floor(CHUNK_COUNT * 0.5)) {
+          expect(session.resumeStream()).toBe(true);
+        }
+      },
+    });
+
+    expect(run.events).toEqual(['resuming', 'resumed']);
+    expect(TappedWebSocket.instances).toHaveLength(2);
+
+    expectWholeTranscript(run, baseline);
+  }, 60000);
+
   it('notices a silent drop by ping and resends the audio the server missed', async () => {
     let dropped: TappedWebSocket | undefined;
     const run = await transcribe(client.realtime.stt(config), {
